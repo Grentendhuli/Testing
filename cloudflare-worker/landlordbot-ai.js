@@ -40,6 +40,21 @@ export default {
       return handleEmailSend(request, env, corsOrigin);
     }
     
+    // Route to Vapi handler if path is /vapi/call
+    if (path === '/vapi/call') {
+      return handleVapiCall(request, env, corsOrigin);
+    }
+    
+    // Route to Vapi status handler if path is /vapi/status
+    if (path === '/vapi/status') {
+      return handleVapiStatus(request, env, corsOrigin);
+    }
+    
+    // Route to Telegram token validation handler if path is /telegram/validate
+    if (path === '/telegram/validate') {
+      return handleTelegramValidate(request, env, corsOrigin);
+    }
+    
     // Otherwise handle AI chat
     return handleAIChat(request, env, corsOrigin);
   }
@@ -142,6 +157,286 @@ async function handleEmailSend(request, env, corsOrigin) {
     return new Response(JSON.stringify({ 
       success: false,
       error: 'Internal server error'
+    }), { 
+      status: 500,
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': corsOrigin,
+      }
+    });
+  }
+}
+
+// Vapi call handler - keeps Vapi API key server-side
+async function handleVapiCall(request, env, corsOrigin) {
+  try {
+    const { phoneNumber, userId, sessionType, notes, scheduledAt } = await request.json().catch(() => ({}));
+    
+    // Validate required fields
+    if (!phoneNumber || !userId || !sessionType) {
+      return new Response(JSON.stringify({ 
+        error: 'Missing required fields: phoneNumber, userId, sessionType',
+        success: false 
+      }), { 
+        status: 400,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': corsOrigin,
+        }
+      });
+    }
+    
+    // Validate phone number format
+    const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+    if (!phoneRegex.test(phoneNumber.replace(/\s/g, ''))) {
+      return new Response(JSON.stringify({ 
+        error: 'Invalid phone number format',
+        success: false 
+      }), { 
+        status: 400,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': corsOrigin,
+        }
+      });
+    }
+    
+    // Check if Vapi is configured
+    if (!env.VAPI_API_KEY || !env.VAPI_ASSISTANT_ID) {
+      console.warn('[Worker] Vapi not configured');
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Voice calling service not configured',
+        mock: true
+      }), { 
+        status: 503,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': corsOrigin,
+        }
+      });
+    }
+    
+    // Prepare customer data
+    const customerData = {
+      userId: userId,
+      sessionType: sessionType,
+      notes: notes || '',
+    };
+    
+    const body = {
+      assistantId: env.VAPI_ASSISTANT_ID,
+      name: `Advisor Call - ${sessionType}`,
+      customer: {
+        number: phoneNumber,
+        ...customerData,
+      },
+      metadata: customerData,
+    };
+    
+    if (env.VAPI_PHONE_NUMBER_ID) {
+      body.phoneNumberId = env.VAPI_PHONE_NUMBER_ID;
+    }
+    
+    // Make Vapi API call (server-side only)
+    const response = await fetch('https://api.vapi.ai/call', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.VAPI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('[Worker] Vapi call initiated:', { callId: data.id, phoneNumber });
+      return new Response(JSON.stringify({ 
+        success: true,
+        callId: data.id,
+        status: data.status,
+        data
+      }), {
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': corsOrigin,
+        }
+      });
+    } else {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[Worker] Vapi API error:', errorData);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: errorData.message || 'Failed to initiate call'
+      }), { 
+        status: 500,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': corsOrigin,
+        }
+      });
+    }
+  } catch (error) {
+    console.error('[Worker] Vapi call error:', error);
+    return new Response(JSON.stringify({ 
+      success: false,
+      error: 'Internal server error'
+    }), { 
+      status: 500,
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': corsOrigin,
+      }
+    });
+  }
+}
+
+// Vapi status handler
+async function handleVapiStatus(request, env, corsOrigin) {
+  try {
+    const url = new URL(request.url);
+    const callId = url.searchParams.get('callId');
+    
+    if (!callId) {
+      return new Response(JSON.stringify({ 
+        error: 'Missing callId parameter',
+        success: false 
+      }), { 
+        status: 400,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': corsOrigin,
+        }
+      });
+    }
+    
+    // Check if Vapi is configured
+    if (!env.VAPI_API_KEY) {
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Voice calling service not configured'
+      }), { 
+        status: 503,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': corsOrigin,
+        }
+      });
+    }
+    
+    // Get call status from Vapi API (server-side only)
+    const response = await fetch(`https://api.vapi.ai/call/${callId}`, {
+      headers: {
+        'Authorization': `Bearer ${env.VAPI_API_KEY}`,
+      },
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return new Response(JSON.stringify({ 
+        success: true,
+        status: data.status,
+        data
+      }), {
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': corsOrigin,
+        }
+      });
+    } else {
+      const errorData = await response.json().catch(() => ({}));
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: errorData.message || 'Failed to get call status'
+      }), { 
+        status: 500,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': corsOrigin,
+        }
+      });
+    }
+  } catch (error) {
+    console.error('[Worker] Vapi status error:', error);
+    return new Response(JSON.stringify({ 
+      success: false,
+      error: 'Internal server error'
+    }), { 
+      status: 500,
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': corsOrigin,
+      }
+    });
+  }
+}
+
+// Telegram bot token validation handler
+async function handleTelegramValidate(request, env, corsOrigin) {
+  try {
+    const { token } = await request.json().catch(() => ({}));
+    
+    // Validate required fields
+    if (!token) {
+      return new Response(JSON.stringify({ 
+        error: 'Missing required field: token',
+        success: false 
+      }), { 
+        status: 400,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': corsOrigin,
+        }
+      });
+    }
+    
+    // Basic token format validation (should be like "123456:ABC-DEF...")
+    const tokenRegex = /^\d+:[A-Za-z0-9_-]+$/;
+    if (!tokenRegex.test(token)) {
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Invalid token format'
+      }), { 
+        status: 400,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': corsOrigin,
+        }
+      });
+    }
+    
+    // Validate token with Telegram API (server-side only)
+    const response = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+    const data = await response.json();
+    
+    if (data.ok) {
+      return new Response(JSON.stringify({ 
+        success: true,
+        username: data.result.username,
+        botInfo: data.result
+      }), {
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': corsOrigin,
+        }
+      });
+    } else {
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: data.description || 'Invalid bot token'
+      }), { 
+        status: 400,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': corsOrigin,
+        }
+      });
+    }
+  } catch (error) {
+    console.error('[Worker] Telegram validation error:', error);
+    return new Response(JSON.stringify({ 
+      success: false,
+      error: 'Failed to validate token'
     }), { 
       status: 500,
       headers: { 

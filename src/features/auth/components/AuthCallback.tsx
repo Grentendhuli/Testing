@@ -257,7 +257,8 @@ export function AuthCallback() {
           </h1>
           <p className="text-slate-600 mb-4">{error}</p>
 
-          {debugInfo && (
+          {/* Debug info only shown in development */}
+          {import.meta.env.DEV && debugInfo && (
             <div className="mb-4 p-4 bg-slate-100 rounded-lg text-left">
               <p className="text-xs font-mono text-slate-600 whitespace-pre-wrap break-all">
                 {debugInfo}
@@ -304,7 +305,8 @@ export function AuthCallback() {
         <p className="mt-1 text-xs text-slate-400">
           This may take a few seconds
         </p>
-        {debugInfo && (
+        {/* Debug info only shown in development */}
+        {import.meta.env.DEV && debugInfo && (
           <div className="mt-6 p-4 bg-slate-100 rounded-lg text-left max-w-md mx-auto">
             <p className="text-xs font-mono text-slate-600 whitespace-pre-wrap break-all">
               {debugInfo}

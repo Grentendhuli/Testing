@@ -3,6 +3,7 @@ import { FileText, Download, Wrench, FileSignature, Loader2, CheckCircle, X } fr
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import jsPDF from 'jspdf';
+import { sanitizeText } from '@/lib/sanitize';
 
 export type DocumentType = 'lease' | 'work-order';
 
@@ -60,7 +61,20 @@ export function DocumentGenerator({ defaultType = 'lease', unitId, maintenanceId
 
   const generateLeasePDF = () => {
     const doc = new jsPDF();
-    const data = leaseData as LeaseData;
+    // Sanitize all user inputs before using in PDF
+    const data = {
+      landlordName: sanitizeText(leaseData.landlordName),
+      landlordAddress: sanitizeText(leaseData.landlordAddress),
+      tenantName: sanitizeText(leaseData.tenantName),
+      tenantAddress: sanitizeText(leaseData.tenantAddress),
+      propertyAddress: sanitizeText(leaseData.propertyAddress),
+      unitNumber: sanitizeText(leaseData.unitNumber),
+      leaseStart: sanitizeText(leaseData.leaseStart),
+      leaseEnd: sanitizeText(leaseData.leaseEnd),
+      monthlyRent: leaseData.monthlyRent || 0,
+      securityDeposit: leaseData.securityDeposit || 0,
+      leaseType: leaseData.leaseType || 'free-market',
+    } as LeaseData;
     
     // Header
     doc.setFontSize(20);
@@ -126,7 +140,18 @@ export function DocumentGenerator({ defaultType = 'lease', unitId, maintenanceId
 
   const generateWorkOrderPDF = () => {
     const doc = new jsPDF();
-    const data = workOrderData as WorkOrderData;
+    // Sanitize all user inputs before using in PDF
+    const data = {
+      requestId: sanitizeText(workOrderData.requestId),
+      unitNumber: sanitizeText(workOrderData.unitNumber),
+      propertyAddress: sanitizeText(workOrderData.propertyAddress),
+      tenantName: sanitizeText(workOrderData.tenantName),
+      issueDescription: sanitizeText(workOrderData.issueDescription),
+      priority: workOrderData.priority || 'medium',
+      category: sanitizeText(workOrderData.category),
+      dateSubmitted: sanitizeText(workOrderData.dateSubmitted),
+      estimatedCost: workOrderData.estimatedCost,
+    } as WorkOrderData;
     
     // Header
     doc.setFillColor(245, 158, 11);

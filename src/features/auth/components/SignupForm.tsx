@@ -248,8 +248,28 @@ export function SignupForm() {
 
     if (!formData.password) {
       errors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      errors.password = 'Password must be at least 8 characters';
+    } else {
+      // Password complexity requirements
+      const passwordErrors: string[] = [];
+      if (formData.password.length < 8) {
+        passwordErrors.push('at least 8 characters');
+      }
+      if (!/[A-Z]/.test(formData.password)) {
+        passwordErrors.push('one uppercase letter');
+      }
+      if (!/[a-z]/.test(formData.password)) {
+        passwordErrors.push('one lowercase letter');
+      }
+      if (!/[0-9]/.test(formData.password)) {
+        passwordErrors.push('one number');
+      }
+      if (!/[!@#$%^*&*()_+\-=\[\]{};':"\\|,.\/<>?]/.test(formData.password)) {
+        passwordErrors.push('one special character (!@#$%^*&*)');
+      }
+      
+      if (passwordErrors.length > 0) {
+        errors.password = `Password must contain ${passwordErrors.join(', ')}`;
+      }
     }
 
     if (!formData.confirmPassword) {
@@ -682,7 +702,7 @@ export function SignupForm() {
                       {fieldErrors.password}
                     </p>
                   ) : (
-                    <HelperText>Minimum 8 characters</HelperText>
+                    <HelperText>Min 8 chars, uppercase, lowercase, number, special char</HelperText>
                   )}
                 </div>
 

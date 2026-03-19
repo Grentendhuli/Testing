@@ -10,10 +10,6 @@ import {
   signInWithMicrosoft,
   signOut,
   getCurrentSession,
-  setStorageItem,
-  removeStorageItem,
-  AUTH_STORAGE_KEY,
-  AUTH_TIMESTAMP_KEY,
 } from '../services/authService';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -100,23 +96,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null;
   }, []);
 
-  // Update auth state and persist to storage
+  // Update auth state - removed localStorage persistence for security
   const updateAuthState = useCallback((newState: AuthState, newUser: User | null, newSession: Session | null) => {
     setAuthState(newState);
     setUser(newUser);
     setSession(newSession);
     
-    // Persist to localStorage for faster initial loads
-    if (newState === 'authenticated' && newUser) {
-      setStorageItem(AUTH_STORAGE_KEY, JSON.stringify({
-        user: { id: newUser.id, email: newUser.email },
-        timestamp: Date.now(),
-      }));
-      setStorageItem(AUTH_TIMESTAMP_KEY, Date.now().toString());
-    } else if (newState === 'unauthenticated') {
-      removeStorageItem(AUTH_STORAGE_KEY);
-      removeStorageItem(AUTH_TIMESTAMP_KEY);
-    }
+    // Note: Auth tokens are no longer persisted to localStorage for security
+    // They remain in memory only and are managed by Supabase's secure cookie-based session
   }, []);
 
   // Initialize auth state - runs once on mount
@@ -228,10 +215,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchUserData, updateAuthState]);
 
   // Listen for storage events to sync auth state across tabs
+  // Note: This now relies on Supabase's cookie-based session instead of localStorage
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === AUTH_STORAGE_KEY) {
-        // Another tab changed auth state, refresh our session
+        // Another tab changed auth state, refresh our session from Supabase
         supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
           if (currentSession?.user) {
             setUser(currentSession.user);

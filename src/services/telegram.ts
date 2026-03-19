@@ -4,6 +4,8 @@ export interface TenantQrCode {
   botUrl: string;
 }
 
+const WORKER_URL = import.meta.env.VITE_CLOUDFLARE_WORKER_URL || '';
+
 export function buildUnitCode(unitId: string, landlordId: string): string {
   // Create a short, memorable code like "LB-3X9Z-A1"
   const shortLandlord = landlordId.slice(-4).toUpperCase();
@@ -18,14 +20,29 @@ export function getTenantQrCodeUrl(unitCode: string, botUsername: string): strin
 }
 
 export async function validateBotToken(token: string): Promise<{ ok: boolean; username?: string; error?: string }> {
+  // Validate token server-side via Cloudflare Worker
+  if (!WORKER_URL) {
+    return { ok: false, error: 'Cloudflare Worker not configured' };
+  }
+  
   try {
-    const response = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+    const response = await fetch(`${WORKER_URL}/telegram/validate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token }),
+    });
+    
     const data = await response.json();
-    if (data.ok) {
-      return { ok: true, username: data.result.username };
+    
+    if (response.ok && data.success) {
+      return { ok: true, username: data.username };
     }
-    return { ok: false, error: data.description };
+    
+    return { ok: false, error: data.error || 'Token validation failed' };
   } catch (e) {
+    console.error('Error validating Telegram token:', e);
     return { ok: false, error: 'Network error validating token' };
   }
 }

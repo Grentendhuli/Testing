@@ -1,13 +1,9 @@
-// Vapi AI Voice Calling Integration
-// https://vapi.ai - AI-powered voice calling for business automation
+// Vapi AI Voice Calling Integration (via Cloudflare Worker)
+// API keys are stored server-side in the Cloudflare Worker
 
 import type { AdvisorSession, AdvisorMessage } from '../types/pro';
 
-export interface VapiConfig {
-  apiKey: string;
-  assistantId: string;
-  phoneNumberId?: string;
-}
+const WORKER_URL = import.meta.env.VITE_CLOUDFLARE_WORKER_URL || '';
 
 export interface VapiCallRequest {
   phoneNumber: string;
@@ -28,19 +24,11 @@ export interface VapiCallResponse {
   error?: string;
 }
 
-export const VAPI_API_BASE = 'https://api.vapi.ai';
-
 export class VapiService {
-  private apiKey: string;
-  private assistantId: string;
-  private phoneNumberId?: string;
   private isConfigured: boolean;
 
-  constructor(config?: VapiConfig) {
-    this.apiKey = config?.apiKey || import.meta.env.VITE_VAPI_API_KEY || '';
-    this.assistantId = config?.assistantId || import.meta.env.VITE_VAPI_ASSISTANT_ID || '';
-    this.phoneNumberId = config?.phoneNumberId || import.meta.env.VITE_VAPI_PHONE_NUMBER_ID;
-    this.isConfigured = !!(this.apiKey && this.assistantId);
+  constructor() {
+    this.isConfigured = !!WORKER_URL;
   }
 
   isReady(): boolean {
@@ -48,65 +36,42 @@ export class VapiService {
   }
 
   getStatus(): { configured: boolean; message: string } {
-    if (!this.apiKey) {
+    if (!this.isConfigured) {
       return { 
         configured: false, 
-        message: 'Vapi API key not configured. Add VITE_VAPI_API_KEY to your .env file.' 
+        message: 'Cloudflare Worker URL not configured. Add VITE_CLOUDFLARE_WORKER_URL to your .env file.' 
       };
     }
-    if (!this.assistantId) {
-      return { 
-        configured: false, 
-        message: 'Vapi Assistant ID not configured. Add VITE_VAPI_ASSISTANT_ID to your .env file.' 
-      };
-    }
-    return { configured: true, message: 'Vapi AI calling connected' };
+    return { configured: true, message: 'Vapi AI calling connected via secure worker' };
   }
 
   async initiateCall(request: VapiCallRequest): Promise<VapiCallResponse> {
     if (!this.isConfigured) {
-      throw new Error('Vapi not configured. Check environment variables.');
-    }
-
-    const url = `${VAPI_API_BASE}/call`;
-    
-    const customerData = {
-      userId: request.userId,
-      sessionType: request.sessionType,
-      notes: request.notes,
-    };
-
-    const body: Record<string, unknown> = {
-      assistantId: this.assistantId,
-      name: `Advisor Call - ${request.sessionType}`,
-      customer: {
-        number: request.phoneNumber,
-        ...customerData,
-      },
-      metadata: customerData,
-    };
-
-    if (this.phoneNumberId) {
-      body.phoneNumberId = this.phoneNumberId;
+      throw new Error('Vapi not configured. Check VITE_CLOUDFLARE_WORKER_URL environment variable.');
     }
 
     try {
-      const response = await fetch(url, {
+      const response = await fetch(`${WORKER_URL}/vapi/call`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(request),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `API error: ${response.status}`);
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || `API error: ${response.status}`);
       }
 
-      const data: VapiCallResponse = await response.json();
-      return data;
+      // Return the call data from the worker response
+      return {
+        id: data.callId || data.data?.id || '',
+        status: data.status || data.data?.status || 'queued',
+        phoneNumber: request.phoneNumber,
+        ...data.data,
+      };
     } catch (error) {
       console.error('Vapi call error:', error);
       throw error;
@@ -118,20 +83,24 @@ export class VapiService {
       throw new Error('Vapi not configured.');
     }
 
-    const url = `${VAPI_API_BASE}/call/${callId}`;
-
     try {
-      const response = await fetch(url, {
+      const response = await fetch(`${WORKER_URL}/vapi/status?callId=${encodeURIComponent(callId)}`, {
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || `API error: ${response.status}`);
       }
 
-      return await response.json();
+      return {
+        id: callId,
+        status: data.status || data.data?.status || 'unknown',
+        ...data.data,
+      };
     } catch (error) {
       console.error('Error fetching call status:', error);
       throw error;
