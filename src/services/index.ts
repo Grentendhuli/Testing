@@ -202,3 +202,11 @@ export {
   type Submitter,
   type SigningStatus,
 } from './docuseal';
+
+// Payment Methods Service - PayPal, Zelle, Venmo, Apple Cash
+export {
+  paymentMethodsService,
+  SUPPORTED_PAYMENT_METHODS,
+  type PaymentMethodId,
+  type PaymentMethodConfig,
+} from './paymentMethods';

@@ -73,10 +73,24 @@ export function Units() {
     setIsEditing(true);
   }, []);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (selectedUnit && editedUnit) {
-      updateUnit(selectedUnit.id, editedUnit);
-      setIsEditing(false);
+      try {
+        // Ensure numeric values
+        const updates = {
+          ...editedUnit,
+          bedrooms: Number(editedUnit.bedrooms) || selectedUnit.bedrooms,
+          bathrooms: Number(editedUnit.bathrooms) || selectedUnit.bathrooms,
+          rentAmount: Number(editedUnit.rentAmount) || selectedUnit.rentAmount,
+          squareFeet: Number(editedUnit.squareFeet) || selectedUnit.squareFeet,
+        };
+        await updateUnit(selectedUnit.id, updates);
+        setIsEditing(false);
+        setSelectedUnit(null);
+      } catch (err) {
+        console.error('Update unit error:', err);
+        setCreateError(err instanceof Error ? err.message : 'Failed to update unit');
+      }
     }
   }, [selectedUnit, editedUnit, updateUnit]);
 
@@ -323,6 +337,32 @@ export function Units() {
         isSubmitting={isSubmitting}
         mode="create"
       />
+
+      {/* Edit Unit Modal */}
+      {selectedUnit && isEditing && (
+        <UnitForm
+          isOpen={isEditing}
+          onClose={handleClose}
+          onSubmit={handleSave}
+          unitData={{
+            address: selectedUnit.address || '',
+            unitNumber: selectedUnit.unitNumber,
+            status: selectedUnit.status,
+            bedrooms: selectedUnit.bedrooms || 0,
+            bathrooms: selectedUnit.bathrooms || 0,
+            squareFeet: selectedUnit.squareFeet || 0,
+            rentAmount: selectedUnit.rentAmount,
+            notes: selectedUnit.notes || '',
+            includeLease: false,
+          }}
+          setUnitData={(data) => setEditedUnit({ ...editedUnit, ...data })}
+          formErrors={formErrors}
+          setFormErrors={setFormErrors}
+          createError={null}
+          isSubmitting={isSubmitting}
+          mode="edit"
+        />
+      )}
 
       {/* Unit Detail Modal */}
       <UnitDetails

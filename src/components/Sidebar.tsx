@@ -127,6 +127,9 @@ export function Sidebar() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const sidebarRef = useRef<HTMLElement>(null);
 
+  // Telegram menu item - visible until setup is complete
+  const telegramItem = { path: '/config', label: 'Telegram', icon: MessageCircle, shortLabel: 'TG', shortcut: 'T', badge: 'Setup' };
+
   // Compute notification counts
   const overduePayments = payments?.filter(p => p.status === 'overdue' || p.status === 'late').length || 0;
   const openMaintenance = maintenanceRequests?.filter(r => r.status === 'open').length || 0;
