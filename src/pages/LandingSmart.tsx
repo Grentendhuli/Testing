@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
+import { useAuth } from '@/features/auth';
 import { LogoMark } from '@/components/LogoMark';
 import { 
   Bot, Mail, CheckCircle, Building2, ArrowRight, ShieldAlert, AlertTriangle,
@@ -96,6 +97,12 @@ const complianceRisks = [
 
 export function LandingSmart() {
   const navigate = useNavigate();
+  const { isAuthenticated, isInitialized } = useAuth();
+  
+  // Redirect to dashboard if already logged in
+  if (isInitialized && isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
