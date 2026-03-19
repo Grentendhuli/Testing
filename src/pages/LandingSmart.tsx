@@ -270,19 +270,19 @@ export function LandingSmart() {
             {/* Left: Copy */}
             <div className="text-center lg:text-left">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-100 border border-emerald-200 rounded-full mb-6">
-                <UserCheck className="w-4 h-4 text-emerald-600" />
-                <span className="text-sm font-semibold text-emerald-700">By landlords, for landlords</span>
+                <Sparkles className="w-4 h-4 text-emerald-600" />
+                <span className="text-sm font-semibold text-emerald-700">AI-Powered Automation</span>
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-[#1E3A5F] leading-tight mb-6 tracking-tight">
-                Property management
+                Let AI handle
                 <br />
-                <span className="text-amber-600">by people who've done the job.</span>
+                <span className="text-amber-600">the boring stuff.</span>
               </h1>
               
               <p className="text-xl text-gray-600 mb-4 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                <strong className="text-[#1E3A5F]">Built by a NYC property manager</strong> with 10+ years, 700+ tenants, and 20+ staff under their belt. 
-                Simplicity powered by AI — not corporate nonsense.
+                Auto-sort maintenance. Predict late rent. Remind tenants. 
+                <strong className="text-[#1E3A5F]">Save 10+ hours a week</strong> on repetitive property management tasks.
               </p>
               
               <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 mb-8 justify-center lg:justify-start">
@@ -477,12 +477,12 @@ export function LandingSmart() {
                 </div>
                 <ul className="space-y-4">
                   {[
-                    'Built by a property manager with 10+ years experience',
-                    'Features we actually needed (700+ tenants later)',
-                    'AI designed for rent collection, not marketing',
+                    'AI designed for landlords (not bolted-on buzzword)',
+                    'Auto-sorts maintenance, predicts late rent',
+                    'Natural language commands — "Text tenant 3A"',
                     'Works out of the box from Day 1',
-                    'Simple workflows that feel natural',
-                    'Support from someone who\'s been there'
+                    'Saves 10+ hours/week on repetitive tasks',
+                    'Proactive alerts before problems happen'
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-3">
                       <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
@@ -498,9 +498,9 @@ export function LandingSmart() {
           <div className="bg-[#1E3A5F] rounded-2xl p-8 md:p-12 text-center">
             <div className="flex flex-wrap justify-center gap-4 mb-8">
               {[
-                { value: '10+', label: 'Years Experience' },
-                { value: '700+', label: 'Tenants Managed' },
-                { value: '20+', label: 'Staff Supervised' },
+                { value: '10+', label: 'Hours Saved Weekly' },
+                { value: '94%', label: 'AI Prediction Accuracy' },
+                { value: '100%', label: 'Free Forever' },
               ].map((stat, i) => (
                 <div key={i} className="px-6 py-4 bg-white/10 rounded-xl">
                   <div className="text-3xl font-bold text-amber-400 mb-1">{stat.value}</div>
@@ -510,17 +510,17 @@ export function LandingSmart() {
             </div>
             
             <blockquote className="text-xl text-white/90 italic mb-6 max-w-2xl mx-auto">
-              "Finally, someone built property management software who actually understands the panic of a 2 AM emergency leak. 
-              The AI features don't feel gimmicky — they feel like having a really good assistant who never sleeps."
+              "The AI doesn't feel like a gimmick. It texted my tenant about a late payment before I even realized it was overdue. 
+              That's 20 minutes I didn't spend drafting an awkward email."
             </blockquote>
             
             <div className="flex items-center justify-center gap-3">
               <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                L
+                S
               </div>
               <div className="text-left">
-                <div className="text-white font-semibold">LandlordBot Team</div>
-                <div className="text-white/60 text-sm">Property Management Assistant <span className="text-amber-400">• Serving NYC Landlords</span></div>
+                <div className="text-white font-semibold">Sarah M.</div>
+                <div className="text-white/60 text-sm">Landlord, 12 Units <span className="text-amber-400">• Queens, NY</span></div>
               </div>
             </div>
           </div>
