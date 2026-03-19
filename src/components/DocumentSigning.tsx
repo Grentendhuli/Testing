@@ -63,6 +63,9 @@ export function DocumentSigning({
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
+        if (!parsed || typeof parsed !== 'object') {
+          throw new Error('Invalid stored submission data');
+        }
         setSubmission(parsed);
         // Fetch current status
         fetchStatus(parsed.id);
@@ -391,6 +394,9 @@ export function DocumentStatusTracker({
       if (stored) {
         try {
           const submission = JSON.parse(stored);
+          if (!submission || typeof submission !== 'object') {
+            throw new Error('Invalid stored submission data');
+          }
           pending.push({
             id: submission.id,
             leaseId: lease.id!,
@@ -499,6 +505,9 @@ export function SignedDocumentsList({ leases }: { leases: Lease[] }) {
       if (stored) {
         try {
           const submission = JSON.parse(stored);
+          if (!submission || typeof submission !== 'object') {
+            throw new Error('Invalid stored submission data');
+          }
           if (submission.status === 'completed') {
             completed.push({
               leaseId: lease.id!,

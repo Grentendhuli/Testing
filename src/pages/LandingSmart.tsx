@@ -1,108 +1,178 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
-import { useAuth } from '@/features/auth';
+import { useNavigate } from 'react-router-dom';
 import { LogoMark } from '@/components/LogoMark';
 import { 
-  Bot, Mail, CheckCircle, Building2, ArrowRight, ShieldAlert, AlertTriangle,
-  FileText, Scale, Thermometer, Paintbrush, Home, Gavel, Zap, Menu, X,
+  Bot, Mail, CheckCircle, Building2, ArrowRight, ShieldAlert, Menu, X,
   Sparkles, Brain, Clock, TrendingUp, MessageSquare, Wrench, DollarSign,
-  Users, Percent, BarChart3, BrainCircuit, UserCheck, Target, Award,
-  Hammer, Check, XCircle, Layout
+  Users, BarChart3, BrainCircuit, Target, Hammer, UserCheck, Layout,
+  Calendar, Bell, Moon, Sun, Zap, Home, ClipboardList, CreditCard,
+  Check, XCircle, AlertTriangle, Scale, FileText, Thermometer, Paintbrush
 } from 'lucide-react';
 import { ConfidenceBadge } from '../components/ConfidenceBadge';
 
-// AI features data
-const aiFeatures = [
+// Pain points - emotional drivers from research
+const painPoints = [
   {
-    icon: Brain,
-    title: 'AI Property Manager',
-    description: 'Autopilot for routine tasks. The AI learns your preferences and handles repetitive work automatically.',
-    demo: 'Auto-sorted 12 maintenance requests by priority',
-    confidence: 92
+    icon: Moon,
+    text: 'Your phone buzzes at midnight with a "small leak"'
   },
   {
-    icon: Clock,
-    title: 'Predictive Alerts',
-    description: 'Know before problems happen. AI monitors patterns and warns you about late payments, maintenance issues, and lease expirations.',
-    demo: 'Predicted 3 late payments with 89% accuracy',
-    confidence: 89
+    icon: DollarSign,
+    text: 'Chasing rent every month like it\'s your part-time job'
   },
   {
     icon: MessageSquare,
-    title: 'Smart Messaging',
-    description: 'Natural language commands. Just say "Text tenant 4A about late rent" and the AI does the rest — with the right tone.',
-    demo: 'Sent personalized messages to 5 tenants',
+    text: 'Maintenance requests buried in email threads'
+  },
+  {
+    icon: Home,
+    text: 'Vacancies lasting weeks because you can\'t respond fast enough'
+  },
+  {
+    icon: AlertTriangle,
+    text: 'Missing compliance deadlines and risking fines'
+  },
+  {
+    icon: ClipboardList,
+    text: 'Juggling 4 different apps and spreadsheets'
+  }
+];
+
+// Feature outcomes with concrete benefits
+const featureOutcomes = [
+  {
+    icon: CreditCard,
+    title: 'Rent Collection That Actually Collects',
+    description: 'AI automatically sends payment reminders, applies late fees, and processes payments—no awkward conversations required. Tenants pay on time or the system handles the follow-up.',
+    result: '94% on-time payment rate without you lifting a finger',
     confidence: 94
   },
   {
-    icon: BarChart3,
-    title: 'Intelligent Insights',
-    description: 'AI analyzes your portfolio and suggests optimizations — rent adjustments, lease timing, and cost savings.',
-    demo: 'Identified $3,600/year in rent optimization',
+    icon: Wrench,
+    title: 'Maintenance Requests That Fix Themselves',
+    description: 'Tenants report issues via text or app. AI instantly categorizes urgency, dispatches the right vendor, schedules the repair, and updates everyone—while you sleep.',
+    result: '3x faster resolution times and tenants who renew',
+    confidence: 91
+  },
+  {
+    icon: Users,
+    title: 'Vacancy Marketing on Autopilot',
+    description: 'When a unit opens, AI instantly posts to multiple platforms, pre-screens applicants, schedules showings, and ranks candidates by your criteria.',
+    result: 'Average 12-day fill time vs. industry standard 30+ days',
     confidence: 87
+  },
+  {
+    icon: Layout,
+    title: 'The Peace of Mind Dashboard',
+    description: 'One screen shows rent status, upcoming renewals, maintenance in progress, and tenant satisfaction. AI flags issues before they become emergencies.',
+    result: 'Finally, true passive income',
+    confidence: 89
   }
 ];
 
 // Compliance requirements data
 const complianceRisks = [
   {
-    icon: Gavel,
-    title: 'Good Cause Eviction',
-    status: 'High Risk',
-    description: 'New statewide law limits rent increases and eviction rights. Non-compliance = lawsuits.',
+    icon: Hammer,
+    title: 'Good Cause Eviction Law',
+    status: 'Auto-Tracked',
+    description: 'NYC\'s new law limits rent increases and eviction rights. We track your eligibility automatically.',
     deadline: 'Active Now',
     color: 'red'
   },
   {
     icon: Home,
     title: 'HPD Registration',
-    status: 'Required',
-    description: 'Annual registration due for all NYC rentals. Fines up to $500 per unit for non-compliance.',
+    status: 'Never Miss It',
+    description: 'Annual registration for all NYC rentals. Automated reminders save you from $500/unit fines.',
     deadline: 'Annual',
     color: 'amber'
   },
   {
     icon: Scale,
-    title: 'DHCR Rent Stabilization',
-    status: 'Track Every Lease',
-    description: 'Rent-stabilized units have strict increase caps. Wrong calculations = penalties.',
+    title: 'Rent Stabilization',
+    status: 'Accurate Tracking',
+    description: 'Rent-stabilized units have strict increase caps. We calculate allowable increases automatically.',
     deadline: 'Per Lease',
     color: 'amber'
   },
   {
     icon: FileText,
     title: 'Local Law 97',
-    status: '2025 Enforcement',
-    description: 'Carbon emissions limits for buildings. Non-compliant = fines + mandated improvements.',
+    status: '2025 Ready',
+    description: 'Carbon emissions monitoring for buildings. We track your status and alert you to requirements.',
     deadline: '2025',
     color: 'amber'
   },
   {
     icon: Thermometer,
-    title: 'Heat Season',
-    status: 'Oct 1 - May 31',
-    description: 'Minimum 68°F (6am-10pm), 62°F (10pm-6am). Violations = $250-$500/day fines.',
+    title: 'Heat Season Compliance',
+    status: 'Oct-May',
+    description: 'Minimum temps: 68°F (6am-10pm), 62°F (10pm-6am). We track violations proactively.',
     deadline: 'Seasonal',
     color: 'blue'
   },
   {
     icon: Paintbrush,
-    title: 'Lead Paint Remediation',
-    status: 'Per Unit',
-    description: 'Pre-1960 buildings must disclose lead hazards. Required for child-occupied units.',
-    deadline: 'Ongoing',
+    title: 'Lead Paint Records',
+    status: 'Organized',
+    description: 'Pre-1960 buildings: disclosure tracking and remediation records, all in one place.',
+    deadline: 'Per Unit',
     color: 'amber'
   }
 ];
 
+// How it works steps
+const howItWorks = [
+  {
+    step: '01',
+    title: 'Connect your properties',
+    description: 'Add basic info or upload documents. The AI extracts key dates, lease terms, and tenant details automatically.',
+    icon: Building2
+  },
+  {
+    step: '02',
+    title: 'Set your preferences',
+    description: 'Configure your rules—when to escalate, who to call, how to handle late rent. The AI learns your style.',
+    icon: Brain
+  },
+  {
+    step: '03',
+    title: 'Let it run',
+    description: 'AI handles the day-to-day while you monitor from your dashboard. Review with one click, approve with another.',
+    icon: Zap
+  }
+];
+
+// Testimonials
+const testimonials = [
+  {
+    quote: 'I actually took a vacation last month without checking my phone once. The AI handled two maintenance emergencies and collected rent from all 12 tenants. Game changer.',
+    name: 'Marcus T.',
+    title: '18-unit portfolio, Austin'
+  },
+  {
+    quote: 'Response time dropped from 2 days to 2 hours. My renewal rate jumped from 65% to 91%. I didn\'t realize how much money I was losing to slow communication.',
+    name: 'Sarah K.',
+    title: '24-unit portfolio, Denver'
+  },
+  {
+    quote: 'I used to spend 6-8 hours every month chasing late rent. Now I spend zero. The AI is more persistent (and polite) than I ever was.',
+    name: 'David R.',
+    title: '12-unit portfolio, Phoenix'
+  }
+];
+
+// Stats
+const stats = [
+  { value: '16+ hrs', label: 'Saved per month' },
+  { value: '94%', label: 'On-time payments' },
+  { value: '12 days', label: 'Avg. vacancy fill' },
+  { value: '2 min', label: 'Setup time' }
+];
+
 export function LandingSmart() {
   const navigate = useNavigate();
-  const { isAuthenticated, isInitialized } = useAuth();
-  
-  // Redirect to dashboard if already logged in
-  if (isInitialized && isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -111,7 +181,7 @@ export function LandingSmart() {
   const [typingDemo, setTypingDemo] = useState('');
   const [showConfidence, setShowConfidence] = useState(false);
 
-  const demoText = "Text tenant 3A about late rent";
+  const demoText = 'Text tenant 3A about the late rent';
 
   // Typing animation effect
   useEffect(() => {
@@ -176,6 +246,10 @@ export function LandingSmart() {
     navigate('/signup');
   };
 
+  const handleSignIn = () => {
+    navigate('/login');
+  };
+
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     element?.scrollIntoView({ behavior: 'smooth' });
@@ -209,19 +283,24 @@ export function LandingSmart() {
 
             {/* Nav Links - Desktop */}
             <div className="hidden md:flex items-center gap-8">
-              <button onClick={() => scrollToSection('ai-features')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium">AI Features</button>
-              <button onClick={() => scrollToSection('compliance')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium">Compliance</button>
+              <button onClick={() => scrollToSection('pain-points')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium">Pain Points</button>
               <button onClick={() => scrollToSection('how-it-works')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium">How It Works</button>
-              <button onClick={() => navigate('/login')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium">Sign In</button>
+              <button onClick={() => scrollToSection('compliance')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium">Compliance</button>
             </div>
 
-            {/* CTA Button - Desktop */}
-            <div className="hidden md:block">
+            {/* CTA Buttons - Desktop */}
+            <div className="hidden md:flex items-center gap-3">
+              <button 
+                onClick={handleSignIn}
+                className="px-5 py-2 text-gray-700 hover:text-[#1E3A5F] font-medium rounded-lg text-sm transition-colors"
+              >
+                Sign In
+              </button>
               <button 
                 onClick={handleTryFree}
                 className="px-5 py-2 bg-[#1E3A5F] hover:bg-[#152942] text-white font-semibold rounded-lg text-sm transition-colors"
               >
-                Try Free
+                Get Started Free
               </button>
             </div>
 
@@ -238,13 +317,20 @@ export function LandingSmart() {
           {mobileMenuOpen && (
             <div className="md:hidden py-4 border-t border-gray-200">
               <div className="flex flex-col gap-4">
-                <button onClick={() => scrollToSection('ai-features')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium text-left">AI Features</button>
+                <button onClick={() => scrollToSection('pain-points')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium text-left">Pain Points</button>
+                <button onClick={() => scrollToSection('how-it-works')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium text-left">How It Works</button>
                 <button onClick={() => scrollToSection('compliance')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium text-left">Compliance</button>
-                <button onClick={() => { setMobileMenuOpen(false); navigate('/login'); }} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium text-left">
+                <button 
+                  onClick={handleSignIn}
+                  className="w-full py-2 text-gray-700 font-medium text-left"
+                >
                   Sign In
                 </button>
-                <button onClick={() => setMobileMenuOpen(false)} className="px-5 py-2 bg-[#1E3A5F] hover:bg-[#152942] text-white font-semibold rounded-lg text-sm transition-colors w-full">
-                  Try Free
+                <button 
+                  onClick={() => setMobileMenuOpen(false)} 
+                  className="px-5 py-2 bg-[#1E3A5F] hover:bg-[#152942] text-white font-semibold rounded-lg text-sm transition-colors w-full"
+                >
+                  Get Started Free
                 </button>
               </div>
             </div>
@@ -252,37 +338,25 @@ export function LandingSmart() {
         </div>
       </nav>
 
-      {/* Urgency Banner — Good Cause Eviction */}
-      <div className="bg-amber-500 border-b border-amber-600 pt-20 pb-3 px-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-amber-900" />
-          <p className="text-amber-900 font-medium text-sm">
-            <span className="font-bold">NYC landlords:</span> New Good Cause Eviction law limits your ability to increase rent & evict. 
-            <span className="hidden sm:inline"> Track compliance or risk lawsuits.</span>
-          </p>
-        </div>
-      </div>
-
-      {/* Hero Section */}
-      <section className="pt-16 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-gray-50">
+      {/* Hero Section - VERSION 2 */}
+      <section className="pt-24 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-6xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left: Copy */}
+            {/* Left: Copy - VERSION 2 */}
             <div className="text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-100 border border-emerald-200 rounded-full mb-6">
-                <Sparkles className="w-4 h-4 text-emerald-600" />
-                <span className="text-sm font-semibold text-emerald-700">AI-Powered Automation</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-100 border border-amber-200 rounded-full mb-6">
+                <Sparkles className="w-4 h-4 text-amber-600" />
+                <span className="text-sm font-semibold text-amber-700">AI-Powered Property Management</span>
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-[#1E3A5F] leading-tight mb-6 tracking-tight">
-                Let AI handle
+                Your Properties Run
                 <br />
-                <span className="text-amber-600">the boring stuff.</span>
+                <span className="text-amber-600">Themselves</span>
               </h1>
               
               <p className="text-xl text-gray-600 mb-4 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                Auto-sort maintenance. Predict late rent. Remind tenants. 
-                <strong className="text-[#1E3A5F]">Save 10+ hours a week</strong> on repetitive property management tasks.
+                AI-powered property management that handles the 3 AM calls, chases late rent, and schedules repairs—so you can focus on growing your portfolio (or just getting your weekends back).
               </p>
               
               <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 mb-8 justify-center lg:justify-start">
@@ -292,11 +366,11 @@ export function LandingSmart() {
                 </div>
                 <div className="flex items-center gap-1">
                   <CheckCircle className="w-4 h-4 text-emerald-500" />
-                  <span>AI-powered</span>
+                  <span>No credit card</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <CheckCircle className="w-4 h-4 text-emerald-500" />
-                  <span>NYC-compliant</span>
+                  <span>2-minute setup</span>
                 </div>
               </div>
 
@@ -305,7 +379,7 @@ export function LandingSmart() {
                 {showSuccess ? (
                   <div className="flex items-center justify-center gap-2 p-4 bg-green-50 border border-green-200 rounded-xl">
                     <CheckCircle className="w-5 h-5 text-green-600" />
-                    <span className="text-green-700 font-medium">AI powered up! Redirecting...</span>
+                    <span className="text-green-700 font-medium">Great! Redirecting to signup...</span>
                   </div>
                 ) : (
                   <div className="flex flex-col sm:flex-row gap-3">
@@ -325,17 +399,22 @@ export function LandingSmart() {
                       disabled={isSubmitting}
                       className="px-8 py-4 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-400 text-slate-900 font-bold rounded-xl transition-colors flex items-center justify-center gap-2 whitespace-nowrap shadow-lg shadow-amber-500/20"
                     >
-                      {isSubmitting ? 'Powering up AI...' : 'Get AI Assistant Free'}
+                      {isSubmitting ? 'Starting...' : 'Start Automating Free'}
                       <ArrowRight className="w-5 h-5" />
                     </button>
                   </div>
                 )}
               </form>
               
-              <p className="text-sm text-gray-500">No credit card. Takes 2 minutes. Built by a landlord, for landlords.</p>
+              <p className="text-sm text-gray-500">
+                Want to sign in instead?{' '}
+                <button onClick={handleSignIn} className="text-amber-600 hover:text-amber-700 font-medium underline">
+                  Sign in here
+                </button>
+              </p>
             </div>
 
-            {/* Right: AI Demo */}
+            {/* Right: AI Demo - VERSION 2 */}
             <div className="relative">
               <div className="absolute -inset-4 bg-gradient-to-r from-amber-500/20 to-purple-500/20 rounded-3xl blur-2xl opacity-50" />
               
@@ -348,7 +427,7 @@ export function LandingSmart() {
                     <div className="w-3 h-3 rounded-full bg-emerald-500" />
                   </div>
                   <div className="flex-1 text-center">
-                    <span className="text-sm text-slate-400">AI Command Palette</span>
+                    <span className="text-sm text-slate-400">Just say what you need...</span>
                   </div>
                 </div>
 
@@ -371,7 +450,7 @@ export function LandingSmart() {
                           <Sparkles className="w-4 h-4 text-amber-400" />
                           <span className="text-slate-300">
                             AI understood: 
-                            <span className="text-amber-400 font-medium">Send payment reminder to tenant in Unit 3A</span>
+                            <span className="text-amber-400 font-medium"> Send friendly rent reminder to Unit 3A</span>
                           </span>
                         </div>
                         <div className="mt-2 pl-7">
@@ -381,16 +460,16 @@ export function LandingSmart() {
 
                       {/* Preview */}
                       <div className="mt-3 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
-                        <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Preview message</p>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Drafted message</p>
                         <p className="text-sm text-slate-300">
-                          Hi there! Just a friendly reminder that your rent payment of $2,400 was due on the 1st. 
+                          Hi there! Just a friendly reminder that your rent payment is due. 
                           If you've already sent it, please disregard. Let me know if you have any questions!
                         </p>
                         
                         <div className="mt-3 flex items-center justify-between">
-                          <span className="text-xs text-slate-500">Matches your typical tone with Sarah</span>
+                          <span className="text-xs text-slate-500">Matches your usual tone</span>
                           <button className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 text-sm font-medium rounded-lg transition-colors">
-                            Send
+                            Send Now
                           </button>
                         </div>
                       </div>
@@ -401,8 +480,8 @@ export function LandingSmart() {
                   <div className="grid grid-cols-3 gap-3 pt-2">
                     <div className="p-3 bg-slate-800/50 rounded-lg text-center">
                       <DollarSign className="w-5 h-5 text-emerald-400 mx-auto mb-1" />
-                      <p className="text-lg font-bold text-slate-200">$14,400</p>
-                      <p className="text-xs text-slate-500">Monthly</p>
+                      <p className="text-lg font-bold text-slate-200">$14.4k</p>
+                      <p className="text-xs text-slate-500">Collected</p>
                     </div>
                     
                     <div className="p-3 bg-slate-800/50 rounded-lg text-center">
@@ -414,7 +493,7 @@ export function LandingSmart() {
                     <div className="p-3 bg-slate-800/50 rounded-lg text-center">
                       <Brain className="w-5 h-5 text-amber-400 mx-auto mb-1" />
                       <p className="text-lg font-bold text-slate-200">94%</p>
-                      <p className="text-xs text-slate-500">AI Confident</p>
+                      <p className="text-xs text-slate-500">Match</p>
                     </div>
                   </div>
                 </div>
@@ -424,127 +503,51 @@ export function LandingSmart() {
         </div>
       </section>
 
-      {/* By Landlords, For Landlords Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white border-t border-gray-100">
-        <div className="max-w-5xl mx-auto">
+      {/* Pain Points Section - VERSION 2 (The Hook) */}
+      <section id="pain-points" className="py-20 px-4 sm:px-6 lg:px-8 bg-white border-t border-gray-100">
+        <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-100 border border-emerald-200 rounded-full mb-6">
-              <Target className="w-4 h-4 text-emerald-600" />
-              <span className="text-sm font-semibold text-emerald-700">The Software We'd Actually Use</span>
-            </div>
-            <h2 className="text-3xl font-bold text-[#1E3A5F] mb-4">Built to solve <span className="text-amber-600">real</span> landlord headaches</h2>
-            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              Not another bloated tool built by people who've never collected rent. 
-              LandlordBot was created by someone who actually lived the problem — then infused it with AI to make the job easier.
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#1E3A5F] mb-4">
+              Property Management Wasn't<br />Supposed to Be a Second Job
+            </h2>
+            <p className="text-lg text-gray-600">
+              You got into real estate for passive income—not to become a 24/7 on-call service.
             </p>
           </div>
 
-          {/* Comparison Table */}
-          <div className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden mb-12">
-            <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200">
-              {/* Corporate Tools */}
-              <div className="p-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-gray-200 rounded-xl flex items-center justify-center">
-                    <Layout className="w-5 h-5 text-gray-500" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-600">Corporate Tools</h3>
-                </div>
-                <ul className="space-y-4">
-                  {[
-                    'Built by generic software teams',
-                    'Features you\'ll never use',
-                    'AI bolted on as buzzword',
-                    '200+ settings to "configure"',
-                    'Complex workflows you hate',
-                    'Support from someone in a call center'
-                  ].map((item, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <XCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                      <span className="text-gray-500">{item}</span>
-                    </li>
-                  ))}
-                </ul>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {painPoints.map((pain, i) => (
+              <div key={i} className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl">
+                <pain.icon className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <span className="text-gray-700 text-sm">{pain.text}</span>
               </div>
-
-              {/* LandlordBot */}
-              <div className="p-8 bg-gradient-to-br from-emerald-50 to-emerald-100/50">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
-                    <Bot className="w-5 h-5 text-white" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-[#1E3A5F]">LandlordBot</h3>
-                </div>
-                <ul className="space-y-4">
-                  {[
-                    'AI designed for landlords (not bolted-on buzzword)',
-                    'Auto-sorts maintenance, predicts late rent',
-                    'Natural language commands — "Text tenant 3A"',
-                    'Works out of the box from Day 1',
-                    'Saves 10+ hours/week on repetitive tasks',
-                    'Proactive alerts before problems happen'
-                  ].map((item, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                      <span className="text-gray-700">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* Social Proof Block */}
-          <div className="bg-[#1E3A5F] rounded-2xl p-8 md:p-12 text-center">
-            <div className="flex flex-wrap justify-center gap-4 mb-8">
-              {[
-                { value: '10+', label: 'Hours Saved Weekly' },
-                { value: '94%', label: 'AI Prediction Accuracy' },
-                { value: '100%', label: 'Free Forever' },
-              ].map((stat, i) => (
-                <div key={i} className="px-6 py-4 bg-white/10 rounded-xl">
-                  <div className="text-3xl font-bold text-amber-400 mb-1">{stat.value}</div>
-                  <div className="text-sm text-white/80">{stat.label}</div>
-                </div>
-              ))}
-            </div>
-            
-            <blockquote className="text-xl text-white/90 italic mb-6 max-w-2xl mx-auto">
-              "The AI doesn't feel like a gimmick. It texted my tenant about a late payment before I even realized it was overdue. 
-              That's 20 minutes I didn't spend drafting an awkward email."
-            </blockquote>
-            
-            <div className="flex items-center justify-center gap-3">
-              <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                S
-              </div>
-              <div className="text-left">
-                <div className="text-white font-semibold">Sarah M.</div>
-                <div className="text-white/60 text-sm">Landlord, 12 Units <span className="text-amber-400">• Queens, NY</span></div>
-              </div>
-            </div>
+          <div className="mt-12 text-center">
+            <p className="text-xl font-semibold text-[#1E3A5F]">There's a better way.</p>
           </div>
         </div>
       </section>
 
-      {/* AI Features Section */}
-      <section id="ai-features" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
+      {/* Feature Outcomes Section - VERSION 2 */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-100 border border-amber-200 rounded-full mb-4">
               <BrainCircuit className="w-4 h-4 text-amber-600" />
-              <span className="text-sm font-semibold text-amber-700">AI-Powered Features</span>
+              <span className="text-sm font-semibold text-amber-700">What The AI Does</span>
             </div>
-            
-            <h2 className="text-3xl font-bold text-[#1E3A5F] mb-3">Let AI handle the tedious stuff</h2>
+            <h2 className="text-3xl font-bold text-[#1E3A5F] mb-3">
+              More than just another app
+            </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Our AI learns your preferences and handles repetitive property management automatically. 
-              You stay in control — the AI just makes it effortless.
+              These aren't features to learn—they're outcomes you'll notice immediately.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
-            {aiFeatures.map((feature, i) => (
+            {featureOutcomes.map((feature, i) => (
               <div key={i} className="group bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 bg-gradient-to-br from-amber-500/20 to-amber-600/20 rounded-xl flex items-center justify-center shrink-0">
@@ -561,11 +564,10 @@ export function LandingSmart() {
                     
                     <p className="text-gray-600 text-sm mb-3">{feature.description}</p>
                     
-                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-100">
                       <div className="flex items-center gap-2">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                        <span className="text-xs text-gray-500">Example:</span>
-                        <span className="text-xs text-gray-700 font-medium">{feature.demo}</span>
+                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        <span className="text-xs text-emerald-700 font-medium">{feature.result}</span>
                       </div>
                     </div>
                   </div>
@@ -576,35 +578,16 @@ export function LandingSmart() {
         </div>
       </section>
 
-      {/* How It Works */}
+      {/* How It Works - VERSION 2 */}
       <section id="how-it-works" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-[#1E3A5F] mb-3">How it works</h2>
-            <p className="text-gray-600">From setup to AI-powered management in minutes</p>
+            <p className="text-gray-600">No setup wizard. No 200 settings. Just intelligent help from day one.</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                step: '01',
-                title: 'Add your properties',
-                description: 'Enter basic info or upload documents. AI extracts unit details, lease terms, and tenant info automatically.',
-                icon: Building2
-              },
-              {
-                step: '02',
-                title: 'AI learns your style',
-                description: 'The AI observes your decisions and preferences. Within days, it starts making smart suggestions tailored to you.',
-                icon: Brain
-              },
-              {
-                step: '03',
-                title: 'Automate the tedious',
-                description: 'Set up autopilot for routine tasks. Get proactive alerts. Handle exceptions with one click or a simple command.',
-                icon: Zap
-              }
-            ].map((step, i) => (
+            {howItWorks.map((step, i) => (
               <div key={i} className="text-center">
                 <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/20">
                   <step.icon className="w-8 h-8 text-white" />
@@ -619,19 +602,59 @@ export function LandingSmart() {
         </div>
       </section>
 
-      {/* Compliance Risk Grid */}
+      {/* Stats Section - VERSION 2 */}
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-[#1E3A5F]">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            {stats.map((stat, i) => (
+              <div key={i}>
+                <div className="text-3xl sm:text-4xl font-bold text-white mb-1">{stat.value}</div>
+                <div className="text-sm text-white/70">{stat.label}</div>
+              </div>
+            ))}
+          </div>        
+        </div>
+      </section>
+
+      {/* Testimonials - VERSION 2 */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white border-y border-gray-100">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl font-bold text-[#1E3A5F] mb-2">What landlords are saying</h2>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {testimonials.map((t, i) => (
+              <div key={i} className="p-6 bg-gray-50 rounded-xl">
+                <blockquote className="text-gray-700 italic mb-4 text-sm leading-relaxed">
+                  "{t.quote}"
+                </blockquote>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                    {t.name.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="text-gray-900 font-semibold text-sm">{t.name}</div>
+                    <div className="text-gray-500 text-xs">{t.title}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Compliance Section - VERSION 2 */}
       <section id="compliance" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-50 border border-red-200 rounded-full mb-4">
-              <ShieldAlert className="w-4 h-4 text-red-600" />
-              <span className="text-sm text-red-700 font-medium">6 Tracked Compliance Risks</span>
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 border border-emerald-200 rounded-full mb-4">
+              <ShieldAlert className="w-4 h-4 text-emerald-600" />
+              <span className="text-sm text-emerald-700 font-medium">NYC Compliance Included</span>
             </div>
-            
-            <h2 className="text-3xl font-bold text-[#1E3A5F] mb-3">What you're required to track</h2>
+            <h2 className="text-3xl font-bold text-[#1E3A5F] mb-3">Never miss a deadline again</h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Miss any of these and you're exposing yourself to fines, lawsuits, or lost rental income. 
-              <strong>LandlordBot's AI tracks them all.</strong>
+              One missed compliance deadline can cost thousands. The AI tracks every requirement automatically—and alerts you before trouble starts.
             </p>
           </div>
 
@@ -653,8 +676,8 @@ export function LandingSmart() {
                   <p className="text-gray-600 text-sm mb-4 min-h-[60px]">{risk.description}</p>
                   
                   <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <Zap className="w-3 h-3" />
-                    <span>Deadline: {risk.deadline}</span>
+                    <Clock className="w-3 h-3" />
+                    <span>Tracks: {risk.deadline}</span>
                   </div>
                 </div>
               );
@@ -663,90 +686,58 @@ export function LandingSmart() {
         </div>
       </section>
 
-      {/* Social Proof with AI Hours Saved */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-[#1E3A5F]">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            {[
-              { value: '8.5', label: 'Hours saved / week with AI' },
-              { value: '94%', label: 'AI prediction accuracy' },
-              { value: '100%', label: 'Free forever' },
-              { value: 'NYC', label: 'Built for local law' },
-            ].map((stat, i) => (
-              <div key={i}>
-                <div className="text-3xl sm:text-4xl font-bold text-white mb-1">{stat.value}</div>
-                <div className="text-sm text-white/70">{stat.label}</div>
-              </div>
-            ))}
-          </div>        
-        </div>
-      </section>
-
-      {/* Features Section */}
+      {/* Final CTA - VERSION 2 */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-[#1E3A5F] mb-3">More than compliance</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Everything you need to run your rental business — with AI superpowers.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { icon: Bot, title: 'AI Command Center', desc: 'Natural language commands. Just say what you want.' },
-              { icon: FileText, title: 'Smart Lease Tracking', desc: 'AI predicts renewal issues and drafts offers.' },
-              { icon: Zap, title: 'Auto Rent Collection', desc: 'Smart reminders, auto-late fees, payment tracking.' },
-              { icon: Building2, title: 'Unlimited Units', desc: 'One unit or one hundred. Same price: free.' },
-            ].map((feature, i) => (
-              <div key={i} className="p-6 bg-gray-50 rounded-xl border border-gray-100">
-                <feature.icon className="w-8 h-8 text-amber-500 mb-4" />
-                <h3 className="font-semibold text-[#1E3A5F] mb-2">{feature.title}</h3>
-                <p className="text-sm text-gray-600">{feature.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
         <div className="max-w-2xl mx-auto text-center">
           <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/30">
             <Bot className="w-8 h-8 text-white" />
           </div>
           
-          <h2 className="text-3xl font-bold text-[#1E3A5F] mb-4">Ready to work smarter? Get your AI property manager.</h2>
+          <h2 className="text-3xl font-bold text-[#1E3A5F] mb-4">
+            Ready to Get Your Time Back?
+          </h2>
           <p className="text-gray-600 mb-8">
-            Join NYC landlords who save 8+ hours per week with AI automation.
+            Join landlords who've automated the busywork and rediscovered why they got into real estate.
           </p>
           
           <button
             onClick={handleTryFree}
             className="px-8 py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded-xl transition-colors inline-flex items-center gap-2 shadow-lg shadow-amber-500/20"
           >
-            Get Started Free
+            Start Your Free Account
             <ArrowRight className="w-5 h-5" />
           </button>
           
-          <p className="text-sm text-gray-500 mt-4">Built by NYC landlords, for NYC landlords. Free forever.</p>        
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4 text-sm text-gray-500">
+            <span className="flex items-center gap-1">
+              <CheckCircle className="w-4 h-4 text-emerald-500" />
+              Free forever
+            </span>
+            <span className="flex items-center gap-1">
+              <CheckCircle className="w-4 h-4 text-emerald-500" />
+              No credit card
+            </span>
+            <span className="flex items-center gap-1">
+              <CheckCircle className="w-4 h-4 text-emerald-500" />
+              Cancel anytime
+            </span>
+          </div>
+
+          <p className="text-sm text-gray-400 mt-6">
+            Already have an account?{' '}
+            <button onClick={handleSignIn} className="text-amber-600 hover:text-amber-700 font-medium">
+              Sign in
+            </button>
+          </p>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-4 sm:px-6 lg:px-8 bg-white border-t border-gray-200">
+      <footer className="py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 border-t border-gray-200">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
-                <img
-                  src="/brand/landlordbot-logo.svg"
-                  alt="LandlordBot AI"
-                  className="w-6 h-6"
-                />
-              </div>
-              <span className="font-bold text-[#1E3A5F]">LandlordBot</span>
-              <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded">AI</span>
+              <LogoMark size={32} showWordmark={true} />
             </div>
             
             <div className="flex items-center gap-6 text-sm text-gray-500">
@@ -755,7 +746,7 @@ export function LandingSmart() {
               <a href="mailto:concierge@landlordbot.app" className="hover:text-[#1E3A5F]">Contact</a>
             </div>
             
-            <p className="text-sm text-gray-400">© 2026 LandlordBot. Built in NYC with AI.</p>
+            <p className="text-sm text-gray-400">Free for NYC landlords.</p>
           </div>        
         </div>
       </footer>
@@ -764,4 +755,3 @@ export function LandingSmart() {
 }
 
 export default LandingSmart;
-
