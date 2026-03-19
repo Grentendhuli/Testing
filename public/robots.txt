@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Disallow non-essential paths
+Disallow: /admin/
+Disallow: /dashboard/ (only accessible after login)
+
+# Sitemap location
+Sitemap: https://landlord-bot-live.vercel.app/sitemap.xml
+
+# Crawl-rate optimization
+Crawl-delay: 1

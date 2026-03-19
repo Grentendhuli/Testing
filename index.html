@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.vapi.ai https://api.sendgrid.com https://api.twilio.com https://landlordbot-ai.*.workers.dev; img-src 'self' data: https: blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="-1" />
+    <title>LandlordBot AI — NYC Property Management</title>
+    <!-- BUILD: 2026-03-12-0655-CACHE-BUST-v2 -->
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Free NYC property management software for NYC landlords. Automate rent collection, tenant screening, HPD compliance tracking, and Good Cause Eviction requirements. Save 10+ hours weekly." />
+    <meta name="theme-color" content="#f59e0b" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://landlord-bot-live.vercel.app" />
+    <meta property="og:title" content="Free NYC Property Management Software | LandlordBot" />
+    <meta property="og:description" content="The only NYC property management software built for city compliance. Track HPD, DHCR, Good Cause Eviction. Save 10+ hours weekly. Free forever." />
+    <meta property="og:image" content="https://landlord-bot-live.vercel.app/og-image.svg" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://landlord-bot-live.vercel.app" />
+    <meta property="twitter:title" content="Free NYC Property Management Software | LandlordBot" />
+    <meta property="twitter:description" content="The only NYC property management software built for city compliance. Free for NYC landlords." />
+    <meta property="twitter:image" content="https://landlord-bot-live.vercel.app/og-image.svg" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://landlord-bot-live.vercel.app" />
+    
+    <link rel="manifest" href="/manifest.json" crossorigin="use-credentials" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    
+    <!-- Safari Fallback: Show content even if JS fails -->
+    <style>
+      .safari-fallback { display: none; }
+      .no-js .safari-fallback { display: block !important; }
+      @media all {
+        html:not(.js-loaded) .safari-fallback { display: block !important; }
+      }
+    </style>
+    <noscript>
+      <style>.safari-fallback { display: block !important; }</style>
+    </noscript>
+    
+    <!-- Google Analytics 4 - Placeholder for GA_ID -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      
+      // Configure with placeholder - will be updated when VITE_GA_MEASUREMENT_ID is set
+      const gaId = localStorage.getItem('GA_MEASUREMENT_ID') || 'GA_MEASUREMENT_ID';
+      gtag('config', gaId, {
+        'anonymize_ip': true,
+        'send_page_view': false,  // We'll track page views manually for SPA
+        'transport_type': 'beacon',
+        'custom_map': {
+          'dimension1': 'user_tier',
+          'dimension2': 'signup_method',
+          'dimension3': 'unit_count'
+        }
+      });
+      
+      // Make gtag available globally
+      window.gtag = gtag;
+    </script>
+    
+    <script>
+      // Detect Safari and log to console
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      if (isSafari) {
+        console.log('[Safari Detection] Safari browser detected');
+        window.safariDetected = true;
+      }
+      
+      // Catch any errors during load
+      window.addEventListener('error', function(e) {
+        console.error('[Global Error]', e.message, 'at', e.filename, ':', e.lineno);
+      });
+    </script>
+  </head>
+  <body class="font-sans antialiased">
+    <div id="root"></div>
+    
+    <!-- Fallback for Safari/JS issues -->
+    <div class="safari-fallback" style="padding: 20px; text-align: center; font-family: system-ui;">
+      <h2 style="color: #f59e0b;">🔄 Loading...</h2>
+      <p>If this page doesn't load, please try:</p>
+      <ol style="text-align: left; display: inline-block;">
+        <li>Clear Safari cache: Settings → Safari → Clear History and Website Data</li>
+        <li>Refresh with Cmd+Shift+R (or Ctrl+Shift+R on Windows)</li>
+        <li>Try Chrome or Firefox instead</li>
+      </ol>
+    </div>
+    
+    <script>
+      // Mark that JS loaded
+      document.documentElement.classList.add('js-loaded');
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json" src="/schema-software.json"></script>
+    <script type="application/ld+json" src="/schema-localbusiness.json"></script>
+  </body>
+</html>

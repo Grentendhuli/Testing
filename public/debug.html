@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>LandlordBot Debug - Fresh</title>
+    <style>
+        body { font-family: system-ui, sans-serif; padding: 20px; background: #0f172a; color: #e2e8f0; }
+        .success { color: #22c55e; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+        pre { background: #1e293b; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        button { padding: 10px 20px; background: #f59e0b; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🔧 LandlordBot Debug (Fresh)</h1>
+    <div id="logs"></div>
+    
+    <div style="margin-top: 20px;">
+        <button onclick="goToLogin()">Go to Login</button>
+        <button onclick="clearAndReload()">Force Reload</button>
+    </div>
+
+    <script>
+        const logs = document.getElementById('logs');
+        function log(msg, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerHTML = msg;
+            logs.appendChild(div);
+        }
+
+        log('✅ HTML loaded', 'success');
+        log('✅ JS executing', 'success');
+        log(`📱 Browser: ${navigator.userAgent}`, 'info');
+        
+        function goToLogin() {
+            window.location.href = '/login?nocache=' + Date.now();
+        }
+        
+        function clearAndReload() {
+            window.location.reload(true);
+        }
+
+        // Load the actual bundle
+        const script = document.createElement('script');
+        script.type = 'module';
+        script.src = '/assets/entry-a91c19787b1ed1-BB569h_b.js';
+        script.onerror = (e) => log(`❌ Bundle failed: ${JSON.stringify(e)}`, 'error');
+        script.onload = () => log('✅ Bundle loaded!', 'success');
+        document.head.appendChild(script);
+    </script>
+</body>
+</html>

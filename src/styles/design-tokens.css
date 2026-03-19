@@ -1,0 +1,232 @@
+/**
+ * LandlordBot Design Tokens
+ * Centralized CSS custom properties for consistent theming
+ * Light theme first (default), dark theme as variant
+ */
+
+:root {
+  /* ========================================
+     PRIMARY BRAND COLORS (Amber accent)
+     ======================================== */
+  --lb-orange: #F59E0B;
+  --lb-orange-hover: #D97706;
+  --lb-orange-subtle: #FEF3C7;
+  --lb-orange-muted: rgba(245, 158, 11, 0.1);
+
+  /* ========================================
+     SEMANTIC COLORS
+     ======================================== */
+  --lb-green: #22C55E;
+  --lb-green-hover: #16A34A;
+  --lb-green-subtle: rgba(34, 197, 94, 0.1);
+  
+  --lb-red: #EF4444;
+  --lb-red-hover: #DC2626;
+  --lb-red-subtle: rgba(239, 68, 68, 0.1);
+  
+  --lb-blue: #3B82F6;
+  --lb-blue-hover: #2563EB;
+  --lb-blue-subtle: rgba(59, 130, 246, 0.1);
+  
+  --lb-purple: #A855F7;
+  --lb-purple-hover: #9333EA;
+  --lb-purple-subtle: rgba(168, 85, 247, 0.1);
+
+  /* ========================================
+     LIGHT THEME (Default)
+     ======================================== */
+  --lb-base: #F8FAFC;
+  --lb-surface: #FFFFFF;
+  --lb-elevated: #FFFFFF;
+  --lb-border: #E2E8F0;
+  --lb-muted: #EEF2F7;
+  --lb-hover: #E8EEF5;
+
+  /* Text Colors - Light Theme */
+  --lb-text-primary: #0F172A;
+  --lb-text-secondary: #1F2937;
+  --lb-text-muted: #475569;
+  --lb-text-disabled: #94A3B8;
+  --color-text-primary: currentColor;
+
+  /* ========================================
+     DARK THEME COLORS (for reference)
+     ======================================== */
+  --lb-base-dark: #0F1115;
+  --lb-surface-dark: #161A22;
+  --lb-elevated-dark: #1E2433;
+  --lb-border-dark: #252D3D;
+  --lb-muted-dark: #2A3441;
+  --lb-hover-dark: #374151;
+
+  /* Text Colors - Dark Theme */
+  --lb-text-primary-dark: #F1F5F9;
+  --lb-text-secondary-dark: #CBD5E1;
+  --lb-text-muted-dark: #94A3B8;
+  --lb-text-disabled-dark: #64748B;
+
+  /* ========================================
+     TYPOGRAPHY
+     ======================================== */
+  --font-serif: 'Fraunces', Georgia, serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Type Scale */
+  --text-xs: 0.75rem;      /* 12px */
+  --text-sm: 0.875rem;     /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg: 1.125rem;     /* 18px */
+  --text-xl: 1.25rem;      /* 20px */
+  --text-2xl: 1.5rem;      /* 24px */
+  --text-3xl: 1.875rem;    /* 30px */
+  --text-4xl: 2.25rem;     /* 36px */
+  --text-5xl: 3rem;        /* 48px */
+
+  /* Font Weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* Line Heights */
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  /* Letter Spacing */
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.1em;
+
+  /* ========================================
+     SPACING
+     ======================================== */
+  --space-0: 0;
+  --space-1: 0.25rem;      /* 4px */
+  --space-2: 0.5rem;       /* 8px */
+  --space-3: 0.75rem;      /* 12px */
+  --space-4: 1rem;         /* 16px */
+  --space-5: 1.25rem;      /* 20px */
+  --space-6: 1.5rem;       /* 24px */
+  --space-8: 2rem;         /* 32px */
+  --space-10: 2.5rem;      /* 40px */
+  --space-12: 3rem;        /* 48px */
+  --space-16: 4rem;        /* 64px */
+  --space-20: 5rem;        /* 80px */
+  --space-24: 6rem;        /* 96px */
+
+  /* ========================================
+     BORDER RADIUS
+     ======================================== */
+  --radius-none: 0;
+  --radius-sm: 0.375rem;   /* 6px */
+  --radius-md: 0.5rem;     /* 8px */
+  --radius-lg: 0.75rem;    /* 12px */
+  --radius-xl: 1rem;       /* 16px */
+  --radius-2xl: 1.5rem;    /* 24px */
+  --radius-3xl: 2rem;      /* 32px */
+  --radius-full: 9999px;
+
+  /* ========================================
+     SHADOWS
+     ======================================== */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  
+  /* Glow Shadows */
+  --shadow-glow: 0 0 20px rgba(245, 158, 11, 0.3);
+  --shadow-glow-green: 0 0 20px rgba(34, 197, 94, 0.3);
+  --shadow-glow-red: 0 0 20px rgba(239, 68, 68, 0.3);
+  --shadow-glow-blue: 0 0 20px rgba(59, 130, 246, 0.3);
+
+  /* ========================================
+     ANIMATION TIMING
+     ======================================== */
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  --duration-instant: 0ms;
+  --duration-fast: 100ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --duration-slower: 500ms;
+
+  /* ========================================
+     Z-INDEX SCALE
+     ======================================== */
+  --z-base: 0;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-fixed: 30;
+  --z-modal-backdrop: 40;
+  --z-modal: 50;
+  --z-popover: 60;
+  --z-tooltip: 70;
+  --z-toast: 80;
+  --z-command-palette: 90;
+  --z-max: 100;
+
+  /* ========================================
+     LAYOUT
+     ======================================== */
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 72px;
+  --header-height: 64px;
+  --mobile-bottom-nav-height: 64px;
+}
+
+/* ========================================
+   DARK THEME OVERRIDES
+   ======================================== */
+.dark {
+  --lb-base: var(--lb-base-dark);
+  --lb-surface: var(--lb-surface-dark);
+  --lb-elevated: var(--lb-elevated-dark);
+  --lb-border: var(--lb-border-dark);
+  --lb-muted: var(--lb-muted-dark);
+  --lb-hover: var(--lb-hover-dark);
+
+  --lb-text-primary: var(--lb-text-primary-dark);
+  --lb-text-secondary: var(--lb-text-secondary-dark);
+  --lb-text-muted: var(--lb-text-muted-dark);
+  --lb-text-disabled: var(--lb-text-disabled-dark);
+}
+
+/* ========================================
+   REDUCED MOTION
+   ======================================== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0.01ms;
+    --duration-normal: 0.01ms;
+    --duration-slow: 0.01ms;
+    --duration-slower: 0.01ms;
+  }
+}
+
+/* ========================================
+   HIGH CONTRAST MODE
+   ======================================== */
+@media (prefers-contrast: high) {
+  :root {
+    --lb-border: #CBD5E1;
+    --lb-text-secondary: #334155;
+  }
+  
+  .dark {
+    --lb-border: #4B5563;
+    --lb-text-secondary: #E5E7EB;
+  }
+}

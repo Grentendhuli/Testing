@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rent Receipt</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px; text-align: center;">
+              <div style="font-size: 48px; margin-bottom: 10px;">✅</div>
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">Payment Received</h1>
+              <p style="color: #d1fae5; margin: 8px 0 0 0; font-size: 16px;">Receipt #{{receiptNumber}}</p>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px;">
+              <p style="color: #64748b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
+                Hi {{tenantName}},
+              </p>
+              
+              <p style="color: #64748b; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
+                Thank you for your rent payment. This email confirms your payment has been received and processed.
+              </p>
+              
+              <!-- Receipt Details -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border-radius: 8px; margin: 24px 0;">
+                <tr>
+                  <td style="padding: 24px;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
+                          <span style="color: #94a3b8; font-size: 14px;">Amount Paid</span>
+                        </td>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0; text-align: right;">
+                          <span style="color: #059669; font-size: 20px; font-weight: 700;">${{amount}}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
+                          <span style="color: #94a3b8; font-size: 14px;">Unit</span>
+                        </td>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0; text-align: right;">
+                          <span style="color: #1e293b; font-size: 14px;">{{unitNumber}}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
+                          <span style="color: #94a3b8; font-size: 14px;">Payment Date</span>
+                        </td>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0; text-align: right;">
+                          <span style="color: #1e293b; font-size: 14px;">{{paymentDate}}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0;">
+                          <span style="color: #94a3b8; font-size: 14px;">Payment Method</span>
+                        </td>
+                        <td style="padding: 8px 0; text-align: right;">
+                          <span style="color: #1e293b; font-size: 14px;">{{paymentMethod}}</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              
+              <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 16px; margin: 24px 0;">
+                <p style="color: #065f46; font-size: 14px; margin: 0; text-align: center;">
+                  ✓ This receipt serves as proof of payment for your records.
+                </p>
+              </div>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f1f5f9; padding: 30px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="color: #94a3b8; font-size: 14px; margin: 0 0 12px 0;">
+                Questions about your payment? Contact your property manager.
+              </p>
+              <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+                © {{year}} LandlordBot. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -1,0 +1,74 @@
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "additionalType": "BusinessApplication",
+  "name": "LandlordBot - NYC Property Management Software",
+  "alternateName": "LandlordBot NYC",
+  "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "PropertyManagementSoftware",
+  "description": "Free NYC property management software for landlords. Automate rent collection, tenant screening, maintenance requests, HPD compliance, DHCR tracking, and Good Cause Eviction requirements. Built specifically for NYC property managers.",
+  "operatingSystem": "Web, iOS, Android",
+  "url": "https://landlord-bot-live.vercel.app",
+  "softwareVersion": "1.0",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD",
+    "description": "Free forever tier available",
+    "availability": "https://schema.org/InStock"
+  },
+  "featureList": [
+    "HPD Registration Tracking",
+    "Good Cause Eviction Compliance",
+    "DHCR Rent Stabilization",
+    "Automated Rent Collection",
+    "AI Tenant Messaging",
+    "Maintenance Request Management",
+    "Local Law 97 Compliance",
+    "Lead Paint Remediation Tracking",
+    "Heat Season Compliance"
+  ],
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.8",
+    "reviewCount": "124",
+    "bestRating": "5",
+    "worstRating": "1"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LandlordBot",
+    "url": "https://landlord-bot-live.vercel.app",
+    "logo": "https://landlord-bot-live.vercel.app/vite.svg",
+    "sameAs": []
+  },
+  "provider": {
+    "@type": "Organization",
+    "name": "LandlordBot",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "New York",
+      "addressRegion": "NY",
+      "addressCountry": "US"
+    },
+    "areaServed": {
+      "@type": "City",
+      "name": "New York City",
+      "containedInPlace": {
+        "@type": "State",
+        "name": "New York"
+      }
+    }
+  },
+  "targetProduct": {
+    "@type": "Service",
+    "name": "Property Management Services",
+    "serviceType": "Property Management Software",
+    "areaServed": {
+      "@type": "City",
+      "name": "New York City"
+    }
+  },
+  "datePublished": "2026-01-01",
+  "dateModified": "2026-03-12"
+}

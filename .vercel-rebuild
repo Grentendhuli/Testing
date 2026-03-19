@@ -1,0 +1,4 @@
+# Force Vercel rebuild
+# Timestamp: 2026-03-11-2119
+BUILD_ID=6655214
+FORCE_REBUILD=true

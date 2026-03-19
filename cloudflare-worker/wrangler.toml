@@ -1,0 +1,17 @@
+name = "landlordbot-ai"
+main = "landlordbot-ai.js"
+compatibility_date = "2024-03-01"
+
+# Cloudflare Workers AI is available on the free tier
+[ai]
+binding = "AI"
+
+# CORS headers are handled in the worker code
+# The worker will respond to requests from your Vercel domain
+
+[env.production]
+# Production environment - no special config needed
+# AI binding is automatically available
+
+[env.staging]
+# Staging environment

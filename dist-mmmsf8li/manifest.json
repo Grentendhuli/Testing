@@ -1,0 +1,12 @@
+{
+  "name": "LandlordBot",
+  "short_name": "LandlordBot",
+  "description": "AI-powered property management dashboard",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#f59e0b",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "en"
+}

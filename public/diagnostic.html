@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LandlordBot Diagnostic</title>    <style>
+        body { font-family: system-ui, sans-serif; padding: 20px; background: #0f172a; color: #e2e8f0; }
+        .success { color: #22c55e; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+        pre { background: #1e293b; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔧 LandlordBot Diagnostic</h1>
+    <div id="logs"></div>
+
+    <script>
+        const logs = document.getElementById('logs');
+        function log(msg, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerHTML = msg;
+            logs.appendChild(div);
+        }
+
+        // Basic checks
+        log('✅ HTML loaded', 'success');
+        log('✅ JavaScript executing', 'success');
+        
+        // Browser info
+        log(`📱 Browser: ${navigator.userAgent}`, 'info');
+        
+        // Feature checks
+        const features = [
+            ['Optional chaining (?. )', () => eval('window?.document') !== undefined],
+            ['Nullish coalescing (??)', () => eval('null ?? "test"') === 'test'],
+            ['BigInt', () => typeof BigInt === 'function'],
+            ['Promise.allSettled', () => typeof Promise.allSettled === 'function'],
+        ];
+        
+        features.forEach(([name, test]) => {
+            try {
+                const result = test();
+                log(`${result ? '✅' : '❌'} ${name}: ${result ? 'supported' : 'not supported'}`, result ? 'success' : 'error');
+            } catch (e) {
+                log(`❌ ${name}: ERROR - ${e.message}`, 'error');
+            }
+        });
+
+        // Try loading the actual app bundle (updated for commit 9d624fa)
+        log('🔄 Attempting to load app bundle...', 'info');
+        
+        const script = document.createElement('script');
+        script.type = 'module';
+        script.src = '/assets/entry-a91c19787b1ed1-BB569h_b.js';
+        script.onerror = (e) => {
+            log(`❌ Bundle load failed: ${e}`, 'error');
+        };
+        script.onload = () => {
+            log('✅ Bundle loaded successfully', 'success');
+        };
+        document.head.appendChild(script);
+    </script>
+</body>
+</html>

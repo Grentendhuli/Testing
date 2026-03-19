@@ -1,0 +1,35 @@
+@import "./styles/design-tokens.css";
+@import "./styles/animations.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  background-color: var(--lb-base);
+  min-height: 100vh;
+  color: var(--lb-text-primary);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+}
+
+.dark html, .dark body, .dark #root {
+  background-color: var(--lb-base);
+  color: var(--lb-text-primary);
+}
+
+a:focus-visible {
+  outline: 2px solid var(--lb-orange);
+  outline-offset: 2px;
+}
+
+/* Scrollbar styling - Light theme default */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: #F1F5F9; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* Dark theme scrollbar */
+.dark ::-webkit-scrollbar-track { background: #0F1115; }
+.dark ::-webkit-scrollbar-thumb { background: #1E2433; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #252D3D; }

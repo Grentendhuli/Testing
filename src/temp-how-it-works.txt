@@ -1,0 +1,78 @@
+      {/* How It Works */}
+      <section id="how-it-works" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 border border-blue-200 rounded-full mb-6">
+              <UserCheck className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-semibold text-blue-700">Simple by Design</span>
+            </div>
+            <h2 className="text-3xl font-bold text-[#1E3A5F] mb-4">How it works</h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              We spent 10 years learning what matters. Then built the simplest tool for it. No fluff, just flow.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[{
+                step: '01',
+                title: 'Add your portfolio',
+                subtitle: 'Takes 5 minutes',
+                description: 'Enter basic property info or upload docs. Our AI extracts unit details, lease terms, and tenant info automatically. No manual data entry.',
+                icon: Building2,
+                highlight: 'Works out of the box'
+              },
+              {
+                step: '02',
+                title: 'AI learns your style',
+                subtitle: 'Within 48 hours',
+                description: "The AI observes how you handle late rent, maintenance requests, and tenant communications. It learns your tone, your priorities, your workflow.",
+                icon: Brain,
+                highlight: 'No training required'
+              },
+              {
+                step: '03',
+                title: 'Automate the grind',
+                subtitle: 'Save 8+ hours/week',
+                description: 'Routine tasks run on autopilot. Rent reminders, maintenance triage, compliance alerts — handled before you even think about them.',
+                icon: Zap,
+                highlight: 'You handle exceptions'
+              }
+            ].map((step, i) => (
+              <div key={i} className="relative group">
+                {/* Connector line */}
+                {i < 2 && (
+                  <div className="hidden md:block absolute top-20 left-full w-full h-0.5 bg-gradient-to-r from-amber-200 to-amber-300 -z-10" />
+                )}
+                
+                <div className="bg-gray-50 rounded-2xl p-8 h-full hover:bg-white hover:shadow-xl transition-all duration-300 border border-transparent hover:border-amber-200">
+                  <div className="w-16 h-16 mb-6 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/20 group-hover:scale-110 transition-transform">
+                    <step.icon className="w-8 h-8 text-white" />
+                  </div>
+                  
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-2xl font-bold text-amber-500">{step.step}</span>
+                    <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">{step.subtitle}</span>
+                  </div>
+                  
+                  <h3 className="text-xl font-semibold text-[#1E3A5F] mb-3">{step.title}</h3>
+                  <p className="text-gray-600 mb-4">{step.description}</p>
+                  
+                  <div className="flex items-center gap-2 text-emerald-600 font-medium text-sm">
+                    <Check className="w-4 h-4" />
+                    <span>{step.highlight}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Bottom CTA */}
+          <div className="mt-16 text-center">
+            <button onClick={handleTryFree} className="px-8 py-4 bg-[#1E3A5F] hover:bg-[#152942] text-white font-bold rounded-xl transition-colors inline-flex items-center gap-2">
+              Start Your Free Setup
+              <ArrowRight className="w-5 h-5" />
+            </button>
+            <p className="mt-4 text-sm text-gray-500">No credit card. Takes 2 minutes. Built by a landlord, for landlords.</p>
+          </div>
+        </div>
+      </section>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basic Test</title>
+    <style>
+        body { font-family: system-ui; padding: 20px; background: #0f172a; color: white; }
+        .success { color: #22c55e; }
+        .error { color: #ef4444; }
+        pre { background: #1e293b; padding: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Basic Functionality Test</h1>
+    <div id="output"></div>
+    
+    <script>
+        const output = document.getElementById('output');
+        function log(msg, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerHTML = msg;
+            output.appendChild(div);
+        }
+        
+        try {
+            log('✅ HTML parsed', 'success');
+            
+            // Test basic JS
+            const test = 'ES6 working';
+            log('✅ JavaScript executing: ' + test, 'success');
+            
+            // Test DOM manipulation
+            document.body.style.backgroundColor = '#0f172a';
+            log('✅ DOM manipulation works', 'success');
+            
+            // Test fetch
+            log('🔄 Testing fetch...', 'info');
+            fetch('https://landlord-bot-live.vercel.app/assets/entry-a91c19787b1ed1-BB569h_b.js', { method: 'HEAD' })
+                .then(r => log(`✅ Fetch works: ${r.status}`, 'success'))
+                .catch(e => log(`❌ Fetch failed: ${e.message}`, 'error'));
+                
+        } catch (e) {
+            log(`❌ ERROR: ${e.message}`, 'error');
+            log(`<pre>${e.stack}</pre>`, 'error');
+        }
+    </script>
+    
+    <h2>Next Step</h2>
+    <p>If this page shows ✅ above, basic JS works.</p>
+    <p><a href="/login" style="color: #f59e0b;">Go to Login →</a></p>
+</body>
+</html>
