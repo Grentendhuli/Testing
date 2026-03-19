@@ -207,8 +207,20 @@ export function UnitCard({
         )}
       </div>
 
-      {/* Hover Actions */}
-      <div className="absolute top-4 right-16 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+      {/* Actions - Always Visible */}
+      <div className="absolute top-4 right-4 flex items-center gap-1">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            console.log('[UnitCard] Edit button clicked for unit:', unit.unitNumber);
+            onEdit(unit);
+          }}
+          className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
+          title="Edit unit"
+          type="button"
+        >
+          <Edit2 className="w-4 h-4" />
+        </button>
         {onDelete && (
           <button
             onClick={(e) => {
@@ -226,17 +238,6 @@ export function UnitCard({
             <Trash2 className="w-4 h-4" />
           </button>
         )}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit(unit);
-          }}
-          className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
-          title="Edit unit"
-          type="button"
-        >
-          <Edit2 className="w-4 h-4" />
-        </button>
       </div>
     </motion.div>
   );
