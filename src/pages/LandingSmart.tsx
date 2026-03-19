@@ -212,6 +212,7 @@ export function LandingSmart() {
               <button onClick={() => scrollToSection('ai-features')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium">AI Features</button>
               <button onClick={() => scrollToSection('compliance')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium">Compliance</button>
               <button onClick={() => scrollToSection('how-it-works')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium">How It Works</button>
+              <button onClick={() => navigate('/login')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium">Sign In</button>
             </div>
 
             {/* CTA Button - Desktop */}
@@ -239,6 +240,9 @@ export function LandingSmart() {
               <div className="flex flex-col gap-4">
                 <button onClick={() => scrollToSection('ai-features')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium text-left">AI Features</button>
                 <button onClick={() => scrollToSection('compliance')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium text-left">Compliance</button>
+                <button onClick={() => { setMobileMenuOpen(false); navigate('/login'); }} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium text-left">
+                  Sign In
+                </button>
                 <button onClick={() => setMobileMenuOpen(false)} className="px-5 py-2 bg-[#1E3A5F] hover:bg-[#152942] text-white font-semibold rounded-lg text-sm transition-colors w-full">
                   Try Free
                 </button>
