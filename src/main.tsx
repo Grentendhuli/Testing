@@ -203,5 +203,60 @@ try {
   }
 }
 
+// Register Service Worker for PWA support
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((registration) => {
+        console.log('[SW] Service Worker registered:', registration.scope);
+        
+        // Check for updates
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('[SW] New content available - please refresh');
+                // Optional: Show refresh notification
+              }
+            });
+          }
+        });
+      })
+      .catch((error) => {
+        console.log('[SW] Service Worker registration failed:', error);
+      });
+  });
+}
+
+// Handle PWA install prompt for Windows/Android
+(window as any).deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Prevent the mini-infobar from appearing on mobile
+  e.preventDefault();
+  // Store the event so it can be triggered later
+  (window as any).deferredPrompt = e;
+  console.log('[PWA] Install prompt available');
+});
+
+// Handle successful PWA installation
+window.addEventListener('appinstalled', () => {
+  console.log('[PWA] App installed successfully');
+  (window as any).deferredPrompt = null;
+});
+
 // DEBUG: Export errors for console access
 (window as any).__DEBUG_ERRORS__ = errors;
+
+// Export service worker ready status
+(window as any).__SW__ = {
+  isRegistered: () => 'serviceWorker' in navigator && !!navigator.serviceWorker.controller,
+  unregister: async () => {
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.ready;
+      await registration.unregister();
+      console.log('[SW] Unregistered');
+    }
+  }
+};

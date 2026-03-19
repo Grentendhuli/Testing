@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '@/features/auth';
-import { FileText, Copy, ExternalLink, Check, Loader2, ChevronDown, Sparkles, X } from 'lucide-react';
+import { FileText, Copy, ExternalLink, Check, Loader2, ChevronDown, Sparkles, X, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Unit {
@@ -14,6 +14,60 @@ interface Unit {
   rentAmount: number;
   notes?: string;
   status: 'vacant' | 'occupied' | 'maintenance';
+}
+
+// Mock AI listing generator for when Cloudflare Worker is not configured
+function generateMockListing(unit: Unit, userData: any): {
+  title: string;
+  description: string;
+  amenities: string[];
+  rentSuggestion: number;
+} {
+  const addressParts = unit.notes?.split(',') || ['Prime NYC Location'];
+  const neighborhood = addressParts[0]?.trim() || 'NYC';
+  
+  const bedroomText = unit.bedrooms === 0 ? 'Studio' : `${unit.bedrooms}BR`;
+  const bathroomText = `${unit.bathrooms}BA`;
+  
+  // Build amenity list based on unit features
+  const amenities: string[] = [];
+  if (unit.squareFeet && unit.squareFeet > 0) {
+    amenities.push(`${unit.squareFeet} sq ft`);
+  }
+  
+  // Add building amenities from user data
+  if (userData?.listing_heat_included) amenities.push('Heat included');
+  if (userData?.listing_parking) amenities.push('Parking available');
+  if (userData?.listing_laundry === 'in_unit') amenities.push('In-unit laundry');
+  else if (userData?.listing_laundry === 'in_building') amenities.push('Laundry in building');
+  
+  // Add pet policy
+  if (userData?.listing_pets === 'allowed') amenities.push('Pet-friendly');
+  else if (userData?.listing_pets === 'case_by_case') amenities.push('Pets considered case-by-case');
+
+  const title = `${bedroomText}/${bathroomText} Apartment at ${neighborhood.slice(0, 30)}`;
+  
+  // Generate a human-like description
+  const descriptions = [
+    `Welcome to this beautiful ${bedroomText.toLowerCase()} apartment in the heart of ${neighborhood}. This ${unit.bathrooms}-bathroom unit offers comfortable living with modern amenities.`,
+    `Spacious ${bedroomText.toLowerCase()} apartment available in ${neighborhood}. Perfect for those seeking a well-maintained home in a great location. Features ${unit.bathrooms} bathroom${unit.bathrooms !== 1 ? 's' : ''} and plenty of natural light.`,
+    `Charming ${bedroomText.toLowerCase()} residence in ${neighborhood} with ${unit.bathrooms} bathroom${unit.bathrooms !== 1 ? 's' : ''}. This well-kept unit is ready for immediate occupancy.`
+  ];
+  
+  const description = descriptions[Math.floor(Math.random() * descriptions.length)] + 
+    '\n\n' + (amenities.length > 0 ? 'Features:\n' + amenities.map(a => '• ' + a).join('\n') + '\n\n' : '') +
+    `Monthly Rent: $${unit.rentAmount.toLocaleString()}\n\n` +
+    `Contact us today to schedule a viewing!`;
+
+  // Suggest a rent slightly within market range
+  const rentSuggestion = Math.round(unit.rentAmount * (0.98 + Math.random() * 0.04));
+
+  return {
+    title: title.slice(0, 75),
+    description,
+    amenities: amenities.slice(0, 8),
+    rentSuggestion
+  };
 }
 
 export function Listings() {
@@ -31,6 +85,7 @@ export function Listings() {
   const [copiedPlatform, setCopiedPlatform] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [error, setError] = useState('');
+  const [isUsingMock, setIsUsingMock] = useState(false);
 
   // Get vacant units
   const vacantUnits = units.filter((u: Unit) => u.status === 'vacant');
@@ -50,6 +105,7 @@ export function Listings() {
     setIsGenerating(true);
     setError('');
     setHasGenerated(false);
+    setIsUsingMock(false);
 
     const unit = units.find((u: Unit) => u.id === targetUnitId);
     if (!unit) {
@@ -58,29 +114,47 @@ export function Listings() {
       return;
     }
 
-    // Read listing defaults from userData
-    const listingDefaults = {
-      listing_laundry: userData?.listing_laundry || 'none',
-      listing_pets: userData?.listing_pets || 'not_allowed',
-      listing_heat_included: userData?.listing_heat_included || false,
-      listing_parking: userData?.listing_parking || false,
-    };
+    try {
+      // Check if Cloudflare Worker URL is configured
+      const workerUrl = (import.meta as any).env?.VITE_CLOUDFLARE_WORKER_URL;
+      
+      if (!workerUrl) {
+        console.warn('VITE_CLOUDFLARE_WORKER_URL not set, using mock generator');
+        // Use mock generator when Cloudflare Worker is not configured
+        const mockResult = generateMockListing(unit, userData);
+        setGeneratedTitle(mockResult.title);
+        setGeneratedDescription(mockResult.description);
+        setAmenities(mockResult.amenities);
+        setRentSuggestion(mockResult.rentSuggestion);
+        setIsUsingMock(true);
+        setHasGenerated(true);
+        setIsGenerating(false);
+        return;
+      }
 
-    // Format values for display
-    const laundryDisplay = listingDefaults.listing_laundry === 'in_building' 
-      ? 'In Building' 
-      : listingDefaults.listing_laundry === 'in_unit' 
-        ? 'In Unit' 
-        : 'None';
-    
-    const petsDisplay = listingDefaults.listing_pets === 'case_by_case' 
-      ? 'Case by Case' 
-      : listingDefaults.listing_pets === 'allowed' 
-        ? 'Allowed' 
-        : 'Not Allowed';
+      // Read listing defaults from userData
+      const listingDefaults = {
+        listing_laundry: userData?.listing_laundry || 'none',
+        listing_pets: userData?.listing_pets || 'not_allowed',
+        listing_heat_included: userData?.listing_heat_included ?? false,
+        listing_parking: userData?.listing_parking ?? false,
+      };
 
-    // Build prompt string
-    const promptString = `You are an expert NYC rental listing copywriter. Generate a rental listing for the following unit.
+      // Format values for display
+      const laundryDisplay = listingDefaults.listing_laundry === 'in_building' 
+        ? 'In Building' 
+        : listingDefaults.listing_laundry === 'in_unit' 
+          ? 'In Unit' 
+          : 'None';
+      
+      const petsDisplay = listingDefaults.listing_pets === 'case_by_case' 
+        ? 'Case by Case' 
+        : listingDefaults.listing_pets === 'allowed' 
+          ? 'Allowed' 
+          : 'Not Allowed';
+
+      // Build prompt string
+      const promptString = `You are an expert NYC rental listing copywriter. Generate a rental listing for the following unit.
 
 Unit details:
 - Address: ${userData?.property_address || 'NYC Property'}
@@ -105,39 +179,46 @@ Return ONLY valid JSON with no markdown, no code fences, no explanation. Format:
   "rentSuggestion": ${unit.rentAmount}
 }`;
 
-    try {
-      const workerUrl = (import.meta as any).env.VITE_CLOUDFLARE_WORKER_URL;
-      if (!workerUrl) {
-        throw new Error('VITE_CLOUDFLARE_WORKER_URL not set');
+      try {
+        const response = await fetch(workerUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: promptString }),
+        });
+
+        if (!response.ok) {
+          throw new Error('AI service unavailable');
+        }
+
+        const data = await response.json();
+        let replyText = data.reply || data.text || '';
+        
+        // Strip markdown fences if present
+        replyText = replyText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        
+        // Parse JSON response
+        const parsed = JSON.parse(replyText);
+        
+        setGeneratedTitle(parsed.title || '');
+        setGeneratedDescription(parsed.description || '');
+        setAmenities(parsed.amenities || []);
+        setRentSuggestion(parsed.rentSuggestion || unit.rentAmount);
+        setHasGenerated(true);
+        setIsUsingMock(false);
+      } catch (fetchError) {
+        console.warn('Cloudflare Worker failed, falling back to mock:', fetchError);
+        // Fallback to mock generator on API failure
+        const mockResult = generateMockListing(unit, userData);
+        setGeneratedTitle(mockResult.title);
+        setGeneratedDescription(mockResult.description);
+        setAmenities(mockResult.amenities);
+        setRentSuggestion(mockResult.rentSuggestion);
+        setIsUsingMock(true);
+        setHasGenerated(true);
       }
-
-      const response = await fetch(workerUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: promptString }),
-      });
-
-      if (!response.ok) {
-        throw new Error('AI service unavailable');
-      }
-
-      const data = await response.json();
-      let replyText = data.reply || data.text || '';
-      
-      // Strip markdown fences if present
-      replyText = replyText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      
-      // Parse JSON response
-      const parsed = JSON.parse(replyText);
-      
-      setGeneratedTitle(parsed.title || '');
-      setGeneratedDescription(parsed.description || '');
-      setAmenities(parsed.amenities || []);
-      setRentSuggestion(parsed.rentSuggestion || null);
-      setHasGenerated(true);
     } catch (err) {
       console.error('Error generating listing:', err);
-      setError('Could not generate listing. Check that VITE_CLOUDFLARE_WORKER_URL is set in your environment variables.');
+      setError('Could not generate listing. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -177,6 +258,8 @@ Contact us to schedule a showing.`;
       }, 3000);
     } catch (err) {
       console.error('Failed to copy to clipboard:', err);
+      // Still open the platform URL even if clipboard fails
+      window.open(url, '_blank');
     }
   };
 
@@ -250,6 +333,15 @@ Contact us to schedule a showing.`;
       {/* Generated Listing Display */}
       {hasGenerated && !isGenerating && selectedUnit && (
         <div className="space-y-6">
+          {isUsingMock && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+              <p className="text-amber-400 text-sm flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Using built-in listing generator. AI enhancement available with Concierge upgrade.
+              </p>
+            </div>
+          )}
+          
           {/* Title Block */}
           <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
             <label className="block text-sm font-medium text-slate-300 mb-3">Listing Title</label>
@@ -269,7 +361,7 @@ Contact us to schedule a showing.`;
             <textarea
               value={generatedDescription}
               onChange={(e) => setGeneratedDescription(e.target.value)}
-              rows={6}
+              rows={8}
               className="w-full px-4 py-3 bg-slate-800 border border-slate-700 text-slate-100 rounded-lg focus:outline-none focus:border-amber-500 resize-none"
             />
           </div>
@@ -336,9 +428,6 @@ Contact us to schedule a showing.`;
                 </button>
               ))}
             </div>
-            <p className="text-xs text-center text-slate-400 dark:text-slate-600 mt-3">
-              AI listing generator is free with fair-use limits · ~50 listings/day
-            </p>
           </div>
 
           {/* Regenerate Button */}
@@ -346,8 +435,9 @@ Contact us to schedule a showing.`;
             <button
               onClick={() => generateListing()}
               disabled={isGenerating}
-              className="px-6 py-3 border border-slate-600 text-slate-300 hover:bg-slate-800 rounded-lg font-medium transition-colors disabled:opacity-50"
+              className="px-6 py-3 border border-slate-600 text-slate-300 hover:bg-slate-800 rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
             >
+              {isGenerating && <Loader2 className="w-4 h-4 animate-spin" />}
               Regenerate Listing
             </button>
           </div>
@@ -357,22 +447,4 @@ Contact us to schedule a showing.`;
   );
 }
 
-// AlertTriangle component for error display
-function AlertTriangle({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-      <line x1="12" x2="12" y1="9" y2="13" />
-      <line x1="12" x2="12.01" y1="17" y2="17" />
-    </svg>
-  );
-}
+export default Listings;

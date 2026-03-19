@@ -85,6 +85,9 @@ interface AppContextType extends PersistedState {
   showPersistenceBanner: boolean;
   dismissPersistenceBanner: () => void;
   
+  // Onboarding tracking
+  markOnboardingProgress: (key: 'units' | 'property' | 'leases', value: boolean) => void;
+  
   // UI state
   isLoading: boolean;
   error: string | null;
@@ -214,6 +217,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setPayments((paymentsRes.data || []) as Payment[]);
       setMaintenanceRequests((maintRes.data || []) as MaintenanceRequest[]);
       setMessages(((msgsRes.data || []) as Message[]) || []);
+      
+      // Track onboarding progress for PWA timing
+      const hasUnits = (unitsRes.data?.length || 0) > 0;
+      const hasLeases = (leasesRes.data?.length || 0) > 0;
+      markOnboardingProgress('units', hasUnits);
+      markOnboardingProgress('leases', hasLeases);
+      
+      // Check user data for property address
+      const userRes = await (supabase as any)
+        .from('users')
+        .select('property_address')
+        .eq('id', userId)
+        .single();
+      markOnboardingProgress('property', !!userRes.data?.property_address);
     } catch (err) {
       console.error('[AppContext] loadUserData error:', err);
       setError('Failed to load your data. Please refresh.');
@@ -403,6 +420,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Track onboarding progress for PWA prompt
+  const markOnboardingProgress = useCallback((key: 'units' | 'property' | 'leases', value: boolean) => {
+    try {
+      const storageKey = `pwa-onboarding-${key}-added`;
+      localStorage.setItem(storageKey, value ? 'true' : 'false');
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
   // Unit CRUD operations
   const updateUnit = async (unitId: string, updates: Partial<Unit>) => {
     if (!authUser?.id) return;
@@ -484,24 +511,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
 
     setUnits(prev => [...prev, newUnit]);
+    // Mark onboarding progress for PWA
+    markOnboardingProgress('units', true);
     return newUnit;
   };
 
   const deleteUnit = async (unitId: string) => {
-    if (!authUser?.id) return;
-
-    const { error } = await (supabase as any)
-      .from('units')
-      .delete()
-      .eq('id', unitId)
-      .eq('user_id', authUser.id);
-
-    if (error) {
-      console.error('Error deleting unit:', error);
-      throw error;
+    if (!authUser?.id) {
+      console.warn('[deleteUnit] No authenticated user');
+      throw new Error('You must be logged in to delete a unit.');
     }
 
-    setUnits(prev => prev.filter(unit => unit.id !== unitId));
+    if (!unitId) {
+      console.warn('[deleteUnit] No unit ID provided');
+      throw new Error('Invalid unit selected.');
+    }
+
+    try {
+      // First delete any associated leases
+      const { error: leaseError } = await (supabase as any)
+        .from('leases')
+        .delete()
+        .eq('unit_id', unitId)
+        .eq('user_id', authUser.id);
+
+      if (leaseError) {
+        console.warn('[deleteUnit] Error deleting leases:', leaseError);
+        // Continue with unit deletion even if lease deletion fails
+      }
+
+      // Then delete the unit
+      const { error } = await (supabase as any)
+        .from('units')
+        .delete()
+        .eq('id', unitId)
+        .eq('user_id', authUser.id);
+
+      if (error) {
+        console.error('[deleteUnit] Error deleting unit:', error);
+        throw new Error('Failed to delete unit. Please try again.');
+      }
+
+      // Optimistic update
+      setUnits(prev => prev.filter(unit => unit.id !== unitId));
+    } catch (err: any) {
+      console.error('[deleteUnit] Exception:', err);
+      throw new Error(err?.message || 'Failed to delete unit. Please try again.');
+    }
   };
 
   // Lead CRUD operations
@@ -1146,6 +1202,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         persistenceEnabled,
         showPersistenceBanner,
         dismissPersistenceBanner,
+        markOnboardingProgress,
         isLoading,
         error,
       }}

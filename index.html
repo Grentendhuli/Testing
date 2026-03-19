@@ -107,6 +107,28 @@
     <script>
       // Mark that JS loaded
       document.documentElement.classList.add('js-loaded');
+      
+      // Register service worker for PWA support
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('[PWA] Service Worker registered:', registration.scope);
+            })
+            .catch((error) => {
+              console.log('[PWA] Service Worker registration failed:', error);
+            });
+        });
+      }
+      
+      // Store deferred install prompt for PWA
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        window.deferredPrompt = e;
+        console.log('[PWA] Install prompt saved');
+      });
     </script>
     <script type="module" src="/src/main.tsx"></script>
     <!-- Schema.org Structured Data -->

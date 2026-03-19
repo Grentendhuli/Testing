@@ -89,6 +89,7 @@ export function Units() {
   }, [resetForm]);
 
   const handleCreateUnit = async () => {
+    // Validate form
     const { isValid, errors } = validateForm(newUnit);
     if (!isValid) {
       setFormErrors(errors);
@@ -97,12 +98,24 @@ export function Units() {
 
     setCreateError(null);
     setIsSubmitting(true);
+    
     try {
-      const createdUnit = await addUnit(newUnit);
+      // Ensure all numeric values are properly typed
+      const unitData = {
+        ...newUnit,
+        bedrooms: Number(newUnit.bedrooms) || 0,
+        bathrooms: Number(newUnit.bathrooms) || 0,
+        rentAmount: Number(newUnit.rentAmount) || 0,
+        squareFeet: Number(newUnit.squareFeet) || 0,
+        securityDeposit: newUnit.includeLease ? (Number(newUnit.securityDeposit) || newUnit.rentAmount) : 0,
+      };
+
+      const createdUnit = await addUnit(unitData);
       if (!createdUnit) {
         throw new Error('Unable to create unit. Please ensure you are logged in and try again.');
       }
-      if (newUnit.includeLease) {
+      
+      if (newUnit.includeLease && newUnit.tenantName) {
         const securityDeposit = typeof newUnit.securityDeposit === 'number'
           ? newUnit.securityDeposit
           : newUnit.rentAmount;
@@ -122,9 +135,11 @@ export function Units() {
           notes: '',
         });
       }
+      
       setIsCreating(false);
       resetForm();
     } catch (err) {
+      console.error('Create unit error:', err);
       setCreateError(err instanceof Error ? err.message : 'Failed to add unit. Please try again.');
     } finally {
       setIsSubmitting(false);

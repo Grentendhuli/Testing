@@ -1,15 +1,39 @@
 import { useState, useEffect } from 'react';
-import { X, Smartphone, Share2, MoreVertical } from 'lucide-react';
+import { X, Smartphone, Share2, MoreVertical, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useApp } from '@/context/AppContext';
 
 interface PWAInstallPromptProps {
   position?: 'top' | 'bottom' | 'sidebar';
 }
 
+interface OnboardingCheck {
+  hasUnits: boolean;
+  hasPropertyAddress: boolean;
+  hasCompletedOnboarding: boolean;
+}
+
 export function PWAInstallPrompt({ position = 'bottom' }: PWAInstallPromptProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
-  const [deviceType, setDeviceType] = useState<'ios' | 'android' | 'desktop'>('desktop');
+  const [deviceType, setDeviceType] = useState<'ios' | 'android' | 'desktop' | 'windows'>('desktop');
+  const [onboardingCheck, setOnboardingCheck] = useState<OnboardingCheck>({
+    hasUnits: false,
+    hasPropertyAddress: false,
+    hasCompletedOnboarding: false,
+  });
+  
+  const { units, user } = useApp();
+
+  // Check onboarding status
+  useEffect(() => {
+    const check = {
+      hasUnits: units.length > 0,
+      hasPropertyAddress: !!user?.propertyAddress && user.propertyAddress.length > 0,
+      hasCompletedOnboarding: localStorage.getItem('pwa-onboarding-complete') === 'true',
+    };
+    setOnboardingCheck(check);
+  }, [units, user]);
 
   useEffect(() => {
     // Check if already dismissed
@@ -26,11 +50,14 @@ export function PWAInstallPrompt({ position = 'bottom' }: PWAInstallPromptProps)
     const userAgent = navigator.userAgent.toLowerCase();
     const isIOS = /iphone|ipad|ipod/.test(userAgent);
     const isAndroid = /android/.test(userAgent);
+    const isWindows = /windows/.test(userAgent) && !isAndroid;
     
     if (isIOS) {
       setDeviceType('ios');
     } else if (isAndroid) {
       setDeviceType('android');
+    } else if (isWindows) {
+      setDeviceType('windows');
     } else {
       setDeviceType('desktop');
     }
@@ -39,14 +66,26 @@ export function PWAInstallPrompt({ position = 'bottom' }: PWAInstallPromptProps)
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
       || (window.navigator as any).standalone === true;
     
-    if (!isStandalone) {
-      // Show after a short delay
+    if (isStandalone) {
+      setIsDismissed(true);
+      return;
+    }
+
+    // Calculate if onboarding is complete enough to show PWA prompt
+    // User needs: at least 1 unit AND property address
+    const hasCompletedSetup = units.length > 0 && !!user?.propertyAddress;
+    
+    if (hasCompletedSetup) {
+      // Mark onboarding as complete
+      localStorage.setItem('pwa-onboarding-complete', 'true');
+      
+      // Show after a delay to let user finish current task
       const timer = setTimeout(() => {
         setIsVisible(true);
-      }, 2000);
+      }, 5000); // 5 second delay after onboarding is complete
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [units.length, user?.propertyAddress]);
 
   const handleDismiss = () => {
     setIsVisible(false);
@@ -73,6 +112,55 @@ export function PWAInstallPrompt({ position = 'bottom' }: PWAInstallPromptProps)
   };
 
   if (isDismissed || !isVisible) return null;
+
+  // Windows 11 PWA Install Guide
+  if (deviceType === 'windows') {
+    return (
+      <AnimatePresence>
+        {isVisible && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-4 right-4 z-50 max-w-sm"
+          >
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg p-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                  <Smartphone className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-medium text-slate-900 dark:text-slate-100 text-sm">
+                    Install LandlordBot AI
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Add to your Windows taskbar or Start menu for quick access
+                  </p>
+                  
+                  <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg space-y-2">
+                    <div className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300">
+                      <span className="font-medium text-amber-500">1.</span>
+                      <span>Click the settings icon in the top right of your browser</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300">
+                      <span className="font-medium text-amber-500">2.</span>
+                      <span>Select "Apps" → "Install this site as an app"</span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={handleDismiss}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  }
 
   // Desktop version - just show a message
   if (deviceType === 'desktop') {

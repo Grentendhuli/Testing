@@ -203,37 +203,47 @@ export function useUnits({
   const validateForm = useCallback((unitData: UnitFormData): { isValid: boolean; errors: FormErrors } => {
     const errors: FormErrors = {};
 
-    if (!unitData.address || unitData.address.trim() === '') {
+    // Check for undefined/null
+    const data = unitData || {};
+
+    if (!data.address || String(data.address).trim() === '') {
       errors.address = 'Property address is required';
     }
 
-    if (!unitData.unitNumber || unitData.unitNumber.trim() === '') {
+    if (!data.unitNumber || String(data.unitNumber).trim() === '') {
       errors.unitNumber = 'Unit number is required';
     }
 
-    if (unitData.bedrooms === undefined || unitData.bedrooms === null || unitData.bedrooms < 0) {
+    // Validate bedrooms - must be a non-negative number
+    const bedrooms = Number(data.bedrooms);
+    if (isNaN(bedrooms) || bedrooms < 0) {
       errors.bedrooms = 'Bedrooms is required';
     }
 
-    if (unitData.bathrooms === undefined || unitData.bathrooms === null || unitData.bathrooms < 0) {
+    // Validate bathrooms - must be a non-negative number
+    const bathrooms = Number(data.bathrooms);
+    if (isNaN(bathrooms) || bathrooms < 0) {
       errors.bathrooms = 'Bathrooms is required';
     }
 
-    if (unitData.rentAmount === undefined || unitData.rentAmount === null || unitData.rentAmount <= 0) {
-      errors.rentAmount = 'Rent amount is required';
+    // Validate rent amount - must be a positive number
+    const rentAmount = Number(data.rentAmount);
+    if (isNaN(rentAmount) || rentAmount <= 0) {
+      errors.rentAmount = 'Rent amount must be greater than 0';
     }
 
-    if (unitData.includeLease) {
-      if (!unitData.tenantName || unitData.tenantName.trim() === '') {
+    // Validate lease fields only if includeLease is true
+    if (data.includeLease) {
+      if (!data.tenantName || String(data.tenantName).trim() === '') {
         errors.tenantName = 'Tenant name is required when adding a lease';
       }
-      if (!unitData.leaseStart) {
+      if (!data.leaseStart || String(data.leaseStart).trim() === '') {
         errors.leaseStart = 'Lease start date is required';
       }
-      if (!unitData.leaseEnd) {
+      if (!data.leaseEnd || String(data.leaseEnd).trim() === '') {
         errors.leaseEnd = 'Lease end date is required';
       }
-      if (!unitData.leaseType) {
+      if (!data.leaseType) {
         errors.leaseType = 'Select a lease type';
       }
     }

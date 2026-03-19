@@ -3,7 +3,7 @@ import {
   Building2, Phone, Settings, CreditCard, Home, DollarSign, FileText, Users, 
   BarChart3, Wrench, LineChart, TrendingUp, Lightbulb, Scale,
   Menu, X, Star, Bot, MapPin, ChevronRight, Keyboard,
-  Command
+  Command, MessageCircle
 } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -188,6 +188,9 @@ export function Sidebar() {
     };
   }, [isOpen]);
 
+  // Check if Telegram bot is connected (remove the duplicate below)
+  const isTelegramConnected = !!(userData?.bot_phone_number || user?.botPhoneNumber);
+
   // Format address for display
   const formatAddress = useCallback((address: string | null | undefined): string => {
     if (!address) return 'Add your property address';
@@ -201,7 +204,11 @@ export function Sidebar() {
     return address.length > 35 ? address.substring(0, 35) + '...' : address;
   }, []);
 
-  const renderNavItem = (item: typeof navItems[0], isCompact: boolean = false) => {
+  // Check if Telegram is configured
+  const isTelegramConfigured = !!(userData?.bot_phone_number || user?.botPhoneNumber);
+  const shouldShowTelegram = !isTelegramConfigured;
+  
+  const renderNavItem = (item: typeof navItems[0] & { badge?: string }, isCompact: boolean = false) => {
     const Icon = item.icon;
     const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
     const label = isCompact && item.shortLabel ? item.shortLabel : item.label;
@@ -209,6 +216,9 @@ export function Sidebar() {
     // Determine notification dot
     let showDot = false;
     let dotColor = '';
+    let showBadge = false;
+    let badgeText = item.badge || '';
+    
     if (item.path === '/rent' && overduePayments > 0) {
       showDot = true;
       dotColor = 'bg-red-500';
@@ -218,10 +228,12 @@ export function Sidebar() {
     } else if (item.path === '/leads' && newLeads > 0) {
       showDot = true;
       dotColor = 'bg-green-500';
+    } else if (item.badge) {
+      showBadge = true;
     }
     
     return (
-      <li key={item.path}>
+      <li key={`${item.path}-${item.label}`}>
         <NavLink
           to={item.path}
           className={({ isActive }) => `
@@ -230,20 +242,26 @@ export function Sidebar() {
             rounded-lg mx-2
             ${isActive
               ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-r-2 border-amber-500'
-              : 'text-lb-text-secondary hover:text-lb-text-primary dark:text-lb-text-secondary dark:hover:text-lb-text-primary hover:bg-slate-100 dark:hover:bg-slate-800/50'
+              : badgeText ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20' : 'text-lb-text-secondary hover:text-lb-text-primary dark:text-lb-text-secondary dark:hover:text-lb-text-primary hover:bg-slate-100 dark:hover:bg-slate-800/50'
             }
             ${isCompact ? 'flex-col gap-1 py-2 text-xs justify-center mx-0' : ''}
           `}
         >
           <div className="relative">
-            <Icon className={`flex-shrink-0 ${isActive ? 'text-amber-500' : 'text-lb-text-muted dark:text-lb-text-muted'} ${isCompact ? 'w-5 h-5' : 'w-5 h-5'}`} />
+            <Icon className={`flex-shrink-0 ${isActive ? 'text-amber-500' : badgeText ? 'text-blue-500' : 'text-lb-text-muted dark:text-lb-text-muted'} ${isCompact ? 'w-5 h-5' : 'w-5 h-5'}`} />
             {showDot && (
               <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 ${dotColor} rounded-full animate-pulse border-2 border-white dark:border-slate-900`} />
             )}
           </div>
           <span className={`${isCompact ? 'text-[10px]' : 'flex-1'} truncate`}>{label}</span>
           
-          {!isCompact && item.shortcut && (
+          {showBadge && !isCompact && (
+            <span className="text-[10px] bg-blue-500 text-white px-1.5 py-0.5 rounded-full">
+              {badgeText}
+            </span>
+          )}
+          
+          {!isCompact && item.shortcut && !badgeText && (
             <kbd className="hidden xl:block px-1.5 py-0.5 text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded">
               ⌘{item.shortcut}
             </kbd>
@@ -340,6 +358,7 @@ export function Sidebar() {
             <p className="text-xs font-semibold text-lb-text-muted uppercase tracking-wider mb-2 px-3">System</p>
             <ul className="space-y-0.5">
               {systemItems.map((item) => renderNavItem(item))}
+              {shouldShowTelegram && renderNavItem(telegramItem)}
             </ul>
           </div>
 
@@ -454,6 +473,7 @@ export function Sidebar() {
             <p className="text-xs font-semibold text-lb-text-muted uppercase tracking-wider mb-2 px-3">System</p>
             <ul className="space-y-0.5">
               {systemItems.map((item) => renderNavItem(item))}
+              {shouldShowTelegram && renderNavItem(telegramItem)}
             </ul>
           </div>
 

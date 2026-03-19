@@ -213,12 +213,15 @@ export function UnitCard({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (confirm(`Are you sure you want to delete Unit ${unit.unitNumber}? This action cannot be undone.`)) {
-                onDelete(unit);
+              if (typeof onDelete === 'function') {
+                if (confirm(`Are you sure you want to delete Unit ${unit.unitNumber}? This action cannot be undone.`)) {
+                  onDelete(unit);
+                }
               }
             }}
             className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
             title="Delete unit"
+            type="button"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -230,6 +233,7 @@ export function UnitCard({
           }}
           className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
           title="Edit unit"
+          type="button"
         >
           <Edit2 className="w-4 h-4" />
         </button>
