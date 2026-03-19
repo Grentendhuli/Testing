@@ -99,7 +99,10 @@ export function Units() {
     setIsSubmitting(true);
     try {
       const createdUnit = await addUnit(newUnit);
-      if (createdUnit && newUnit.includeLease) {
+      if (!createdUnit) {
+        throw new Error('Unable to create unit. Please ensure you are logged in and try again.');
+      }
+      if (newUnit.includeLease) {
         const securityDeposit = typeof newUnit.securityDeposit === 'number'
           ? newUnit.securityDeposit
           : newUnit.rentAmount;

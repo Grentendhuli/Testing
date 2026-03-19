@@ -440,7 +440,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addUnit = async (unit: Omit<Unit, 'id'>) => {
-    if (!authUser?.id) return null;
+    if (!authUser?.id) {
+      throw new Error('You must be logged in to add a unit.');
+    }
 
     const { data, error } = await (supabase as any)
       .from('units')
