@@ -411,6 +411,8 @@ export function UnitForm({
                       </label>
                       <input
                         type="text"
+                        name="tenant-name"
+                        autoComplete="name"
                         value={unitData?.tenantName || ''}
                         onChange={(e) => handleChange('tenantName', e.target.value)}
                         placeholder="e.g., Alex Rivera"
@@ -430,6 +432,8 @@ export function UnitForm({
                         </label>
                         <input
                           type="email"
+                          name="tenant-email"
+                          autoComplete="email"
                           value={unitData?.tenantEmail || ''}
                           onChange={(e) => handleChange('tenantEmail', e.target.value)}
                           placeholder="tenant@email.com"
@@ -443,7 +447,9 @@ export function UnitForm({
                         <PhoneInput
                           value={unitData?.tenantPhone || ''}
                           onChange={(value) => handleChange('tenantPhone', value)}
+                          name="tenant-phone"
                           placeholder="(212) 555-0199"
+                          autoComplete={true}
                         />
                       </div>
                     </div>

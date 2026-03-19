@@ -8,11 +8,18 @@ interface PhoneInputProps {
   id?: string;
   name?: string;
   disabled?: boolean;
+  /**
+   * Enable browser autofill for phone numbers
+   * @default true
+   */
+  autoComplete?: boolean;
 }
 
 /**
  * PhoneInput - A reusable phone input component that auto-formats US phone numbers
  * Format: (XXX) XXX-XXXX
+ * 
+ * Supports browser autofill via autoComplete attribute
  */
 export function PhoneInput({
   value,
@@ -22,6 +29,7 @@ export function PhoneInput({
   id,
   name,
   disabled = false,
+  autoComplete = true,
 }: PhoneInputProps) {
   const [isFocused, setIsFocused] = useState(false);
 
@@ -63,6 +71,18 @@ export function PhoneInput({
     onChange(digitsOnly);
   };
 
+  // Handle autofill - browsers often fill with just digits
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    // Allow paste to proceed, then clean it up
+    setTimeout(() => {
+      const pasted = value;
+      const digitsOnly = pasted.replace(/\D/g, '').slice(0, 10);
+      if (digitsOnly.length > 0) {
+        onChange(digitsOnly);
+      }
+    }, 0);
+  };
+
   // Handle blur - ensure proper formatting
   const handleBlur = () => {
     setIsFocused(false);
@@ -83,14 +103,17 @@ export function PhoneInput({
     <input
       type="tel"
       id={id}
-      name={name}
+      name={name || 'phone'}
       value={displayValue}
       onChange={handleChange}
       onBlur={handleBlur}
       onFocus={handleFocus}
+      onPaste={handlePaste}
       placeholder={placeholder}
       disabled={disabled}
       maxLength={14} // (XXX) XXX-XXXX = 14 characters
+      autoComplete={autoComplete ? 'tel' : 'off'}
+      inputMode="tel"
       className={`
         w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 
         border border-slate-300 dark:border-slate-600 

@@ -550,6 +550,8 @@ export function Signup() {
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       type="text"
+                      name="property-address"
+                      autoComplete="street-address"
                       value={formData.propertyAddress}
                       onChange={(e) =>
                         handleChange('propertyAddress', e.target.value)
@@ -638,6 +640,8 @@ export function Signup() {
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       type="email"
+                      name="email"
+                      autoComplete="email"
                       value={formData.email}
                       onChange={(e) => handleChange('email', e.target.value)}
                       className={`w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#1E3A5F] focus:ring-2 focus:ring-[#1E3A5F]/20 transition-colors ${
@@ -664,6 +668,8 @@ export function Signup() {
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      autoComplete="new-password"
                       value={formData.password}
                       onChange={(e) =>
                         handleChange('password', e.target.value)
@@ -705,6 +711,8 @@ export function Signup() {
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       type={showConfirmPassword ? 'text' : 'password'}
+                      name="confirm-password"
+                      autoComplete="new-password"
                       value={formData.confirmPassword}
                       onChange={(e) =>
                         handleChange('confirmPassword', e.target.value)
@@ -821,6 +829,8 @@ export function Signup() {
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                       <input
                         type="text"
+                        name="first-name"
+                        autoComplete="given-name"
                         value={formData.firstName}
                         onChange={(e) =>
                           handleChange('firstName', e.target.value)
@@ -848,6 +858,8 @@ export function Signup() {
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                       <input
                         type="text"
+                        name="last-name"
+                        autoComplete="family-name"
                         value={formData.lastName}
                         onChange={(e) =>
                           handleChange('lastName', e.target.value)
@@ -877,6 +889,8 @@ export function Signup() {
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       type="tel"
+                      name="phone"
+                      autoComplete="tel"
                       value={formData.phoneNumber}
                       onChange={(e) =>
                         handleChange('phoneNumber', e.target.value)
