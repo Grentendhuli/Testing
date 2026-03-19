@@ -3,7 +3,7 @@ import {
   Building2, Phone, Settings, CreditCard, Home, DollarSign, FileText, Users, 
   BarChart3, Wrench, LineChart, TrendingUp, Lightbulb, Scale,
   Menu, X, Star, Bot, MapPin, ChevronRight, Keyboard,
-  Command, MessageCircle
+  Command, MessageCircle, LogOut
 } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -119,7 +119,7 @@ function KeyboardShortcutsModal({ isOpen, onClose }: { isOpen: boolean; onClose:
 
 export function Sidebar() {
   const { user, payments, maintenanceRequests, leads } = useApp();
-  const { userData } = useAuth();
+  const { userData, signOut } = useAuth();
   const { isDark } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -206,6 +206,16 @@ export function Sidebar() {
     }
     return address.length > 35 ? address.substring(0, 35) + '...' : address;
   }, []);
+
+  // Handle sign out
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  };
 
   // Check if Telegram is configured
   const isTelegramConfigured = !!(userData?.bot_phone_number || user?.botPhoneNumber);
@@ -381,7 +391,7 @@ export function Sidebar() {
         </nav>
 
         {/* User Profile */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-700">
+        <div className="p-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
           <NavLink 
             to="/profile"
             className="flex items-center gap-3 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors group"
@@ -407,6 +417,15 @@ export function Sidebar() {
             </div>
             <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
           </NavLink>
+          
+          {/* Sign Out Button */}
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-200 dark:hover:border-red-800 rounded-xl transition-colors"
+          >
+            <LogOut className="w-4 h-4 flex-shrink-0" />
+            <span className="flex-1">Sign Out</span>
+          </button>
         </div>
       </aside>
 
@@ -496,7 +515,7 @@ export function Sidebar() {
         </nav>
 
         {/* Mobile User Profile */}
-        <div className="p-3 border-t border-slate-200 dark:border-slate-700">
+        <div className="p-3 border-t border-slate-200 dark:border-slate-700 space-y-2">
           <NavLink 
             to="/profile"
             onClick={() => setIsOpen(false)}
@@ -523,6 +542,18 @@ export function Sidebar() {
             </div>
             <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
           </NavLink>
+          
+          {/* Mobile Sign Out Button */}
+          <button
+            onClick={() => {
+              setIsOpen(false);
+              handleSignOut();
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-200 dark:hover:border-red-800 rounded-xl transition-colors"
+          >
+            <LogOut className="w-4 h-4 flex-shrink-0" />
+            <span className="flex-1">Sign Out</span>
+          </button>
         </div>
       </aside>
 
