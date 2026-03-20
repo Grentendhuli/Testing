@@ -10,6 +10,7 @@ import { BetaFeedbackBanner } from './components/BetaFeedbackBanner';
 import { ForceRebuild } from './components/ForceRebuild';
 import { setUserContext, trackNavigation, addBreadcrumb } from './lib/errorReporting';
 import { LoginForm, SignupForm, AuthCallback } from '@/features/auth';
+import { AuthLoadingScreen } from './components/AuthLoadingScreen';
 import { Landing } from './pages/Landing';
 import { Dashboard } from './pages/Dashboard';
 import { Units } from './pages/Units';
@@ -95,7 +96,7 @@ function NavigationTracker() {
   return null;
 }
 
-// Loading spinner component
+// Loading spinner component - uses AuthLoadingScreen
 function AuthLoadingSpinner() {
   const { isInitialized, isLoading, authState } = useAuth();
   const [showDebug, setShowDebug] = useState(false);
@@ -106,21 +107,13 @@ function AuthLoadingSpinner() {
   }, []);
   
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mx-auto"></div>
-        <p className="mt-4 text-slate-600 font-medium">Loading...</p>
-        {showDebug && (
-          <div className="mt-6 p-4 bg-slate-100 rounded-lg text-left text-xs text-slate-500 font-mono max-w-md mx-auto">
-            <p>Debug Info:</p>
-            <p>isInitialized: {isInitialized ? 'true' : 'false'}</p>
-            <p>isLoading: {isLoading ? 'true' : 'false'}</p>
-            <p>authState: {authState || 'undefined'}</p>
-            <p className="mt-2 text-amber-600">If stuck here &gt;8s, check console (F12)</p>
-          </div>
-        )}
-      </div>
-    </div>
+    <AuthLoadingScreen
+      message="Loading..."
+      showDebug={showDebug}
+      isInitialized={isInitialized}
+      isLoading={isLoading}
+      authState={authState}
+    />
   );
 }
 
@@ -172,7 +165,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // Only redirect to login after we've confirmed the user is not authenticated
   if (!isAuthenticated) {
     // Preserve the intended destination for post-login redirect
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    // Include the full path with search params for complete return URL
+    const returnUrl = location.pathname + location.search;
+    return <Navigate to={`/login?return=${encodeURIComponent(returnUrl)}`} replace />;
   }
   
   return (

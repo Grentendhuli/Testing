@@ -59,21 +59,18 @@ export interface CalendarEvent {
 }
 
 // Google Identity Services types
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        oauth2: {
-          initTokenClient: (config: {
-            client_id: string;
-            scope: string;
-            callback: (response: TokenResponse) => void;
-            error_callback?: (error: Error) => void;
-          }) => TokenClient;
-        };
-      };
+// Note: We use type assertions instead of global declarations to avoid conflicts with @types/google.maps
+interface GoogleAccounts {
+  accounts: {
+    oauth2: {
+      initTokenClient: (config: {
+        client_id: string;
+        scope: string;
+        callback: (response: TokenResponse) => void;
+        error_callback?: (error: Error) => void;
+      }) => TokenClient;
     };
-  }
+  };
 }
 
 interface TokenResponse {
@@ -132,8 +129,9 @@ export function initGoogleAuth(): boolean {
   }
 
   // Initialize token client if Google Identity Services is loaded
-  if (window.google?.accounts?.oauth2) {
-    tokenClient = window.google.accounts.oauth2.initTokenClient({
+  const googleAccounts = (window as unknown as { google?: GoogleAccounts }).google;
+  if (googleAccounts?.accounts?.oauth2) {
+    tokenClient = googleAccounts.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: SCOPES,
       callback: (response) => {
@@ -169,7 +167,8 @@ export function initGoogleAuth(): boolean {
  */
 export function loadGoogleIdentityServices(): Promise<boolean> {
   return new Promise((resolve) => {
-    if (window.google?.accounts?.oauth2) {
+    const accounts = (window as unknown as { google?: GoogleAccounts }).google?.accounts;
+    if (accounts?.oauth2) {
       resolve(initGoogleAuth());
       return;
     }
@@ -196,7 +195,8 @@ export function loadGoogleIdentityServices(): Promise<boolean> {
 export function signInWithGoogle(): Promise<string | null> {
   return new Promise(async (resolve) => {
     // Ensure Google Identity Services is loaded
-    if (!window.google?.accounts?.oauth2) {
+    const accounts = (window as unknown as { google?: GoogleAccounts }).google?.accounts;
+    if (!accounts?.oauth2) {
       const loaded = await loadGoogleIdentityServices();
       if (!loaded) {
         resolve(null);
@@ -244,7 +244,8 @@ export function disconnectGoogleCalendar(): void {
   currentToken = null;
   
   // Revoke token if possible
-  if (currentToken && window.google?.accounts?.oauth2) {
+  const accounts = (window as unknown as { google?: GoogleAccounts }).google?.accounts;
+  if (currentToken && accounts?.oauth2) {
     // Note: GIS doesn't have a direct revoke method, but we can clear our stored token
     currentToken = null;
   }

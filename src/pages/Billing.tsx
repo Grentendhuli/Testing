@@ -411,7 +411,7 @@ export function Billing() {
             variant="outline"
             size="sm"
             className="gap-1"
-            onClick={() => window.open('https://billing.stripe.com', '_blank')}
+            onClick={() => { window.open('https://billing.stripe.com', '_blank'); }}
           >
             <ExternalLink className="w-4 h-4" />
             Stripe Portal

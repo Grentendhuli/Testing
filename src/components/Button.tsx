@@ -1,10 +1,11 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Loader2, Check, X, AlertCircle } from 'lucide-react';
+import { useToast } from './ui/Toast';
 
 export interface ButtonProps {
   children: React.ReactNode;
-  onClick?: () => void;
+  onClick?: () => void | Promise<void>;
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success';
   size?: 'sm' | 'md' | 'lg' | 'icon';
   disabled?: boolean;
@@ -16,7 +17,23 @@ export interface ButtonProps {
   fullWidth?: boolean;
   as?: 'button' | 'a';
   href?: string;
+  /** Show success state after async action completes */
+  showSuccess?: boolean;
+  /** Show error state on async action failure */
+  showError?: boolean;
+  /** Success message to show in toast */
+  successMessage?: string;
+  /** Error message to show in toast */
+  errorMessage?: string;
+  /** Async action handler - will manage loading/success/error states */
+  onAsyncAction?: () => Promise<void>;
+  /** Delay before resetting to idle state (ms) */
+  resetDelay?: number;
+  /** Validate before allowing click - return true to proceed, string for error message, false to block */
+  validate?: () => boolean | string;
 }
+
+type ButtonState = 'idle' | 'loading' | 'success' | 'error';
 
 export function Button({
   children,
@@ -24,7 +41,7 @@ export function Button({
   variant = 'primary',
   size = 'md',
   disabled = false,
-  loading = false,
+  loading: externalLoading,
   type = 'button',
   className = '',
   icon,
@@ -32,55 +49,144 @@ export function Button({
   fullWidth = false,
   as = 'button',
   href,
+  showSuccess = true,
+  showError = true,
+  successMessage = 'Success!',
+  errorMessage = 'Something went wrong',
+  onAsyncAction,
+  resetDelay = 2000,
+  validate,
 }: ButtonProps) {
+  const [state, setState] = useState<ButtonState>('idle');
+  const { success: showSuccessToast, error: showErrorToast } = useToast();
+
+  const isLoading = state === 'loading' || externalLoading;
+  const isSuccess = state === 'success';
+  const isError = state === 'error';
+  const isDisabled = disabled || isLoading;
+  const handleClick = useCallback(async () => {
+    // Validation
+    if (validate) {
+      const validationResult = validate();
+      if (typeof validationResult === 'string') {
+        showErrorToast('Validation Error', validationResult);
+        return;
+      }
+      if (!validationResult) {
+        return;
+      }
+    }
+
+    // Handle async action
+    if (onAsyncAction) {
+      setState('loading');
+      try {
+        await onAsyncAction();
+        setState('success');
+        if (showSuccess) {
+          showSuccessToast(successMessage);
+        }
+        setTimeout(() => setState('idle'), resetDelay);
+      } catch (err) {
+        setState('error');
+        if (showError) {
+          showErrorToast(errorMessage, err instanceof Error ? err.message : undefined);
+        }
+        setTimeout(() => setState('idle'), resetDelay);
+      }
+    } else if (onClick) {
+      const result = onClick();
+      if (result instanceof Promise) {
+        setState('loading');
+        try {
+          await result;
+          setState('success');
+          if (showSuccess) {
+            showSuccessToast(successMessage);
+          }
+          setTimeout(() => setState('idle'), resetDelay);
+        } catch (err) {
+          setState('error');
+          if (showError) {
+            showErrorToast(errorMessage, err instanceof Error ? err.message : undefined);
+          }
+          setTimeout(() => setState('idle'), resetDelay);
+        }
+      }
+    }
+  }, [validate, onAsyncAction, onClick, showSuccess, showError, successMessage, errorMessage, showSuccessToast, showErrorToast, resetDelay]);
+
   const baseClasses = `
     inline-flex items-center justify-center 
     font-medium transition-all duration-200 
     focus:outline-none focus:ring-2 focus:ring-offset-2 
     disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
     active:scale-[0.98]
+    relative overflow-hidden
   `;
 
-  const variantClasses = {
-    primary: `
-      bg-amber-500 hover:bg-amber-400 active:bg-amber-600
-      text-slate-900
-      focus:ring-amber-500 focus:ring-offset-white dark:focus:ring-offset-slate-900
-      shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30
-    `,
-    secondary: `
-      bg-slate-200 hover:bg-slate-300 active:bg-slate-300
-      dark:bg-slate-700 dark:hover:bg-slate-600 dark:active:bg-slate-800
-      text-slate-700 dark:text-slate-200
-      focus:ring-slate-500 focus:ring-offset-white dark:focus:ring-offset-slate-900
-    `,
-    outline: `
-      bg-transparent
-      border-2 border-slate-300 dark:border-slate-600
-      hover:border-amber-500 dark:hover:border-amber-400
-      text-slate-700 dark:text-slate-300
-      hover:text-amber-600 dark:hover:text-amber-400
-      focus:ring-amber-500 focus:ring-offset-white dark:focus:ring-offset-slate-900
-    `,
-    ghost: `
-      bg-transparent
-      hover:bg-slate-100 dark:hover:bg-slate-800
-      text-slate-600 dark:text-slate-400
-      hover:text-slate-900 dark:hover:text-slate-200
-      focus:ring-slate-400 focus:ring-offset-white dark:focus:ring-offset-slate-900
-    `,
-    danger: `
-      bg-red-600 hover:bg-red-500 active:bg-red-700
-      text-white
-      focus:ring-red-500 focus:ring-offset-white dark:focus:ring-offset-slate-900
-      shadow-lg shadow-red-500/20 hover:shadow-red-500/30
-    `,
-    success: `
-      bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700
-      text-white
-      focus:ring-emerald-500 focus:ring-offset-white dark:focus:ring-offset-slate-900
-      shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30
-    `,
+  // State-based variant styles
+  const getVariantClasses = () => {
+    // Override for success/error states
+    if (isSuccess) {
+      return `
+        bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700
+        text-white
+        focus:ring-emerald-500 focus:ring-offset-white dark:focus:ring-offset-slate-900
+        shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30
+      `;
+    }
+    if (isError) {
+      return `
+        bg-red-600 hover:bg-red-500 active:bg-red-700
+        text-white
+        focus:ring-red-500 focus:ring-offset-white dark:focus:ring-offset-slate-900
+        shadow-lg shadow-red-500/20 hover:shadow-red-500/30
+      `;
+    }
+    
+    const baseVariants = {
+      primary: `
+        bg-amber-500 hover:bg-amber-400 active:bg-amber-600
+        text-slate-900
+        focus:ring-amber-500 focus:ring-offset-white dark:focus:ring-offset-slate-900
+        shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30
+      `,
+      secondary: `
+        bg-slate-200 hover:bg-slate-300 active:bg-slate-300
+        dark:bg-slate-700 dark:hover:bg-slate-600 dark:active:bg-slate-800
+        text-slate-700 dark:text-slate-200
+        focus:ring-slate-500 focus:ring-offset-white dark:focus:ring-offset-slate-900
+      `,
+      outline: `
+        bg-transparent
+        border-2 border-slate-300 dark:border-slate-600
+        hover:border-amber-500 dark:hover:border-amber-400
+        text-slate-700 dark:text-slate-300
+        hover:text-amber-600 dark:hover:text-amber-400
+        focus:ring-amber-500 focus:ring-offset-white dark:focus:ring-offset-slate-900
+      `,
+      ghost: `
+        bg-transparent
+        hover:bg-slate-100 dark:hover:bg-slate-800
+        text-slate-600 dark:text-slate-400
+        hover:text-slate-900 dark:hover:text-slate-200
+        focus:ring-slate-400 focus:ring-offset-white dark:focus:ring-offset-slate-900
+      `,
+      danger: `
+        bg-red-600 hover:bg-red-500 active:bg-red-700
+        text-white
+        focus:ring-red-500 focus:ring-offset-white dark:focus:ring-offset-slate-900
+        shadow-lg shadow-red-500/20 hover:shadow-red-500/30
+      `,
+      success: `
+        bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700
+        text-white
+        focus:ring-emerald-500 focus:ring-offset-white dark:focus:ring-offset-slate-900
+        shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30
+      `,
+    };
+    return baseVariants[variant];
   };
   
   const sizeClasses = {
@@ -92,19 +198,44 @@ export function Button({
 
   const widthClass = fullWidth ? 'w-full' : '';
   
-  const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${widthClass} ${className}`;
+  const classes = `${baseClasses} ${getVariantClasses()} ${sizeClasses[size]} ${widthClass} ${className}`;
   
+  // State-aware content rendering
+  const renderIcon = () => {
+    if (isLoading) {
+      return <Loader2 className="animate-spin h-4 w-4 flex-shrink-0" />;
+    }
+    if (isSuccess) {
+      return <Check className="h-4 w-4 flex-shrink-0" />;
+    }
+    if (isError) {
+      return <X className="h-4 w-4 flex-shrink-0" />;
+    }
+    return icon;
+  };
+
   const content = (
     <>
-      {loading && (
-        <Loader2 className="animate-spin -ml-0.5 h-4 w-4 flex-shrink-0" />
+      {icon && iconPosition === 'left' && (
+        <span className="flex-shrink-0 transition-all duration-200">
+          {renderIcon()}
+        </span>
       )}
-      {!loading && icon && iconPosition === 'left' && (
-        <span className="flex-shrink-0">{icon}</span>
-      )}
-      <span>{children}</span>
-      {!loading && icon && iconPosition === 'right' && (
-        <span className="flex-shrink-0">{icon}</span>
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={state}
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -5 }}
+          transition={{ duration: 0.15 }}
+        >
+          {isLoading ? 'Loading...' : isSuccess ? 'Success!' : isError ? 'Error' : children}
+        </motion.span>
+      </AnimatePresence>
+      {icon && iconPosition === 'right' && (
+        <span className="flex-shrink-0 transition-all duration-200">
+          {renderIcon()}
+        </span>
       )}
     </>
   );
@@ -114,8 +245,8 @@ export function Button({
       <motion.a
         href={href}
         className={classes}
-        whileHover={{ scale: disabled || loading ? 1 : 1.02 }}
-        whileTap={{ scale: disabled || loading ? 1 : 0.98 }}
+        whileHover={{ scale: disabled || isLoading ? 1 : 1.02 }}
+        whileTap={{ scale: disabled || isLoading ? 1 : 0.98 }}
       >
         {content}
       </motion.a>
@@ -125,11 +256,11 @@ export function Button({
   return (
     <motion.button
       type={type}
-      onClick={onClick}
-      disabled={disabled || loading}
+      onClick={handleClick}
+      disabled={isDisabled}
       className={classes}
-      whileHover={{ scale: disabled || loading ? 1 : 1.02 }}
-      whileTap={{ scale: disabled || loading ? 1 : 0.98 }}
+      whileHover={{ scale: isDisabled ? 1 : 1.02 }}
+      whileTap={{ scale: isDisabled ? 1 : 0.98 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
     >
       {content}

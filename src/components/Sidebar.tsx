@@ -119,7 +119,7 @@ function KeyboardShortcutsModal({ isOpen, onClose }: { isOpen: boolean; onClose:
 
 export function Sidebar() {
   const { user, payments, maintenanceRequests, leads } = useApp();
-  const { userData, signOut } = useAuth();
+  const { userData, logout } = useAuth();
   const { isDark } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -210,7 +210,7 @@ export function Sidebar() {
   // Handle sign out
   const handleSignOut = async () => {
     try {
-      await signOut();
+      await logout();
       navigate('/');
     } catch (error) {
       console.error('Sign out error:', error);

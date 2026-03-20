@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../lib/utils';
+import { Skeleton } from './Skeleton';
 
 const cardVariants = cva(
   'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden transition-all duration-200',
@@ -31,6 +32,85 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement>, Variant
   as?: 'div' | 'article' | 'section';
   animate?: boolean;
   delay?: number;
+  /** Loading state - shows skeleton instead of content */
+  isLoading?: boolean;
+  /** Loading skeleton layout type */
+  loadingLayout?: 'default' | 'metric' | 'list' | 'chart' | 'profile';
+}
+
+// Loading skeleton layouts
+function CardLoadingSkeleton({ layout = 'default' }: { layout?: 'default' | 'metric' | 'list' | 'chart' | 'profile' }) {
+  const layouts = {
+    default: (
+      <div className="space-y-4">
+        <div className="flex items-start gap-4">
+          <Skeleton variant="circular" width={48} height={48} />
+          <div className="flex-1 space-y-3">
+            <Skeleton width="60%" height={20} />
+            <Skeleton width="40%" height={16} />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Skeleton width="100%" height={12} />
+          <Skeleton width="80%" height={12} />
+        </div>
+      </div>
+    ),
+    metric: (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton width={80} height={16} />
+            <Skeleton width={120} height={32} />
+          </div>
+          <Skeleton variant="rounded" width={48} height={48} />
+        </div>
+        <Skeleton width="40%" height={16} />
+      </div>
+    ),
+    list: (
+      <div className="space-y-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Skeleton variant="circular" width={40} height={40} />
+            <div className="flex-1 space-y-2">
+              <Skeleton width="70%" height={16} />
+              <Skeleton width="40%" height={12} />
+            </div>
+          </div>
+        ))}
+      </div>
+    ),
+    chart: (
+      <div className="space-y-4">
+        <Skeleton width="40%" height={24} />
+        <Skeleton width="60%" height={16} />
+        <div className="h-[200px] bg-slate-100 dark:bg-slate-800 rounded-lg flex items-end justify-around p-4">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <Skeleton
+              key={i}
+              width="10%"
+              height={`${Math.random() * 60 + 20}%`}
+              className="rounded-t"
+            />
+          ))}
+        </div>
+      </div>
+    ),
+    profile: (
+      <div className="space-y-4 text-center">
+        <Skeleton variant="circular" width={80} height={80} className="mx-auto" />
+        <Skeleton width="60%" height={24} className="mx-auto" />
+        <Skeleton width="40%" height={16} className="mx-auto" />
+        <div className="pt-4 space-y-2">
+          <Skeleton width="100%" height={12} />
+          <Skeleton width="80%" height={12} />
+        </div>
+      </div>
+    ),
+  };
+
+  return layouts[layout];
 }
 
 export function Card({
@@ -40,6 +120,8 @@ export function Card({
   as: Component = 'div',
   animate = false,
   delay = 0,
+  isLoading = false,
+  loadingLayout = 'default',
   children,
   ...props
 }: CardProps) {
@@ -48,7 +130,7 @@ export function Card({
       className={cn(cardVariants({ variant, size }), className)}
       {...props}
     >
-      {children}
+      {isLoading ? <CardLoadingSkeleton layout={loadingLayout} /> : children}
     </Component>
   );
 
@@ -222,6 +304,30 @@ export function MetricCard({
 
   const styles = variantStyles[variant];
 
+  if (loading) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className={cn(
+          'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5',
+          className
+        )}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <Skeleton width={80} height={16} />
+              <Skeleton width={120} height={32} />
+            </div>
+            <Skeleton variant="rounded" width={48} height={48} />
+          </div>
+          <Skeleton width="40%" height={16} />
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
@@ -236,9 +342,9 @@ export function MetricCard({
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {loading ? '—' : value}
+              {value}
             </span>
-            {change && !loading && (
+            {change && (
               <span className={cn(
                 'text-sm font-medium',
                 change.trend === 'up' && 'text-emerald-600 dark:text-emerald-400',

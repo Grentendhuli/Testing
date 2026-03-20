@@ -14,6 +14,9 @@ import {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Storage key for cross-tab auth sync (kept for backwards compatibility)
+const AUTH_STORAGE_KEY = 'lb_auth_state';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -75,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const { data: createdUser, error: createError } = await supabase
           .from('users')
-          .upsert(newUserData, { onConflict: 'id' })
+          .upsert(newUserData as any, { onConflict: 'id' })
           .select()
           .single();
 

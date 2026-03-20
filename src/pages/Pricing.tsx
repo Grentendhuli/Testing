@@ -358,7 +358,7 @@ export function Pricing() {
               Get Started Free
             </Button>
             <Button
-              onClick={() => window.location.href = 'mailto:concierge@landlordbot.app?subject=Concierge%20Services%20Inquiry'}
+              onClick={() => { window.location.href = 'mailto:concierge@landlordbot.app?subject=Concierge%20Services%20Inquiry'; }}
               variant="outline"
               size="lg"
               className="gap-2"
