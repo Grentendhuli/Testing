@@ -399,8 +399,8 @@ export function Sidebar() {
             {/* Avatar with initials */}
             <div className="w-9 h-9 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0">
               <span className="text-sm font-bold text-white">
-                {user?.firstName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
-                {user?.lastName?.charAt(0).toUpperCase() || ''}
+                {(user?.firstName?.charAt(0) || user?.email?.charAt(0) || 'U').toUpperCase()}
+                {(user?.lastName?.charAt(0) || '').toUpperCase()}
               </span>
             </div>
             <div className="flex-1 min-w-0">
@@ -412,7 +412,7 @@ export function Sidebar() {
               </p>
               {/* Property address */}
               <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                {formatAddress(userData?.property_address || user?.propertyAddress)}
+                {formatAddress(userData?.property_address || user?.propertyAddress || 'NYC Property')}
               </p>
             </div>
             <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
@@ -524,8 +524,8 @@ export function Sidebar() {
             {/* Avatar with initials */}
             <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0">
               <span className="text-sm font-bold text-white">
-                {user?.firstName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
-                {user?.lastName?.charAt(0).toUpperCase() || ''}
+                {(user?.firstName?.charAt(0) || user?.email?.charAt(0) || 'U').toUpperCase()}
+                {(user?.lastName?.charAt(0) || '').toUpperCase()}
               </span>
             </div>
             <div className="flex-1 min-w-0">
@@ -537,7 +537,7 @@ export function Sidebar() {
               </p>
               {/* Property address */}
               <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                {formatAddress(userData?.property_address || user?.propertyAddress)}
+                {formatAddress(userData?.property_address || user?.propertyAddress || 'NYC Property')}
               </p>
             </div>
             <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />

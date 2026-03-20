@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Plus, Building2, Users, Home, Wrench, Search, Filter, ArrowUpDown, FileText, QrCode } from 'lucide-react';
+import { Plus, Building2, Users, Home, Wrench, Search, Loader2, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ComplianceFooter } from '@/components/ComplianceFooter';
 import { Button } from '@/components/Button';
@@ -7,6 +7,8 @@ import { EmptyStateCard, MetricCard } from '@/components/Card';
 import { SkeletonUnits } from '@/components/Skeleton';
 import { PageHeader } from '@/components/Breadcrumb';
 import { TenantConnectCard } from '@/components/TenantConnectCard';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { Toast, useToast } from '@/components/Toast';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/features/auth';
 import { useNavigate } from 'react-router-dom';
@@ -27,6 +29,7 @@ export function Units() {
   const { userData } = useAuth();
   const navigate = useNavigate();
   const botUsername = userData?.bot_phone_number || '';
+  const { toast, showSuccess, showError, hideToast } = useToast();
   
   // Local state for modals
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
@@ -35,6 +38,11 @@ export function Units() {
   const [editedUnit, setEditedUnit] = useState<Partial<Unit>>({});
   const [inviteUnit, setInviteUnit] = useState<Unit | null>(null);
   const [expandedQR, setExpandedQR] = useState<Record<string, boolean>>({});
+
+  // Delete confirmation state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [unitToDelete, setUnitToDelete] = useState<Unit | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Use the units feature hook
   const {
@@ -75,6 +83,24 @@ export function Units() {
 
   const handleSave = useCallback(async () => {
     if (selectedUnit && editedUnit) {
+      // Validate form with the editing unit ID for unique check
+      const { isValid, errors } = validateForm({
+        address: editedUnit.address || selectedUnit.address || '',
+        unitNumber: editedUnit.unitNumber || selectedUnit.unitNumber || '',
+        status: editedUnit.status || selectedUnit.status,
+        bedrooms: Number(editedUnit.bedrooms ?? selectedUnit.bedrooms),
+        bathrooms: Number(editedUnit.bathrooms ?? selectedUnit.bathrooms),
+        squareFeet: Number(editedUnit.squareFeet ?? selectedUnit.squareFeet),
+        rentAmount: Number(editedUnit.rentAmount ?? selectedUnit.rentAmount),
+        notes: editedUnit.notes || selectedUnit.notes || '',
+      } as UnitFormData, selectedUnit.id);
+
+      if (!isValid) {
+        setFormErrors(errors);
+        return;
+      }
+
+      setIsSubmitting(true);
       try {
         // Ensure numeric values
         const updates = {
@@ -85,14 +111,19 @@ export function Units() {
           squareFeet: Number(editedUnit.squareFeet) || selectedUnit.squareFeet,
         };
         await updateUnit(selectedUnit.id, updates);
+        showSuccess(`Unit ${selectedUnit.unitNumber} updated successfully`);
         setIsEditing(false);
         setSelectedUnit(null);
       } catch (err) {
         console.error('Update unit error:', err);
-        setCreateError(err instanceof Error ? err.message : 'Failed to update unit');
+        const errorMsg = err instanceof Error ? err.message : 'Failed to update unit';
+        setCreateError(errorMsg);
+        showError(errorMsg);
+      } finally {
+        setIsSubmitting(false);
       }
     }
-  }, [selectedUnit, editedUnit, updateUnit]);
+  }, [selectedUnit, editedUnit, updateUnit, validateForm]);
 
   const handleClose = useCallback(() => {
     setSelectedUnit(null);
@@ -150,11 +181,14 @@ export function Units() {
         });
       }
       
+      showSuccess(`Unit ${createdUnit.unitNumber} created successfully`);
       setIsCreating(false);
       resetForm();
     } catch (err) {
       console.error('Create unit error:', err);
-      setCreateError(err instanceof Error ? err.message : 'Failed to add unit. Please try again.');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to add unit. Please try again.';
+      setCreateError(errorMsg);
+      showError(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -165,6 +199,29 @@ export function Units() {
     setNewUnit(initialUnitForm);
     setFormErrors({});
   }, [initialUnitForm]);
+
+  // Delete handlers
+  const openDeleteConfirm = useCallback((unit: Unit) => {
+    setUnitToDelete(unit);
+    setShowDeleteConfirm(true);
+  }, []);
+
+  const handleDeleteConfirmed = useCallback(async () => {
+    if (!unitToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteUnit(unitToDelete.id);
+      showSuccess(`Unit ${unitToDelete.unitNumber} deleted successfully`);
+      setShowDeleteConfirm(false);
+      setUnitToDelete(null);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to delete unit';
+      showError(errorMsg);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [unitToDelete, deleteUnit]);
 
   const formatDate = useCallback((dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -195,6 +252,14 @@ export function Units() {
 
   return (
     <div className="space-y-6 px-6 py-6">
+      {/* Toast Notifications */}
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+      />
+
       {/* Header */}
       <PageHeader
         title="Units Management"
@@ -312,11 +377,7 @@ export function Units() {
         calculateUnitHealth={calculateUnitHealth}
         onSelectUnit={setSelectedUnit}
         onEditUnit={handleEdit}
-        onDeleteUnit={async (unit) => {
-          if (confirm(`Are you sure you want to delete Unit ${unit.unitNumber}? This action cannot be undone.`)) {
-            await deleteUnit(unit.id);
-          }
-        }}
+        onDeleteUnit={openDeleteConfirm}
         formatDate={formatDate}
         onTenantConnect={setInviteUnit}
         botUsername={botUsername}

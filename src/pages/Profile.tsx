@@ -17,6 +17,58 @@ import { supabase } from '../lib/supabase';
 import { AIToneSettings } from '../components/AIToneSettings';
 import { FeedbackSection } from '../components/FeedbackSection';
 
+// Password Strength Indicator Component
+interface PasswordStrengthIndicatorProps {
+  password: string;
+}
+
+const PasswordStrengthIndicator = ({ password }: PasswordStrengthIndicatorProps) => {
+  const getStrength = (pwd: string): { score: number; label: string; color: string } => {
+    let score = 0;
+    if (pwd.length >= 8) score++;
+    if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++;
+    if (/\d/.test(pwd)) score++;
+    if (/[^a-zA-Z0-9]/.test(pwd)) score++;
+    
+    const levels = [
+      { label: 'Too weak', color: 'bg-red-500' },
+      { label: 'Weak', color: 'bg-orange-500' },
+      { label: 'Fair', color: 'bg-yellow-500' },
+      { label: 'Good', color: 'bg-blue-500' },
+      { label: 'Strong', color: 'bg-emerald-500' },
+    ];
+    
+    return { score, ...levels[score] };
+  };
+  
+  if (!password) return null;
+  
+  const { score, label, color } = getStrength(password);
+  
+  return (
+    <div className="mt-2 space-y-1">
+      <div className="flex gap-1 h-1">
+        {[0, 1, 2, 3].map((index) => (
+          <div
+            key={index}
+            className={`flex-1 rounded-full transition-colors ${
+              index < score ? color : 'bg-slate-200 dark:bg-slate-700'
+            }`}
+          />
+        ))}
+      </div>
+      <p className={`text-xs ${
+        score <= 1 ? 'text-red-500' : 
+        score === 2 ? 'text-yellow-500' : 
+        score === 3 ? 'text-blue-500' : 
+        'text-emerald-500'
+      }`}>
+        {label} — Use 8+ chars with mixed case, numbers & symbols
+      </p>
+    </div>
+  );
+};
+
 interface NotificationSetting {
   id: string;
   label: string;
@@ -37,14 +89,15 @@ export function Profile() {
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
+  const [isPasswordUpdating, setIsPasswordUpdating] = useState(false);
   
   // Form state
   const [profileForm, setProfileForm] = useState({
     email: user?.email || '',
     phoneNumber: userData?.phone_number || '',
-    propertyAddress: userData?.property_address || '',
-    firstName: userData?.first_name || '',
-    lastName: userData?.last_name || '',
+    propertyAddress: userData?.property_address || user?.propertyAddress || 'NYC Property',
+    firstName: userData?.first_name || user?.firstName || '',
+    lastName: userData?.last_name || user?.lastName || '',
   });
 
   // Password form
@@ -351,7 +404,7 @@ export function Profile() {
                 
                 <div className="flex-1">
                   <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-                    {profileForm.firstName} {profileForm.lastName}
+                    {profileForm.firstName || 'Property'} {profileForm.lastName || 'Owner'}
                   </h2>
                   <p className="text-slate-500 dark:text-slate-400">Property Owner</p>
                 </div>
@@ -467,6 +520,8 @@ export function Profile() {
                       placeholder="Min 8 characters"
                       className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                     />
+                    {/* Password Strength Indicator */}
+                    <PasswordStrengthIndicator password={passwordForm.newPassword} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">

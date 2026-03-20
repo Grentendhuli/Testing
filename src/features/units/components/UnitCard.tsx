@@ -226,9 +226,7 @@ export function UnitCard({
             onClick={(e) => {
               e.stopPropagation();
               if (typeof onDelete === 'function') {
-                if (confirm(`Are you sure you want to delete Unit ${unit.unitNumber}? This action cannot be undone.`)) {
-                  onDelete(unit);
-                }
+                onDelete(unit);
               }
             }}
             className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"

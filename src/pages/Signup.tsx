@@ -161,6 +161,58 @@ const GreenCheckBadge = ({ text }: { text: string }) => (
   </div>
 );
 
+// Password Strength Indicator Component
+interface PasswordStrengthIndicatorProps {
+  password: string;
+}
+
+const PasswordStrengthIndicator = ({ password }: PasswordStrengthIndicatorProps) => {
+  const getStrength = (pwd: string): { score: number; label: string; color: string } => {
+    let score = 0;
+    if (pwd.length >= 8) score++;
+    if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++;
+    if (/\d/.test(pwd)) score++;
+    if (/[^a-zA-Z0-9]/.test(pwd)) score++;
+    
+    const levels = [
+      { label: 'Too weak', color: 'bg-red-500' },
+      { label: 'Weak', color: 'bg-orange-500' },
+      { label: 'Fair', color: 'bg-yellow-500' },
+      { label: 'Good', color: 'bg-blue-500' },
+      { label: 'Strong', color: 'bg-emerald-500' },
+    ];
+    
+    return { score, ...levels[score] };
+  };
+  
+  if (!password) return null;
+  
+  const { score, label, color } = getStrength(password);
+  
+  return (
+    <div className="mt-2 space-y-1">
+      <div className="flex gap-1 h-1">
+        {[0, 1, 2, 3].map((index) => (
+          <div
+            key={index}
+            className={`flex-1 rounded-full transition-colors ${
+              index < score ? color : 'bg-slate-200 dark:bg-slate-700'
+            }`}
+          />
+        ))}
+      </div>
+      <p className={`text-xs ${
+        score <= 1 ? 'text-red-500' : 
+        score === 2 ? 'text-yellow-500' : 
+        score === 3 ? 'text-blue-500' : 
+        'text-emerald-500'
+      }`}>
+        {label} — Use 8+ chars with mixed case, numbers & symbols
+      </p>
+    </div>
+  );
+};
+
 export function Signup() {
   const navigate = useNavigate();
   const { signInWithGoogle, signInWithMicrosoft, isAuthenticated, isLoading } = useAuth();
@@ -220,6 +272,10 @@ export function Signup() {
 
   const validatePropertyAddress = (address: string): boolean => {
     return address.length >= 10;
+  };
+
+  const validatePassword = (password: string): boolean => {
+    return password.length >= 8;
   };
 
   // Step 1 validation - Property Address
@@ -393,7 +449,9 @@ export function Signup() {
         }, 1500);
       }
     } catch (err: any) {
+      // Show actual Supabase errors
       setError(err.message || 'Signup failed. Please try again.');
+      analytics.trackEvent('signup_failed', { method: 'email', error: err.message });
       setIsSubmitting(false);
     }
   };
@@ -507,7 +565,11 @@ export function Signup() {
                   disabled={isGoogleLoading}
                   className="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-3"
                 >
-                  <GoogleIcon />
+                  {isGoogleLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <GoogleIcon />
+                  )}
                   {isGoogleLoading ? 'Connecting...' : 'Continue with Google'}
                 </button>
 
@@ -516,7 +578,11 @@ export function Signup() {
                   disabled={isMicrosoftLoading}
                   className="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-3"
                 >
-                  <MicrosoftIcon />
+                  {isMicrosoftLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <MicrosoftIcon />
+                  )}
                   {isMicrosoftLoading ? 'Connecting...' : 'Continue with Microsoft'}
                 </button>
               </div>
@@ -624,6 +690,13 @@ export function Signup() {
                 </div>
               )}
 
+              {message && (
+                <div className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg flex items-center gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                  <p className="text-sm text-emerald-700 dark:text-emerald-400">{message}</p>
+                </div>
+              )}
+
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -693,12 +766,12 @@ export function Signup() {
                       )}
                     </button>
                   </div>
-                  {fieldErrors.password ? (
+                  {/* Password Strength Indicator */}
+                  <PasswordStrengthIndicator password={formData.password} />
+                  {fieldErrors.password && (
                     <p className="text-sm text-red-600 dark:text-red-400 mt-1">
                       {fieldErrors.password}
                     </p>
-                  ) : (
-                    <HelperText>Minimum 8 characters</HelperText>
                   )}
                 </div>
 
@@ -925,9 +998,16 @@ export function Signup() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 py-3 bg-[#1E3A5F] hover:bg-[#152942] disabled:bg-slate-400 text-white font-semibold rounded-lg transition-colors"
+                    className="flex-1 py-3 bg-[#1E3A5F] hover:bg-[#152942] disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
-                    {isSubmitting ? 'Creating Account...' : 'Create Account'}
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Creating Account...
+                      </>
+                    ) : (
+                      'Create Account'
+                    )}
                   </button>
                 </div>
               </form>
