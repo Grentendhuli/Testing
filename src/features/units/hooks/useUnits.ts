@@ -35,6 +35,10 @@ interface UseUnitsProps {
   leases: Lease[];
 }
 
+interface UseUnitsOptions {
+  editingUnitId?: string | null;
+}
+
 interface UseUnitsReturn {
   // State
   searchQuery: string;
@@ -200,7 +204,7 @@ export function useUnits({
   }, [payments, maintenanceRequests, leases]);
 
   // Validate form
-  const validateForm = useCallback((unitData: UnitFormData): { isValid: boolean; errors: FormErrors } => {
+  const validateForm = useCallback((unitData: UnitFormData, editingUnitId?: string | null): { isValid: boolean; errors: FormErrors } => {
     const errors: FormErrors = {};
 
     // Check for undefined/null
@@ -212,6 +216,17 @@ export function useUnits({
 
     if (!data.unitNumber || String(data.unitNumber).trim() === '') {
       errors.unitNumber = 'Unit number is required';
+    } else {
+      // Check for unique unit number (case-insensitive)
+      const normalizedUnitNumber = String(data.unitNumber).trim().toLowerCase();
+      const isDuplicate = units.some(
+        (unit) =>
+          unit.unitNumber.trim().toLowerCase() === normalizedUnitNumber &&
+          unit.id !== editingUnitId
+      );
+      if (isDuplicate) {
+        errors.unitNumber = 'Unit number must be unique';
+      }
     }
 
     // Validate bedrooms - must be a non-negative number
@@ -252,7 +267,7 @@ export function useUnits({
       isValid: Object.keys(errors).length === 0,
       errors,
     };
-  }, []);
+  }, [units]);
 
   // Reset form
   const resetForm = useCallback(() => {

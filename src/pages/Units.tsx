@@ -103,8 +103,8 @@ export function Units() {
   }, [resetForm]);
 
   const handleCreateUnit = async () => {
-    // Validate form
-    const { isValid, errors } = validateForm(newUnit);
+    // Validate form (no editingUnitId for create)
+    const { isValid, errors } = validateForm(newUnit, null);
     if (!isValid) {
       setFormErrors(errors);
       return;

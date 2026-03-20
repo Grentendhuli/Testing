@@ -210,11 +210,11 @@ export function Dashboard() {
 
   // Calculate portfolio metrics
   const portfolioMetrics = useMemo(() => {
-    const occupiedUnits = units.filter(u => u.status === 'occupied').length;
-    const totalUnits = units.length;
+    const occupiedUnits = (units || []).filter(u => u.status === 'occupied').length;
+    const totalUnits = (units || []).length;
     const occupancyRate = totalUnits > 0 ? (occupiedUnits / totalUnits) * 100 : 0;
 
-    const monthlyRent = units.reduce((sum, u) => sum + (u.rentAmount || 0), 0);
+    const monthlyRent = (units || []).reduce((sum, u) => sum + (u.rentAmount || 0), 0);
     const annualRent = monthlyRent * 12;
 
     // Estimate property value (rough estimate: monthly rent x 120 for NYC)
@@ -224,32 +224,32 @@ export function Dashboard() {
     const capRate = 5.0;
 
     // Count active leases
-    const activeLeases = leases.filter(l => l.status === 'active').length;
+    const activeLeases = (leases || []).filter(l => l.status === 'active').length;
 
     // Calculate average rent per unit
     const avgRent = totalUnits > 0 ? monthlyRent / totalUnits : 0;
 
     // Count pending maintenance requests
-    const pendingMaintenance = maintenanceRequests.filter(r => r.status === 'open' || r.status === 'in_progress').length;
+    const pendingMaintenance = (maintenanceRequests || []).filter(r => r.status === 'open' || r.status === 'in_progress').length;
 
     // Count new leads this week
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    const newLeads = leads.filter(l => 
+    const newLeads = (leads || []).filter(l => 
       new Date(l.createdAt || 0) > oneWeekAgo
     ).length;
 
     // Calculate collection rate (last month)
-    const lastMonthPayments = payments.filter(p => {
-      const paymentDate = new Date(p.dueDate);
+    const lastMonthPayments = (payments || []).filter(p => {
+      const paymentDate = new Date(p.dueDate || Date.now());
       const now = new Date();
       return paymentDate.getMonth() === now.getMonth() - 1 && 
              paymentDate.getFullYear() === now.getFullYear();
     });
     const collectedAmount = lastMonthPayments
       .filter(p => p.status === 'paid')
-      .reduce((sum, p) => sum + p.amount, 0);
-    const expectedAmount = lastMonthPayments.reduce((sum, p) => sum + p.amount, 0);
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+    const expectedAmount = lastMonthPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
     const collectionRate = expectedAmount > 0 ? (collectedAmount / expectedAmount) * 100 : 100;
 
     return {
@@ -432,28 +432,36 @@ export function Dashboard() {
         >
           <MetricCard
             title="Monthly Rent"
-            value={`$${portfolioMetrics.monthlyRent.toLocaleString()}`}
+            value={`$${(portfolioMetrics.monthlyRent || 0).toLocaleString()}`}
             icon={<DollarSign className="w-5 h-5" />}
             variant="success"
+            onClick={() => navigate('/rent')}
+            className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all"
           />
           <MetricCard
-            title="Est. Value"
-            value={`$${(portfolioMetrics.estimatedValue / 1000000).toFixed(1)}M`}
+            title="Occupancy Rate"
+            value={`${Math.round(portfolioMetrics.occupancyRate || 0)}%`}
             icon={<Building2 className="w-5 h-5" />}
             variant="info"
+            onClick={() => navigate('/units')}
+            className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all"
+          />
+          <MetricCard
+            title="Collection Rate"
+            value={`${Math.round(portfolioMetrics.collectionRate || 0)}%`}
+            change={{ value: 12, trend: 'up' }}
+            icon={<TrendingUp className="w-5 h-5" />}
+            variant="warning"
+            onClick={() => navigate('/reports')}
+            className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all"
           />
           <MetricCard
             title="New Leads"
-            value={portfolioMetrics.newLeads}
-            change={{ value: 12, trend: 'up' }}
+            value={portfolioMetrics.newLeads || 0}
             icon={<Users className="w-5 h-5" />}
-            variant="warning"
-          />
-          <MetricCard
-            title="Pending Maint."
-            value={portfolioMetrics.pendingMaintenance}
-            icon={<Wrench className="w-5 h-5" />}
-            variant={portfolioMetrics.pendingMaintenance > 3 ? 'danger' : 'default'}
+            variant={portfolioMetrics.newLeads > 0 ? 'success' : 'default'}
+            onClick={() => navigate('/leads')}
+            className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all"
           />
         </motion.div>
 

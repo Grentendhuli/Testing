@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Plus, X, Home, Wrench, Users, FileText } from 'lucide-react';
+import { Plus, X, Home, Wrench, Users, FileText, DollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface FabAction {
@@ -77,25 +77,25 @@ export const createFabActions = (navigate: (path: string) => void): FabAction[] 
   {
     label: 'Add Unit',
     icon: <Home className="w-5 h-5" />,
-    onClick: () => navigate('/units'),
+    onClick: () => navigate('/units?action=add'),
     color: '#3B82F6',
   },
   {
     label: 'Add Maintenance',
     icon: <Wrench className="w-5 h-5" />,
-    onClick: () => navigate('/maintenance'),
+    onClick: () => navigate('/maintenance?action=add'),
     color: '#F59E0B',
   },
   {
-    label: 'Add Tenant',
-    icon: <Users className="w-5 h-5" />,
-    onClick: () => navigate('/units'),
+    label: 'Create Lease',
+    icon: <FileText className="w-5 h-5" />,
+    onClick: () => navigate('/leases?action=add'),
     color: '#10B981',
   },
   {
-    label: 'Log Payment',
-    icon: <FileText className="w-5 h-5" />,
-    onClick: () => navigate('/rent'),
+    label: 'Record Payment',
+    icon: <DollarSign className="w-5 h-5" />,
+    onClick: () => navigate('/rent?action=add'),
     color: '#8B5CF6',
   },
 ];

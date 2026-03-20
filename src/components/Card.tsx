@@ -263,6 +263,7 @@ interface MetricCardProps {
   variant?: 'default' | 'success' | 'warning' | 'danger' | 'info';
   loading?: boolean;
   className?: string;
+  onClick?: () => void;
 }
 
 export function MetricCard({
@@ -273,6 +274,7 @@ export function MetricCard({
   variant = 'default',
   loading = false,
   className = '',
+  onClick,
 }: MetricCardProps) {
   const variantStyles = {
     default: {
@@ -332,8 +334,10 @@ export function MetricCard({
     <motion.div
       whileHover={{ scale: 1.02 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
       className={cn(
         'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5',
+        onClick && 'cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all',
         className
       )}
     >
