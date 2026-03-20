@@ -221,6 +221,8 @@ export function Profile() {
       return;
     }
 
+    setIsPasswordUpdating(true);
+    
     try {
       // Update password using Supabase Auth
       const { error } = await supabase.auth.updateUser({
@@ -239,10 +241,11 @@ export function Profile() {
       
       setPasswordSuccess(true);
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setTimeout(() => setPasswordSuccess(false), 3000);
       success('Password updated successfully');
     } catch (err: any) {
       setPasswordError(err.message || 'Failed to update password. Please try again.');
+    } finally {
+      setIsPasswordUpdating(false);
     }
   };
 
@@ -540,9 +543,11 @@ export function Profile() {
                 <Button
                   variant="secondary"
                   onClick={handleChangePassword}
-                  icon={<Lock className="w-4 h-4" />}
+                  disabled={isPasswordUpdating}
+                  loading={isPasswordUpdating}
+                  icon={isPasswordUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
                 >
-                  Update Password
+                  {isPasswordUpdating ? 'Updating...' : 'Update Password'}
                 </Button>
               </div>
             </div>

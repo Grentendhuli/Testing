@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Plus, Building2, Users, Home, Wrench, Search, Loader2, FileText } from 'lucide-react';
+import { Plus, Building2, Users, Home, Wrench, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ComplianceFooter } from '@/components/ComplianceFooter';
 import { Button } from '@/components/Button';
@@ -447,6 +447,22 @@ export function Units() {
           propertyAddress={userData?.property_address || ''}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setUnitToDelete(null);
+        }}
+        onConfirm={handleDeleteConfirmed}
+        title="Delete Unit"
+        message={unitToDelete ? `Are you sure you want to delete Unit ${unitToDelete.unitNumber}? This action cannot be undone.` : 'Are you sure? This cannot be undone.'}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isLoading={isDeleting}
+        variant="danger"
+      />
 
       <ComplianceFooter />
     </div>
