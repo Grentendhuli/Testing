@@ -19,10 +19,10 @@ window.addEventListener('unhandledrejection', (e) => {
 initSentry();
 
 // Build info - only log in development
-if (import.meta.env.DEV) {
+if ((import.meta as any).env?.DEV) {
   console.log('[BUILD] LandlordBot v2.2.0 - Debug logging enabled');
-  console.log('[DEBUG] VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL ? 'SET' : 'NOT SET');
-  console.log('[DEBUG] VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET');
+  console.log('[DEBUG] VITE_SUPABASE_URL:', (import.meta as any).env?.VITE_SUPABASE_URL ? 'SET' : 'NOT SET');
+  console.log('[DEBUG] VITE_SUPABASE_ANON_KEY:', (import.meta as any).env?.VITE_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET');
 }
 
 // Force render timeout - if app doesn't mount in 8 seconds, show fallback
@@ -119,14 +119,14 @@ const rootElement = document.getElementById('root');
 
 // Wrap render in try-catch
 try {
-  if (import.meta.env.DEV) {
+  if ((import.meta as any).env?.DEV) {
     console.log('[DEBUG] Starting React render...');
   }
   
   startRenderTimeout();
   
   const root = createRoot(rootElement!);
-  if (import.meta.env.DEV) {
+  if ((import.meta as any).env?.DEV) {
     console.log('[DEBUG] createRoot succeeded');
   }
   
@@ -141,7 +141,7 @@ try {
   // Clear timeout if render succeeds (short delay to allow initial mount)
   setTimeout(clearRenderTimeout, 100);
   
-  if (import.meta.env.DEV) {
+  if ((import.meta as any).env?.DEV) {
     console.log('[DEBUG] render() called successfully');
   }
 } catch (error) {

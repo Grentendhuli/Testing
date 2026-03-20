@@ -7,7 +7,7 @@ import {
   AIQuotaStatus 
 } from './aiUsage';
 
-const CLOUDFLARE_WORKER_URL = import.meta.env.VITE_CLOUDFLARE_WORKER_URL;
+const CLOUDFLARE_WORKER_URL = (import.meta as any).env?.VITE_CLOUDFLARE_WORKER_URL;
 
 export interface PortfolioContext {
   totalUnits: number;

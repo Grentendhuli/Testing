@@ -63,9 +63,9 @@ export class TwilioService {
 
   constructor() {
     this.config = {
-      accountSid: import.meta.env.VITE_TWILIO_ACCOUNT_SID || '',
-      authToken: import.meta.env.VITE_TWILIO_AUTH_TOKEN || '',
-      isConfigured: !!(import.meta.env.VITE_TWILIO_ACCOUNT_SID && import.meta.env.VITE_TWILIO_AUTH_TOKEN),
+      accountSid: (import.meta as any).env?.VITE_TWILIO_ACCOUNT_SID || '',
+      authToken: (import.meta as any).env?.VITE_TWILIO_AUTH_TOKEN || '',
+      isConfigured: !!((import.meta as any).env?.VITE_TWILIO_ACCOUNT_SID && (import.meta as any).env?.VITE_TWILIO_AUTH_TOKEN),
     };
   }
 

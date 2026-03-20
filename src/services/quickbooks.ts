@@ -60,12 +60,12 @@ export class QuickBooksService {
 
   constructor(config?: Partial<QuickBooksConfig>) {
     this.config = {
-      clientId: config?.clientId || import.meta.env.VITE_QUICKBOOKS_CLIENT_ID || '',
-      clientSecret: config?.clientSecret || import.meta.env.VITE_QUICKBOOKS_CLIENT_SECRET || '',
-      realmId: config?.realmId || import.meta.env.VITE_QUICKBOOKS_REALM_ID,
+      clientId: config?.clientId || (import.meta as any).env?.VITE_QUICKBOOKS_CLIENT_ID || '',
+      clientSecret: config?.clientSecret || (import.meta as any).env?.VITE_QUICKBOOKS_CLIENT_SECRET || '',
+      realmId: config?.realmId || (import.meta as any).env?.VITE_QUICKBOOKS_REALM_ID,
       accessToken: config?.accessToken,
       refreshToken: config?.refreshToken,
-      sandbox: config?.sandbox || import.meta.env.VITE_QUICKBOOKS_SANDBOX === 'true',
+      sandbox: config?.sandbox || (import.meta as any).env?.VITE_QUICKBOOKS_SANDBOX === 'true',
     };
     this.isConfigured = !!(this.config.clientId && this.config.clientSecret);
   }

@@ -6,7 +6,7 @@
 
 import { sanitizeText } from '@/lib/sanitize';
 
-const WORKER_URL = import.meta.env.VITE_CLOUDFLARE_WORKER_URL || 'https://landlordbot-ai.your-account.workers.dev';
+const WORKER_URL = (import.meta as any).env?.VITE_CLOUDFLARE_WORKER_URL || 'https://landlordbot-ai.your-account.workers.dev';
 
 interface EmailData {
   to: string;
@@ -138,7 +138,7 @@ export async function sendWelcomeEmail(
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="center">
-                    <a href="${import.meta.env.VITE_APP_URL || 'https://landlordbot.live'}/dashboard" 
+                    <a href="${(import.meta as any).env?.VITE_APP_URL || 'https://landlordbot.live'}/dashboard" 
                        style="display: inline-block; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
                       Go to Dashboard
                     </a>

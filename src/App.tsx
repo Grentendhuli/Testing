@@ -41,7 +41,7 @@ import { EULA } from './pages/EULA';
 import './App.css';
 
 // Build: Sentry v2.2.0 - Error tracking enabled
-if (import.meta.env.DEV) {
+if ((import.meta as any).env?.DEV) {
   console.log('LandlordBot v2.2.0 - Sentry Error Tracking Enabled');
 }
 

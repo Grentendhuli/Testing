@@ -10,9 +10,9 @@
  */
 
 // GA4 Config
-const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
-const IS_DEV = import.meta.env.DEV;
-const ANALYTICS_ENABLED = import.meta.env.VITE_ENABLE_ANALYTICS !== 'false';
+const GA_MEASUREMENT_ID = (import.meta as any).env?.VITE_GA_MEASUREMENT_ID;
+const IS_DEV = (import.meta as any).env?.DEV;
+const ANALYTICS_ENABLED = (import.meta as any).env?.VITE_ENABLE_ANALYTICS !== 'false';
 
 // User properties cache to avoid redundant calls
 let userPropertiesCache: Record<string, any> = {};

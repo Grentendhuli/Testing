@@ -53,9 +53,9 @@ export class CalendlyService {
   private isConfigured: boolean;
 
   constructor(config?: CalendlyConfig) {
-    this.token = config?.personalAccessToken || import.meta.env.VITE_CALENDLY_TOKEN || '';
-    this.userUri = config?.userUri || import.meta.env.VITE_CALENDLY_USER_URI;
-    this.eventTypeUri = config?.eventTypeUri || import.meta.env.VITE_CALENDLY_EVENT_TYPE_URI;
+    this.token = config?.personalAccessToken || (import.meta as any).env?.VITE_CALENDLY_TOKEN || '';
+    this.userUri = config?.userUri || (import.meta as any).env?.VITE_CALENDLY_USER_URI;
+    this.eventTypeUri = config?.eventTypeUri || (import.meta as any).env?.VITE_CALENDLY_EVENT_TYPE_URI;
     this.isConfigured = !!this.token;
   }
 

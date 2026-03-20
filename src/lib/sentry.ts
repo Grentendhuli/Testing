@@ -2,11 +2,11 @@ import * as Sentry from '@sentry/react';
 import { browserTracingIntegration, replayIntegration } from '@sentry/browser';
 
 // Sentry DSN - Replace with your actual DSN from Sentry dashboard
-const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN || '';
+const SENTRY_DSN = (import.meta as any).env?.VITE_SENTRY_DSN || '';
 
 // Environment configuration
-const ENVIRONMENT = import.meta.env.VITE_SENTRY_ENVIRONMENT || 
-  (import.meta.env.PROD ? 'production' : 'development');
+const ENVIRONMENT = (import.meta as any).env?.VITE_SENTRY_ENVIRONMENT || 
+  ((import.meta as any).env?.PROD ? 'production' : 'development');
 
 // Initialize Sentry
 export function initSentry() {
@@ -18,7 +18,7 @@ export function initSentry() {
   Sentry.init({
     dsn: SENTRY_DSN,
     environment: ENVIRONMENT,
-    release: import.meta.env.VITE_APP_VERSION || 'landlordbot@2.2.0',
+    release: (import.meta as any).env?.VITE_APP_VERSION || 'landlordbot@2.2.0',
     
     // Performance monitoring - using browserTracingIntegration
     integrations: [

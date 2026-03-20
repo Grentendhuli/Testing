@@ -3,7 +3,7 @@
 
 import type { AdvisorSession, AdvisorMessage } from '../types/pro';
 
-const WORKER_URL = import.meta.env.VITE_CLOUDFLARE_WORKER_URL || '';
+const WORKER_URL = (import.meta as any).env?.VITE_CLOUDFLARE_WORKER_URL || '';
 
 export interface VapiCallRequest {
   phoneNumber: string;

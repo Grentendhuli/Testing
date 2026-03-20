@@ -17,9 +17,9 @@
 import type { Lease } from '../types';
 
 // Configuration
-const DOCUSEAL_BASE_URL = import.meta.env.VITE_DOCUSEAL_BASE_URL || 'https://api.docuseal.com';
-const DOCUSEAL_API_KEY = import.meta.env.VITE_DOCUSEAL_API_KEY;
-const DOCUSEAL_WEBHOOK_SECRET = import.meta.env.VITE_DOCUSEAL_WEBHOOK_SECRET;
+const DOCUSEAL_BASE_URL = (import.meta as any).env?.VITE_DOCUSEAL_BASE_URL || 'https://api.docuseal.com';
+const DOCUSEAL_API_KEY = (import.meta as any).env?.VITE_DOCUSEAL_API_KEY;
+const DOCUSEAL_WEBHOOK_SECRET = (import.meta as any).env?.VITE_DOCUSEAL_WEBHOOK_SECRET;
 
 // Document signing status
 export type DocumentStatus = 'pending' | 'signed' | 'completed' | 'expired' | 'cancelled';

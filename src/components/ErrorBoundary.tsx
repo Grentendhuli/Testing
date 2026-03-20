@@ -162,7 +162,7 @@ export class ErrorBoundary extends Component<Props, State> {
               </button>
             </div>
             
-            {import.meta.env.DEV && this.state.error && (
+            {(import.meta as any).env?.DEV && this.state.error && (
               <div style={{
                 marginTop: '24px',
                 textAlign: 'left'
