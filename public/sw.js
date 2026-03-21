@@ -206,7 +206,7 @@ self.addEventListener('sync', (event) => {
 });
 
 // Windows-specific: Handle share target (if implemented)
-if ('shareTarget' in (navigator as any)) {
+if ('shareTarget' in navigator) {
   self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
     if (url.pathname === '/share-target') {
