@@ -107,7 +107,7 @@ export function AddressAutocomplete({
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const googleAutocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
-  const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const GOOGLE_MAPS_API_KEY = (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY;
 
   // Load Google Places API script
   useEffect(() => {

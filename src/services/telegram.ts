@@ -4,7 +4,7 @@ export interface TenantQrCode {
   botUrl: string;
 }
 
-const WORKER_URL = import.meta.env.VITE_CLOUDFLARE_WORKER_URL || '';
+const WORKER_URL = (import.meta as any).env?.VITE_CLOUDFLARE_WORKER_URL || '';
 
 export function buildUnitCode(unitId: string, landlordId: string): string {
   // Create a short, memorable code like "LB-3X9Z-A1"

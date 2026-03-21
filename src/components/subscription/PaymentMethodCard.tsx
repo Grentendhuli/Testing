@@ -12,6 +12,7 @@ export interface PaymentMethod {
 }
 
 interface PaymentMethodCardProps {
+  key?: React.Key;
   method: PaymentMethod;
   onRemove?: (method: PaymentMethod) => void;
   onSetDefault?: (method: PaymentMethod) => void;

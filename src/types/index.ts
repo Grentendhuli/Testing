@@ -220,6 +220,7 @@ export interface MaintenanceRequest {
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
+  assignedTo?: string;
   vendorId?: string;
   costEstimate?: number;
   actualCost?: number;

@@ -167,7 +167,7 @@ export class PropertyValuationService {
   private isConfigured: boolean;
 
   constructor(apiKey?: string) {
-    this.apiKey = apiKey || import.meta.env.VITE_ZILLOW_API_KEY || '';
+    this.apiKey = apiKey || (import.meta as any).env?.VITE_ZILLOW_API_KEY || '';
     this.isConfigured = !!this.apiKey;
   }
 

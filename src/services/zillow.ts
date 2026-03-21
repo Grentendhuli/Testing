@@ -2,8 +2,8 @@
 // Uses Bridge Interactive API (preferred) with fallback to Zillow Data API
 // Free tier: 1,000 API calls/month
 
-const ZILLOW_BRIDGE_API_KEY = import.meta.env.VITE_ZILLOW_BRIDGE_API_KEY || '';
-const ZILLOW_DATA_API_KEY = import.meta.env.VITE_ZILLOW_DATA_API_KEY || '';
+const ZILLOW_BRIDGE_API_KEY = (import.meta as any).env?.VITE_ZILLOW_BRIDGE_API_KEY || '';
+const ZILLOW_DATA_API_KEY = (import.meta as any).env?.VITE_ZILLOW_DATA_API_KEY || '';
 
 // Cache configuration
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours

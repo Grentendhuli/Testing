@@ -31,6 +31,11 @@ export type AnalyticsEvent =
   | 'logout'
   | 'magic_link_sent'
   | 'magic_link_clicked'
+  | 'password_reset_started'
+  | 'password_reset_requested'
+  | 'password_reset_email_sent'
+  | 'password_reset_failed'
+  | 'password_reset_email_resent'
   // Subscription Events
   | 'subscription_viewed'
   | 'subscription_checkout_started'

@@ -66,7 +66,7 @@ export class RentometerService {
   private isConfigured: boolean;
 
   constructor(config?: RentometerConfig) {
-    this.apiKey = config?.apiKey || import.meta.env.VITE_RENTOMETER_API_KEY || '';
+    this.apiKey = config?.apiKey || (import.meta as any).env?.VITE_RENTOMETER_API_KEY || '';
     this.isConfigured = !!this.apiKey;
   }
 

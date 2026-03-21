@@ -164,8 +164,8 @@ export function Maintenance() {
       setTriageLoading(true);
       setTriageResult(null);
       triageMaintenanceRequest(desc).then(result => {
-        if (result.success && result.data) {
-          setTriageResult(result.data);
+        if (result.success && result.data.success && result.data.data) {
+          setTriageResult(result.data.data);
         }
         setTriageLoading(false);
       }).catch(() => setTriageLoading(false));

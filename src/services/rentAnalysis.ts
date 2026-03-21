@@ -1,6 +1,6 @@
 // Rent analysis service using free APIs and public data sources
-const RENTOMETER_API_KEY = import.meta.env.VITE_RENTOMETER_API_KEY || '';
-const ZILLOW_API_KEY = import.meta.env.VITE_ZILLOW_API_KEY || '';
+const RENTOMETER_API_KEY = (import.meta as any).env?.VITE_RENTOMETER_API_KEY || '';
+const ZILLOW_API_KEY = (import.meta as any).env?.VITE_ZILLOW_API_KEY || '';
 
 export interface RentComp {
   address: string;

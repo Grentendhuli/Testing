@@ -80,7 +80,7 @@ interface NotificationSetting {
 export function Profile() {
   const { user, updateUser } = useApp();
   const { userData, updateUserData, logout } = useAuth();
-  const { success, error: showError } = useToast();
+  const { showSuccess, showError } = useToast();
   
   // Edit states
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -156,14 +156,14 @@ export function Profile() {
         const { error } = await updateUserData(updateData);
         if (error) throw error;
         
-        success(`${field.charAt(0).toUpperCase() + field.slice(1)} updated`);
+        showSuccess(`${field.charAt(0).toUpperCase() + field.slice(1)} updated`);
       } catch (err) {
         showError(`Failed to update ${field}`);
       } finally {
         setIsSaving(false);
       }
     }, 1000),
-    [updateUserData, success, showError]
+    [updateUserData, showSuccess, showError]
   );
 
   const handleFieldChange = (field: string, value: string) => {
@@ -194,7 +194,7 @@ export function Profile() {
       const { error } = await updateUserData(updateData);
       if (error) throw error;
       
-      success('Changes saved');
+      showSuccess('Changes saved');
       setEditingField(null);
     } catch (err) {
       showError('Failed to save changes');
@@ -241,7 +241,7 @@ export function Profile() {
       
       setPasswordSuccess(true);
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      success('Password updated successfully');
+      showSuccess('Password updated successfully');
     } catch (err: any) {
       setPasswordError(err.message || 'Failed to update password. Please try again.');
     } finally {
@@ -261,7 +261,7 @@ export function Profile() {
     navigator.clipboard.writeText(user?.botPhoneNumber || '');
     setShowCopied(true);
     setTimeout(() => setShowCopied(false), 2000);
-    success('Phone number copied to clipboard');
+    showSuccess('Phone number copied to clipboard');
   };
 
   const handleDeleteAccount = async () => {

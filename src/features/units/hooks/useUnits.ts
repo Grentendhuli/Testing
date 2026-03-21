@@ -66,7 +66,7 @@ interface UseUnitsReturn {
   
   // Actions
   calculateUnitHealth: (unit: Unit) => HealthBreakdown;
-  validateForm: (unitData: UnitFormData) => { isValid: boolean; errors: FormErrors };
+  validateForm: (unitData: UnitFormData, editingUnitId?: string | null) => { isValid: boolean; errors: FormErrors };
   resetForm: () => void;
   initialUnitForm: UnitFormData;
 }

@@ -94,7 +94,9 @@ export function SkeletonTable({ rows = 3, columns = 4 }: { rows?: number; column
       {/* Header */}
       <div className="flex gap-4 pb-4 border-b border-lb-border">
         {Array.from({ length: columns }).map((_, i) => (
-          <Skeleton key={i} className="flex-1 h-5" />
+          <div key={i}>
+            <Skeleton className="flex-1 h-5" />
+          </div>
         ))}
       </div>
       

@@ -156,7 +156,7 @@ export async function sendWelcomeEmail(
               </p>
               <p style="color: #94a3b8; font-size: 12px; margin: 0;">
                 © ${new Date().getFullYear()} LandlordBot. All rights reserved.<br>
-                <a href="${import.meta.env.VITE_APP_URL || 'https://landlordbot.live'}/unsubscribe" style="color: #94a3b8; text-decoration: underline;">Unsubscribe</a>
+                <a href="${(import.meta as any).env?.VITE_APP_URL || 'https://landlordbot.live'}/unsubscribe" style="color: #94a3b8; text-decoration: underline;">Unsubscribe</a>
               </p>
             </td>
           </tr>
@@ -516,7 +516,7 @@ export async function sendLatePaymentReminder(
               <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
                 <tr>
                   <td align="center">
-                    <a href="${import.meta.env.VITE_APP_URL || 'https://landlordbot.live'}/tenant/payment" 
+                    <a href="${(import.meta as any).env?.VITE_APP_URL || 'https://landlordbot.live'}/tenant/payment" 
                        style="display: inline-block; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
                       Pay Now
                     </a>
@@ -600,7 +600,7 @@ export async function sendAILimitReachedEmail(
               <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
                 <tr>
                   <td align="center">
-                    <a href="${import.meta.env.VITE_APP_URL || 'https://landlordbot.live'}/settings/subscription" 
+                    <a href="${(import.meta as any).env?.VITE_APP_URL || 'https://landlordbot.live'}/settings/subscription" 
                        style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
                       Upgrade Now
                     </a>
@@ -622,7 +622,7 @@ export async function sendAILimitReachedEmail(
               </p>
               <p style="color: #94a3b8; font-size: 12px; margin: 0;">
                 © ${new Date().getFullYear()} LandlordBot. All rights reserved.<br>
-                <a href="${import.meta.env.VITE_APP_URL || 'https://landlordbot.live'}/settings/notifications" style="color: #94a3b8; text-decoration: underline;">Manage notification preferences</a>
+                <a href="${(import.meta as any).env?.VITE_APP_URL || 'https://landlordbot.live'}/settings/notifications" style="color: #94a3b8; text-decoration: underline;">Manage notification preferences</a>
               </p>
             </td>
           </tr>

@@ -87,8 +87,8 @@ interface TokenClient {
 }
 
 // Configuration
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || ''; // Optional, for public data
+const GOOGLE_CLIENT_ID = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '';
+const GOOGLE_API_KEY = (import.meta as any).env?.VITE_GOOGLE_API_KEY || ''; // Optional, for public data
 
 // Storage keys
 const STORAGE_KEY_TOKEN = 'landlordbot_google_token';

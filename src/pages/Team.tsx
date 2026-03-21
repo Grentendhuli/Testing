@@ -266,7 +266,9 @@ export function Team() {
 
         <div className="grid md:grid-cols-2 gap-6">
           {ADDITIONAL_ADVISORS.map((advisor) => (
-            <AdvisorCard key={advisor.id} advisor={advisor} />
+            <div key={advisor.id}>
+              <AdvisorCard advisor={advisor} />
+            </div>
           ))}
         </div>
       </section>
