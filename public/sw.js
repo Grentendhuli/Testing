@@ -10,9 +10,7 @@ const urlsToCache = [
   '/signup',
   '/auth/callback',
   '/index.html',
-  '/manifest.json',
-  '/icon-192x192.png',
-  '/icon-512x512.png'
+  '/manifest.json'
 ];
 
 // Microsoft Graph API for Windows integration (placeholder)
