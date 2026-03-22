@@ -218,7 +218,14 @@ Return ONLY valid JSON with no markdown, no code fences, no explanation. Format:
       }
     } catch (err) {
       console.error('Error generating listing:', err);
-      setError('Could not generate listing. Please try again.');
+      const mockResult = generateMockListing(unit, userData);
+      setGeneratedTitle(mockResult.title);
+      setGeneratedDescription(mockResult.description);
+      setAmenities(mockResult.amenities);
+      setRentSuggestion(mockResult.rentSuggestion);
+      setIsUsingMock(true);
+      setHasGenerated(true);
+      setError('');
     } finally {
       setIsGenerating(false);
     }

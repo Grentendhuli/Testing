@@ -196,7 +196,7 @@ export function LandlordAssistant() {
       // Track usage for analytics (not for limiting)
       incrementUsage();
     } catch (e) {
-      setChatHistory(prev => [...prev, { role: 'assistant', text: 'AI unavailable. Ensure VITE_CLOUDFLARE_WORKER_URL is set in Vercel environment variables.', ts: new Date().toISOString() }]);
+      setChatHistory(prev => [...prev, { role: 'assistant', text: 'AI is temporarily unavailable. Please try again shortly.', ts: new Date().toISOString() }]);
     }
     setChatLoading(false);
   };

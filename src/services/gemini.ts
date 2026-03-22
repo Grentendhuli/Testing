@@ -101,9 +101,11 @@ export async function askLandlordAssistant(
   }
 
   if (!CLOUDFLARE_WORKER_URL) {
+    const fallbackSummary = `Quick snapshot: ${context.totalUnits} units (${context.occupiedUnits} occupied), ${context.openMaintenance} open maintenance requests, ${context.expiringSoon} leases expiring soon, ${context.overduePayments} overdue payments.`;
     return Result.ok({
-      success: false,
-      error: 'AI assistant is not configured. Please add VITE_CLOUDFLARE_WORKER_URL to your environment.'
+      success: true,
+      data: `AI is running in demo mode right now. ${fallbackSummary}`,
+      warning: 'AI demo mode'
     });
   }
 
@@ -335,9 +337,11 @@ export async function draftLandlordLetter(
   }
 
   if (!CLOUDFLARE_WORKER_URL) {
+    const fallbackLetter = `Dear ${sanitizedTenantName || 'Tenant'},\n\nThis is a notice regarding ${sanitizedPurpose || 'your tenancy'} for unit ${sanitizedUnitNumber || ''}.\n\n${sanitizedDetails || 'Please contact us to discuss next steps and any questions you may have.'}\n\nPlease reach out at your earliest convenience so we can resolve this promptly.\n\nSincerely,\nLandlord`;
     return Result.ok({
-      success: false,
-      error: 'AI letter drafting requires Cloudflare Worker configuration.'
+      success: true,
+      data: fallbackLetter,
+      warning: 'AI demo mode'
     });
   }
 
@@ -445,7 +449,7 @@ export async function generateText(
   if (!CLOUDFLARE_WORKER_URL) {
     return Result.ok({
       success: false,
-      error: 'AI service requires Cloudflare Worker configuration.'
+      error: 'AI is currently unavailable. Using a fallback template.'
     });
   }
 
