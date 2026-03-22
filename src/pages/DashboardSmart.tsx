@@ -6,7 +6,7 @@ import {
   Percent, FileText, Zap, Bell
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { analytics } from '../utils/analytics';
 import { SmartMetricCard, SmartMetricGrid } from '../components/SmartMetricCard';
 import { PWAInstallPrompt } from '../components/PWAInstallPrompt';
@@ -15,25 +15,12 @@ import { SmartSuggestion, SmartSuggestionsContainer, SmartSuggestionProps } from
 import { ProactiveNotificationFeed, ProactiveNotification } from '../components/ProactiveNotification';
 import { AICommandPalette, AICommandPaletteButton } from '../components/AICommandPalette';
 import { ConfidenceBadge } from '../components/ConfidenceBadge';
-
-type InsightActions = {
-  openRentCollection: () => void;
-  openLeases: () => void;
-  openUnits: () => void;
-};
-
-const defaultInsightActions: InsightActions = {
-  openRentCollection: () => {},
-  openLeases: () => {},
-  openUnits: () => {},
-};
+import { DashboardSetupPrompt } from '../components/DashboardSetupPrompt';
+import { useSessionManager } from '../hooks/useSessionManager';
+import { OccupancyChart } from '../components/OccupancyChart';
 
 // AI Insights generation - uses real data, no hardcoded fallbacks
-const generateAIInsights = (
-  metrics: any,
-  unitsList: any[],
-  actions: InsightActions = defaultInsightActions
-) => {
+const generateAIInsights = (metrics: any, unitsList: any[]) => {
   // Defensive: ensure we have valid inputs
   if (!metrics || typeof metrics !== 'object') {
     return [];
@@ -56,7 +43,7 @@ const generateAIInsights = (
       },
       action: {
         label: 'Send gentle reminders',
-        onClick: actions.openRentCollection
+        onClick: () => { /* TODO: Implement reminder sending */ }
       }
     });
   }
@@ -80,7 +67,7 @@ const generateAIInsights = (
       },
       action: {
         label: 'Draft renewals',
-        onClick: actions.openLeases
+        onClick: () => { /* TODO: Implement renewal drafting */ }
       }
     });
   }
@@ -104,7 +91,7 @@ const generateAIInsights = (
         },
         action: {
           label: 'View Units',
-          onClick: actions.openUnits
+          onClick: () => {}
         }
       });
     }
@@ -129,7 +116,7 @@ export function DashboardSmart() {
     leases = [],
     maintenanceRequests = [],
   } = useApp();
-  const navigate = useNavigate();
+  const { missingProfileFields } = useSessionManager();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifications, setNotifications] = useState<ProactiveNotification[]>([]);
 
@@ -246,24 +233,15 @@ export function DashboardSmart() {
     };
   }, [units, payments, leads, leases, maintenanceRequests]);
 
-  const insightActions = useMemo(
-    () => ({
-      openRentCollection: () => navigate('/rent'),
-      openLeases: () => navigate('/leases'),
-      openUnits: () => navigate('/units'),
-    }),
-    [navigate]
-  );
-
   // Generate AI suggestions based on metrics and real unit data
   const aiSuggestions = useMemo(() => {
     try {
-      return generateAIInsights(portfolioMetrics, units, insightActions);
+      return generateAIInsights(portfolioMetrics, units);
     } catch (e) {
       console.error('[DashboardSmart] Error generating AI insights:', e);
       return [];
     }
-  }, [portfolioMetrics, units, insightActions]);
+  }, [portfolioMetrics, units]);
   
   // Generate notifications (real data, no hardcoded mocks)
   const proactiveNotifications = useMemo(() => {
@@ -409,6 +387,11 @@ export function DashboardSmart() {
 
   return (
     <div className="space-y-6 relative">
+      {/* Profile Setup Prompt - Progressive Onboarding */}
+      {missingProfileFields.length > 0 && (
+        <DashboardSetupPrompt missingFields={missingProfileFields} />
+      )}
+
       {/* Header with warm greeting - Bright theme */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -450,7 +433,7 @@ export function DashboardSmart() {
       <div className="bg-white dark:bg-white border border-slate-200 dark:border-slate-200 rounded-xl p-6 shadow-sm">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Estimated Value */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 order-2 lg:order-1">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-sm text-amber-600 dark:text-amber-500 font-medium">Portfolio Value</span>
               <ConfidenceBadge confidence={94} size="sm" />
@@ -484,6 +467,18 @@ export function DashboardSmart() {
               <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">+{safeMetrics.newLeads}</p>
               <p className="text-xs text-slate-500 dark:text-slate-600">New Leads</p>
             </div>
+          </div>
+
+          {/* Occupancy Chart */}
+          <div className="order-1 lg:order-2 flex justify-center lg:justify-end">
+            <OccupancyChart
+              data={{
+                occupied: safeMetrics.occupiedUnits,
+                vacant: safeMetrics.totalUnits - safeMetrics.occupiedUnits,
+                maintenance: units.filter((u: any) => u?.status === 'maintenance').length || 0
+              }}
+              size={160}
+            />
           </div>
         </div>
       </div>

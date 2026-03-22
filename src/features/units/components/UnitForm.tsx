@@ -162,7 +162,8 @@ export function UnitForm({
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="p-1 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 disabled:opacity-50"
+              className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 disabled:opacity-50"
+              aria-label="Close"
             >
               <X className="w-5 h-5" />
             </button>
@@ -227,6 +228,7 @@ export function UnitForm({
                 <input
                   type="number"
                   min="0"
+                  inputMode="numeric"
                   value={unitData?.bedrooms === 0 ? '' : (unitData?.bedrooms || '')}
                   onChange={(e) => handleNumberChange('bedrooms', e.target.value)}
                   onBlur={() => handleNumberBlur('bedrooms', unitData?.bedrooms || 0)}
@@ -246,6 +248,7 @@ export function UnitForm({
                   type="number"
                   min="0"
                   step="0.5"
+                  inputMode="decimal"
                   value={unitData?.bathrooms === 0 ? '' : (unitData?.bathrooms || '')}
                   onChange={(e) => handleNumberChange('bathrooms', e.target.value)}
                   onBlur={() => handleNumberBlur('bathrooms', unitData?.bathrooms || 0)}
@@ -267,6 +270,7 @@ export function UnitForm({
               <input
                 type="number"
                 min="0"
+                inputMode="numeric"
                 value={unitData?.squareFeet === 0 ? '' : (unitData?.squareFeet || '')}
                 onChange={(e) => handleNumberChange('squareFeet', e.target.value)}
                 onBlur={() => handleNumberBlur('squareFeet', unitData?.squareFeet || 0)}
@@ -282,6 +286,7 @@ export function UnitForm({
               <input
                 type="number"
                 min="0"
+                inputMode="decimal"
                 value={unitData?.rentAmount === 0 ? '' : (unitData?.rentAmount || '')}
                 onChange={(e) => handleNumberChange('rentAmount', e.target.value)}
                 onBlur={() => handleNumberBlur('rentAmount', unitData?.rentAmount || 0)}
@@ -461,6 +466,7 @@ export function UnitForm({
                       <input
                         type="number"
                         min="0"
+                        inputMode="decimal"
                         value={unitData?.securityDeposit === 0 ? '' : (unitData?.securityDeposit || '')}
                         onChange={(e) => handleNumberChange('securityDeposit', e.target.value)}
                         onBlur={() => handleNumberBlur('securityDeposit', unitData?.securityDeposit || 0)}

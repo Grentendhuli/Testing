@@ -1140,6 +1140,7 @@ export function Config() {
                           <label className="block text-sm font-medium text-lb-text-secondary mb-2">Flat Fee Amount ($)</label>
                           <input
                             type="number"
+                            inputMode="decimal"
                             value={lateFeeConfig.flatFee === undefined ? '' : lateFeeConfig.flatFee === 0 ? '' : lateFeeConfig.flatFee}
                             onChange={(e) => {
                               const value = e.target.value === '' ? undefined : parseFloat(e.target.value);
@@ -1162,6 +1163,7 @@ export function Config() {
                           <label className="block text-sm font-medium text-lb-text-secondary mb-2">Percentage of Rent (%)</label>
                           <input
                             type="number"
+                            inputMode="decimal"
                             value={lateFeeConfig.percentageFee === undefined ? '' : lateFeeConfig.percentageFee === 0 ? '' : lateFeeConfig.percentageFee}
                             onChange={(e) => {
                               const value = e.target.value === '' ? undefined : parseFloat(e.target.value);
@@ -1186,6 +1188,7 @@ export function Config() {
                           <label className="block text-sm font-medium text-lb-text-secondary mb-2">Maximum Late Fee ($)</label>
                           <input
                             type="number"
+                            inputMode="decimal"
                             value={lateFeeConfig.maxLateFee === undefined ? '' : lateFeeConfig.maxLateFee === 0 ? '' : lateFeeConfig.maxLateFee}
                             onChange={(e) => {
                               const value = e.target.value === '' ? undefined : parseFloat(e.target.value);

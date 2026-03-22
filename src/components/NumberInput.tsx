@@ -14,6 +14,11 @@ interface NumberInputProps {
   prefix?: string;
   suffix?: string;
   allowDecimal?: boolean;
+  /**
+   * Input mode for mobile keyboards
+   * @default 'numeric' for integers, 'decimal' if allowDecimal is true
+   */
+  inputMode?: 'none' | 'text' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search';
 }
 
 /**
@@ -34,6 +39,7 @@ export function NumberInput({
   prefix,
   suffix,
   allowDecimal = false,
+  inputMode,
 }: NumberInputProps) {
   // Use internal state to track the input value as string for better UX
   const [inputValue, setInputValue] = useState<string>(value === 0 ? '' : value.toString());
@@ -110,6 +116,7 @@ export function NumberInput({
         min={min}
         max={max}
         step={step}
+        inputMode={inputMode || (allowDecimal ? 'decimal' : 'numeric')}
         className={`
           w-full px-3 py-2 
           bg-slate-50 dark:bg-slate-700 

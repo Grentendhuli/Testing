@@ -407,17 +407,18 @@ export function AddressAutocomplete({
         {/* Loading indicator or clear button */}
         <div className="absolute right-3 top-1/2 -translate-y-1/2">
           {isLoading ? (
-            <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+            <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
           ) : value ? (
             <button
               type="button"
               onClick={handleClear}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              aria-label="Clear address"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           ) : (
-            <MapPin className="w-4 h-4 text-slate-400" />
+            <MapPin className="w-5 h-5 text-slate-400" />
           )}
         </div>
       </div>

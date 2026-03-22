@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { analytics } from '../utils/analytics';
-import { Mail, User, Phone, Home, CheckCircle, AlertCircle, Lock, Eye, EyeOff, MapPin, Shield, Sparkles, Loader2 } from 'lucide-react';
+import { Mail, User, Phone, Home, CheckCircle, AlertCircle, Lock, Eye, EyeOff, MapPin, Shield, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { LogoMark } from '@/components/LogoMark';
 
@@ -161,58 +161,6 @@ const GreenCheckBadge = ({ text }: { text: string }) => (
   </div>
 );
 
-// Password Strength Indicator Component
-interface PasswordStrengthIndicatorProps {
-  password: string;
-}
-
-const PasswordStrengthIndicator = ({ password }: PasswordStrengthIndicatorProps) => {
-  const getStrength = (pwd: string): { score: number; label: string; color: string } => {
-    let score = 0;
-    if (pwd.length >= 8) score++;
-    if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++;
-    if (/\d/.test(pwd)) score++;
-    if (/[^a-zA-Z0-9]/.test(pwd)) score++;
-    
-    const levels = [
-      { label: 'Too weak', color: 'bg-red-500' },
-      { label: 'Weak', color: 'bg-orange-500' },
-      { label: 'Fair', color: 'bg-yellow-500' },
-      { label: 'Good', color: 'bg-blue-500' },
-      { label: 'Strong', color: 'bg-emerald-500' },
-    ];
-    
-    return { score, ...levels[score] };
-  };
-  
-  if (!password) return null;
-  
-  const { score, label, color } = getStrength(password);
-  
-  return (
-    <div className="mt-2 space-y-1">
-      <div className="flex gap-1 h-1">
-        {[0, 1, 2, 3].map((index) => (
-          <div
-            key={index}
-            className={`flex-1 rounded-full transition-colors ${
-              index < score ? color : 'bg-slate-200 dark:bg-slate-700'
-            }`}
-          />
-        ))}
-      </div>
-      <p className={`text-xs ${
-        score <= 1 ? 'text-red-500' : 
-        score === 2 ? 'text-yellow-500' : 
-        score === 3 ? 'text-blue-500' : 
-        'text-emerald-500'
-      }`}>
-        {label} — Use 8+ chars with mixed case, numbers & symbols
-      </p>
-    </div>
-  );
-};
-
 export function Signup() {
   const navigate = useNavigate();
   const { signInWithGoogle, signInWithMicrosoft, isAuthenticated, isLoading } = useAuth();
@@ -272,10 +220,6 @@ export function Signup() {
 
   const validatePropertyAddress = (address: string): boolean => {
     return address.length >= 10;
-  };
-
-  const validatePassword = (password: string): boolean => {
-    return password.length >= 8;
   };
 
   // Step 1 validation - Property Address
@@ -449,9 +393,7 @@ export function Signup() {
         }, 1500);
       }
     } catch (err: any) {
-      // Show actual Supabase errors
       setError(err.message || 'Signup failed. Please try again.');
-      analytics.trackEvent('signup_failed', { method: 'email', error: err.message });
       setIsSubmitting(false);
     }
   };
@@ -565,11 +507,7 @@ export function Signup() {
                   disabled={isGoogleLoading}
                   className="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-3"
                 >
-                  {isGoogleLoading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <GoogleIcon />
-                  )}
+                  <GoogleIcon />
                   {isGoogleLoading ? 'Connecting...' : 'Continue with Google'}
                 </button>
 
@@ -578,11 +516,7 @@ export function Signup() {
                   disabled={isMicrosoftLoading}
                   className="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-3"
                 >
-                  {isMicrosoftLoading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <MicrosoftIcon />
-                  )}
+                  <MicrosoftIcon />
                   {isMicrosoftLoading ? 'Connecting...' : 'Continue with Microsoft'}
                 </button>
               </div>
@@ -616,12 +550,10 @@ export function Signup() {
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       type="text"
-                      name="property-address"
-                      autoComplete="street-address"
-                      value={formData.propertyAddress}
-                      onChange={(e) =>
-                        handleChange('propertyAddress', e.target.value)
-                      }
+                      name="address"
+                      autoComplete="street-address address-line1"
+                      defaultValue={formData.propertyAddress}
+                      onBlur={(e) => handleChange('propertyAddress', e.target.value)}
                       className={`w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#1E3A5F] focus:ring-2 focus:ring-[#1E3A5F]/20 transition-colors ${
                         fieldErrors.propertyAddress
                           ? 'border-red-500'
@@ -690,13 +622,6 @@ export function Signup() {
                 </div>
               )}
 
-              {message && (
-                <div className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-                  <p className="text-sm text-emerald-700 dark:text-emerald-400">{message}</p>
-                </div>
-              )}
-
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -715,8 +640,8 @@ export function Signup() {
                       type="email"
                       name="email"
                       autoComplete="email"
-                      value={formData.email}
-                      onChange={(e) => handleChange('email', e.target.value)}
+                      defaultValue={formData.email}
+                      onBlur={(e) => handleChange('email', e.target.value)}
                       className={`w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#1E3A5F] focus:ring-2 focus:ring-[#1E3A5F]/20 transition-colors ${
                         fieldErrors.email
                           ? 'border-red-500'
@@ -741,12 +666,10 @@ export function Signup() {
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       type={showPassword ? 'text' : 'password'}
-                      name="password"
+                      name="new-password"
                       autoComplete="new-password"
-                      value={formData.password}
-                      onChange={(e) =>
-                        handleChange('password', e.target.value)
-                      }
+                      defaultValue={formData.password}
+                      onBlur={(e) => handleChange('password', e.target.value)}
                       className={`w-full pl-10 pr-12 py-3 bg-white dark:bg-slate-800 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#1E3A5F] focus:ring-2 focus:ring-[#1E3A5F]/20 transition-colors ${
                         fieldErrors.password
                           ? 'border-red-500'
@@ -766,12 +689,12 @@ export function Signup() {
                       )}
                     </button>
                   </div>
-                  {/* Password Strength Indicator */}
-                  <PasswordStrengthIndicator password={formData.password} />
-                  {fieldErrors.password && (
+                  {fieldErrors.password ? (
                     <p className="text-sm text-red-600 dark:text-red-400 mt-1">
                       {fieldErrors.password}
                     </p>
+                  ) : (
+                    <HelperText>Minimum 8 characters</HelperText>
                   )}
                 </div>
 
@@ -786,10 +709,8 @@ export function Signup() {
                       type={showConfirmPassword ? 'text' : 'password'}
                       name="confirm-password"
                       autoComplete="new-password"
-                      value={formData.confirmPassword}
-                      onChange={(e) =>
-                        handleChange('confirmPassword', e.target.value)
-                      }
+                      defaultValue={formData.confirmPassword}
+                      onBlur={(e) => handleChange('confirmPassword', e.target.value)}
                       className={`w-full pl-10 pr-12 py-3 bg-white dark:bg-slate-800 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#1E3A5F] focus:ring-2 focus:ring-[#1E3A5F]/20 transition-colors ${
                         fieldErrors.confirmPassword
                           ? 'border-red-500'
@@ -902,12 +823,10 @@ export function Signup() {
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                       <input
                         type="text"
-                        name="first-name"
+                        name="given-name"
                         autoComplete="given-name"
-                        value={formData.firstName}
-                        onChange={(e) =>
-                          handleChange('firstName', e.target.value)
-                        }
+                        defaultValue={formData.firstName}
+                        onBlur={(e) => handleChange('firstName', e.target.value)}
                         className={`w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#1E3A5F] focus:ring-2 focus:ring-[#1E3A5F]/20 transition-colors ${
                           fieldErrors.firstName
                             ? 'border-red-500'
@@ -931,12 +850,10 @@ export function Signup() {
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                       <input
                         type="text"
-                        name="last-name"
+                        name="family-name"
                         autoComplete="family-name"
-                        value={formData.lastName}
-                        onChange={(e) =>
-                          handleChange('lastName', e.target.value)
-                        }
+                        defaultValue={formData.lastName}
+                        onBlur={(e) => handleChange('lastName', e.target.value)}
                         className={`w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#1E3A5F] focus:ring-2 focus:ring-[#1E3A5F]/20 transition-colors ${
                           fieldErrors.lastName
                             ? 'border-red-500'
@@ -962,12 +879,10 @@ export function Signup() {
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       type="tel"
-                      name="phone"
+                      name="tel"
                       autoComplete="tel"
-                      value={formData.phoneNumber}
-                      onChange={(e) =>
-                        handleChange('phoneNumber', e.target.value)
-                      }
+                      defaultValue={formData.phoneNumber}
+                      onBlur={(e) => handleChange('phoneNumber', e.target.value)}
                       className={`w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#1E3A5F] focus:ring-2 focus:ring-[#1E3A5F]/20 transition-colors ${
                         fieldErrors.phoneNumber
                           ? 'border-red-500'
@@ -998,16 +913,9 @@ export function Signup() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 py-3 bg-[#1E3A5F] hover:bg-[#152942] disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-[#1E3A5F] hover:bg-[#152942] disabled:bg-slate-400 text-white font-semibold rounded-lg transition-colors"
                   >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        Creating Account...
-                      </>
-                    ) : (
-                      'Create Account'
-                    )}
+                    {isSubmitting ? 'Creating Account...' : 'Create Account'}
                   </button>
                 </div>
               </form>

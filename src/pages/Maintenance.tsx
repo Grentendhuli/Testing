@@ -360,7 +360,7 @@ export function Maintenance() {
             <button
               key={status}
               onClick={() => setFilter(status)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-3 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
                 filter === status
                   ? 'bg-amber-500 text-slate-950'
                   : 'bg-lb-base text-lb-text-secondary hover:bg-lb-muted'
@@ -376,7 +376,7 @@ export function Maintenance() {
             <button
               key={priority}
               onClick={() => setPriorityFilter(priority)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              className={`px-4 py-3 min-h-[44px] rounded-lg text-xs font-medium transition-colors ${
                 priorityFilter === priority
                   ? 'bg-blue-500 text-white'
                   : 'bg-lb-base text-lb-text-secondary hover:bg-lb-muted'
@@ -472,7 +472,7 @@ export function Maintenance() {
                     <select
                       value={request.status}
                       onChange={(e) => handleStatusChange(request.id, e.target.value as MaintenanceStatus)}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium border bg-lb-base border-lb-border text-lb-text-primary focus:outline-none focus:border-amber-500`}
+                      className="px-4 py-3 min-h-[44px] min-w-[140px] rounded-lg text-sm font-medium border bg-lb-base border-lb-border text-lb-text-primary focus:outline-none focus:border-amber-500 touch-manipulation"
                     >
                       <option value="open">Open</option>
                       <option value="in_progress">In Progress</option>
