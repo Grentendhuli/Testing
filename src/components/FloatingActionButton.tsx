@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, DollarSign, Wrench, MessageSquare, Home, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, type NavigateFunction } from 'react-router-dom';
 
 export interface FABAction {
   id: string;
@@ -17,7 +17,7 @@ interface FloatingActionButtonProps {
   actions?: FABAction[];
 }
 
-export function createFabActions(navigate: (path: string) => void): FABAction[] {
+export function createFabActions(navigate: NavigateFunction): FABAction[] {
   return [
     {
       id: 'payment',
