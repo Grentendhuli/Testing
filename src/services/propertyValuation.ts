@@ -63,6 +63,9 @@ export interface PropertyValuation {
   // Confidence
   confidence: 'high' | 'medium' | 'low';
   valuationPercentile: number; // 0-100 where 50 is average
+
+  // Data source
+  dataSource: 'estimated' | 'live';
   
   // Last Updated
   lastUpdated: string;
@@ -159,6 +162,7 @@ function generateMockValuation(request: PropertyValuationRequest): PropertyValua
     confidence: 'medium',
     valuationPercentile: Math.floor(Math.random() * 40) + 30, // 30-70th percentile
     lastUpdated: new Date().toISOString(),
+    dataSource: 'estimated',
   };
 }
 
@@ -177,7 +181,7 @@ export class PropertyValuationService {
 
   getStatus(): { configured: boolean; message: string } {
     if (this.isConfigured) {
-      return { configured: true, message: 'Property valuation API connected' };
+      return { configured: false, message: 'API key set, but live valuation is not enabled. Showing estimates.' };
     }
     return {
       configured: false,
@@ -195,8 +199,9 @@ export class PropertyValuationService {
     }
 
     // In real implementation, this would call an external API
-    // For now, return mock data
-    return generateMockValuation(request);
+    // For now, return estimated data and mark as such
+    const valuation = generateMockValuation(request);
+    return { ...valuation, confidence: 'low', dataSource: 'estimated' };
   }
 
   async getRentEstimate(address: string, bedrooms: number, bathrooms: number): Promise<{

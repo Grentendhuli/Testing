@@ -6,7 +6,7 @@ import {
   Percent, FileText, Zap, Bell
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { analytics } from '../utils/analytics';
 import { SmartMetricCard, SmartMetricGrid } from '../components/SmartMetricCard';
 import { PWAInstallPrompt } from '../components/PWAInstallPrompt';
@@ -16,8 +16,24 @@ import { ProactiveNotificationFeed, ProactiveNotification } from '../components/
 import { AICommandPalette, AICommandPaletteButton } from '../components/AICommandPalette';
 import { ConfidenceBadge } from '../components/ConfidenceBadge';
 
+type InsightActions = {
+  openRentCollection: () => void;
+  openLeases: () => void;
+  openUnits: () => void;
+};
+
+const defaultInsightActions: InsightActions = {
+  openRentCollection: () => {},
+  openLeases: () => {},
+  openUnits: () => {},
+};
+
 // AI Insights generation - uses real data, no hardcoded fallbacks
-const generateAIInsights = (metrics: any, unitsList: any[]) => {
+const generateAIInsights = (
+  metrics: any,
+  unitsList: any[],
+  actions: InsightActions = defaultInsightActions
+) => {
   // Defensive: ensure we have valid inputs
   if (!metrics || typeof metrics !== 'object') {
     return [];
@@ -40,7 +56,7 @@ const generateAIInsights = (metrics: any, unitsList: any[]) => {
       },
       action: {
         label: 'Send gentle reminders',
-        onClick: () => { /* TODO: Implement reminder sending */ }
+        onClick: actions.openRentCollection
       }
     });
   }
@@ -64,7 +80,7 @@ const generateAIInsights = (metrics: any, unitsList: any[]) => {
       },
       action: {
         label: 'Draft renewals',
-        onClick: () => { /* TODO: Implement renewal drafting */ }
+        onClick: actions.openLeases
       }
     });
   }
@@ -88,7 +104,7 @@ const generateAIInsights = (metrics: any, unitsList: any[]) => {
         },
         action: {
           label: 'View Units',
-          onClick: () => {}
+          onClick: actions.openUnits
         }
       });
     }
@@ -113,6 +129,7 @@ export function DashboardSmart() {
     leases = [],
     maintenanceRequests = [],
   } = useApp();
+  const navigate = useNavigate();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifications, setNotifications] = useState<ProactiveNotification[]>([]);
 
@@ -229,15 +246,24 @@ export function DashboardSmart() {
     };
   }, [units, payments, leads, leases, maintenanceRequests]);
 
+  const insightActions = useMemo(
+    () => ({
+      openRentCollection: () => navigate('/rent'),
+      openLeases: () => navigate('/leases'),
+      openUnits: () => navigate('/units'),
+    }),
+    [navigate]
+  );
+
   // Generate AI suggestions based on metrics and real unit data
   const aiSuggestions = useMemo(() => {
     try {
-      return generateAIInsights(portfolioMetrics, units);
+      return generateAIInsights(portfolioMetrics, units, insightActions);
     } catch (e) {
       console.error('[DashboardSmart] Error generating AI insights:', e);
       return [];
     }
-  }, [portfolioMetrics, units]);
+  }, [portfolioMetrics, units, insightActions]);
   
   // Generate notifications (real data, no hardcoded mocks)
   const proactiveNotifications = useMemo(() => {

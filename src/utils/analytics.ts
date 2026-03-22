@@ -107,6 +107,10 @@ class Analytics {
       if (IS_DEV) console.log('[Analytics] Disabled via env');
       return;
     }
+    if (!GA_MEASUREMENT_ID) {
+      if (IS_DEV) console.warn('[Analytics] Missing GA measurement ID. Analytics disabled.');
+      return;
+    }
 
     // Wait for gtag to be available
     const checkGtag = () => {
@@ -125,7 +129,7 @@ class Analytics {
    * Check if analytics is ready
    */
   isReady(): boolean {
-    return this.initialized && !!this.gtag;
+    return this.initialized && !!this.gtag && !!GA_MEASUREMENT_ID;
   }
 
   /**

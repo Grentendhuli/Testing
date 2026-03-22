@@ -1,4 +1,3 @@
-// TypeScript errors bypassed for launch - TODO: Fix proper Supabase types
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { User, Message, BotStatus, BotConfig, Invoice, DailyStats, MonthlySummary, Unit, Lead, Lease, Payment, LateFeeConfig, MaintenanceRequest, UnitStatus, LeadStatus, LeaseStatus, MaintenanceStatus, MaintenancePriority, PaymentStatus, PaymentMethod, LeaseType, SubscriptionStatus, SubscriptionTier } from '../types';
 import { supabase } from '../lib/supabase';
@@ -30,11 +29,11 @@ interface AppContextType extends PersistedState {
   updateUser: (updates: Partial<User>) => void;
   
   // Actions
-  refreshMessages: () => void;
+  refreshMessages: () => Promise<void>;
   updateBotConfig: (config: Partial<BotConfig>) => void;
   markMessageResponded: (messageId: string) => void;
-  subscribe: () => void;
-  cancelSubscription: (reason: string) => void;
+  subscribe: () => Promise<void>;
+  cancelSubscription: (reason: string) => Promise<void>;
   updateUnit: (unitId: string, updates: Partial<Unit>) => Promise<void>;
   addUnit: (unit: Omit<Unit, 'id'>) => Promise<Unit | null>;
   deleteUnit: (unitId: string) => Promise<void>;
@@ -381,10 +380,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const refreshMessages = () => {
-    // Messages would be fetched from a messages table
-    // For now, keeping empty
-    setMessages([]);
+  const refreshMessages = async () => {
+    if (!authUser?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('landlord_user_id', authUser.id)
+        .order('timestamp', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setMessages(((data || []) as Message[]) || []);
+    } catch (err) {
+      console.error('[AppContext] refreshMessages error:', err);
+      setError('Failed to refresh messages. Please try again.');
+    }
   };
 
   const updateBotConfig = (config: Partial<BotConfig>) => {
@@ -401,13 +412,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const subscribe = () => {
-    // Subscription is handled in user table
+  const subscribe = async () => {
+    if (!authUser?.id) return;
+    try {
+      const { error } = await (supabase as any)
+        .from('users')
+        .update({
+          subscription_status: 'active',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', authUser.id);
+
+      if (error) throw error;
+      if (user) {
+        setUser({
+          ...user,
+          subscriptionStatus: 'active',
+        });
+      }
+    } catch (err) {
+      console.error('[AppContext] subscribe error:', err);
+      setError('Failed to update subscription. Please try again.');
+    }
   };
 
-  const cancelSubscription = (reason: string) => {
-    console.log('Cancellation reason:', reason);
-    // Subscription cancellation would update the users table
+  const cancelSubscription = async (reason: string) => {
+    if (!authUser?.id) return;
+    try {
+      const { error } = await (supabase as any)
+        .from('users')
+        .update({
+          subscription_status: 'canceled',
+          subscription_tier: 'free',
+          cancellation_reason: reason || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', authUser.id);
+
+      if (error) throw error;
+      if (user) {
+        setUser({
+          ...user,
+          subscriptionStatus: 'canceled',
+          subscriptionTier: 'free',
+        });
+      }
+    } catch (err) {
+      console.error('[AppContext] cancelSubscription error:', err);
+      setError('Failed to cancel subscription. Please try again.');
+    }
   };
 
   const updateSubscriptionTier = (tier: SubscriptionTier) => {

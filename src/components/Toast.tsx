@@ -117,6 +117,30 @@ export function useToast() {
     showToast(message, 'warning');
   }, [showToast]);
 
+  const showInfo = useCallback((message: string) => {
+    showToast(message, 'info');
+  }, [showToast]);
+
+  const success = useCallback((title: string, message?: string) => {
+    const combined = message ? `${title}: ${message}` : title;
+    showSuccess(combined);
+  }, [showSuccess]);
+
+  const error = useCallback((title: string, message?: string) => {
+    const combined = message ? `${title}: ${message}` : title;
+    showError(combined);
+  }, [showError]);
+
+  const warning = useCallback((title: string, message?: string) => {
+    const combined = message ? `${title}: ${message}` : title;
+    showWarning(combined);
+  }, [showWarning]);
+
+  const info = useCallback((title: string, message?: string) => {
+    const combined = message ? `${title}: ${message}` : title;
+    showInfo(combined);
+  }, [showInfo]);
+
   return {
     toast,
     showToast,
@@ -124,6 +148,11 @@ export function useToast() {
     showSuccess,
     showError,
     showWarning,
+    showInfo,
+    success,
+    error,
+    warning,
+    info,
   };
 }
 

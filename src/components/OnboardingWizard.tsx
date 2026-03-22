@@ -568,6 +568,11 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                   <div className="flex items-center gap-2 mb-3">
                     <DollarSign className="w-5 h-5 text-amber-400" />
                     <h4 className="font-semibold text-slate-200">Property Valuation Estimate</h4>
+                    {valuation.dataSource === 'estimated' && (
+                      <span className="px-2 py-0.5 bg-amber-500/10 text-amber-300 text-xs font-semibold rounded-full border border-amber-500/30">
+                        Estimated
+                      </span>
+                    )}
                     <span className="ml-auto text-xs text-slate-500">
                       {new Date(valuation.lastUpdated).toLocaleDateString()}
                     </span>
@@ -608,7 +613,9 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                   
                   <p className="text-xs text-slate-500 mt-3 flex items-center gap-1">
                     <TrendingUp className="w-3 h-3" />
-                    Based on {valuation.comparables.length} comparable properties in the area
+                    {valuation.dataSource === 'estimated'
+                      ? `Estimated from ${valuation.comparables.length} comparable properties in the area`
+                      : `Based on ${valuation.comparables.length} comparable properties in the area`}
                   </p>
                 </div>
               )}

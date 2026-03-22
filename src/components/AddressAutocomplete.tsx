@@ -106,6 +106,8 @@ export function AddressAutocomplete({
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const googleAutocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const lastQueryRef = useRef<string>('');
 
   const GOOGLE_MAPS_API_KEY = (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY;
 
@@ -208,11 +210,17 @@ export function AddressAutocomplete({
   // Fetch address suggestions from Nominatim (fallback)
   const fetchSuggestions = useCallback(async (query: string) => {
     if (!query || query.length < 3) {
+      abortControllerRef.current?.abort();
       setSuggestions([]);
+      setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
+    lastQueryRef.current = query;
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     try {
       // Using Nominatim (OpenStreetMap) - free, no API key required
       // Limiting to US addresses for better results
@@ -222,18 +230,24 @@ export function AddressAutocomplete({
           headers: {
             'Accept-Language': 'en-US',
           },
+          signal: controller.signal,
         }
       );
 
       if (!response.ok) throw new Error('Failed to fetch suggestions');
 
       const data = await response.json();
-      setSuggestions(data);
+      if (lastQueryRef.current === query) {
+        setSuggestions(data);
+      }
     } catch (err) {
+      if ((err as { name?: string }).name === 'AbortError') return;
       console.error('Error fetching address suggestions:', err);
       setSuggestions([]);
     } finally {
-      setIsLoading(false);
+      if (lastQueryRef.current === query) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -349,6 +363,7 @@ export function AddressAutocomplete({
   // Cleanup debounce timer
   useEffect(() => {
     return () => {
+      abortControllerRef.current?.abort();
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
       }
