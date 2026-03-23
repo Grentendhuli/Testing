@@ -180,6 +180,7 @@ export function UnitForm({
                 onChange={(value) => handleChange('address', value)}
                 placeholder="e.g., 123 Main St, Brooklyn, NY 11206"
                 error={formErrors?.address}
+                useGooglePlaces={!!import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
               />
             </div>
 

@@ -5,6 +5,7 @@ import { analytics } from '../utils/analytics';
 import { Mail, User, Phone, Home, CheckCircle, AlertCircle, Lock, Eye, EyeOff, MapPin, Shield, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { LogoMark } from '@/components/LogoMark';
+import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 
 // Google Icon Component
 const GoogleIcon = () => (
@@ -546,22 +547,13 @@ export function Signup() {
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                     Property Address <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
-                      type="text"
-                      name="address"
-                      autoComplete="street-address address-line1"
-                      defaultValue={formData.propertyAddress}
-                      onBlur={(e) => handleChange('propertyAddress', e.target.value)}
-                      className={`w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#1E3A5F] focus:ring-2 focus:ring-[#1E3A5F]/20 transition-colors ${
-                        fieldErrors.propertyAddress
-                          ? 'border-red-500'
-                          : 'border-slate-300 dark:border-slate-600'
-                      }`}
-                      placeholder="96 Meserole St, Brooklyn, NY 11206"
-                    />
-                  </div>
+                  <AddressAutocomplete
+                    value={formData.propertyAddress}
+                    onChange={(value) => handleChange('propertyAddress', value)}
+                    placeholder="96 Meserole St, Brooklyn, NY 11206"
+                    error={fieldErrors.propertyAddress}
+                    useGooglePlaces={!!import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+                  />
                   {fieldErrors.propertyAddress ? (
                     <p className="text-sm text-red-600 dark:text-red-400 mt-1">
                       {fieldErrors.propertyAddress}
