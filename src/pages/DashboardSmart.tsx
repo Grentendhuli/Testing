@@ -108,15 +108,22 @@ const generateNotifications = (_metrics: any) => {
 };
 
 export function DashboardSmart() {
+  // Defensive: Always ensure we have safe values
+  const appContext = useApp();
+  const sessionManager = useSessionManager();
+  
+  // Guard against undefined/null from context
   const {
-    user,
+    user = null,
     units = [],
     payments = [],
     leads = [],
     leases = [],
     maintenanceRequests = [],
-  } = useApp();
-  const { missingProfileFields } = useSessionManager();
+  } = appContext || {};
+  
+  const { missingProfileFields = [] } = sessionManager || {};
+  
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifications, setNotifications] = useState<ProactiveNotification[]>([]);
 
@@ -124,13 +131,20 @@ export function DashboardSmart() {
   useEffect(() => {
     analytics.trackPageView('/dashboard', 'AI Property Manager Dashboard');
     analytics.trackEvent('dashboard_viewed', {
-      unit_count: units.length,
+      unit_count: Array.isArray(units) ? units.length : 0,
       has_subscription: user?.subscriptionTier !== 'free'
     });
   }, []);
 
   const portfolioMetrics = useMemo(() => {
-    const totalUnits = units.length;
+    // Defensive: Ensure arrays exist
+    const safeUnits = Array.isArray(units) ? units : [];
+    const safePayments = Array.isArray(payments) ? payments : [];
+    const safeLeads = Array.isArray(leads) ? leads : [];
+    const safeLeases = Array.isArray(leases) ? leases : [];
+    const safeMaintenance = Array.isArray(maintenanceRequests) ? maintenanceRequests : [];
+    
+    const totalUnits = safeUnits.length;
     
     // Empty state: return zeros if no units
     if (totalUnits === 0) {
@@ -156,23 +170,23 @@ export function DashboardSmart() {
       };
     }
 
-    const occupiedUnits = units.filter((u: any) => u.status === 'occupied').length;
+    const occupiedUnits = safeUnits.filter((u: any) => u.status === 'occupied').length;
     const occupancyRate = (occupiedUnits / totalUnits) * 100;
     
     // Real monthly rent — sum of all occupied unit rents
-    const monthlyRent = units.reduce((sum: number, u: any) => sum + (u.rentAmount || 0), 0);
+    const monthlyRent = safeUnits.reduce((sum: number, u: any) => sum + (u.rentAmount || 0), 0);
     const annualRent = monthlyRent * 12;
     const estimatedValue = annualRent > 0 ? monthlyRent * 120 : 0; // 10x annual (conservative GRM)
     
     // Real collection rate from payments
     const currentMonth = new Date().toISOString().slice(0, 7);
-    const thisMonthPayments = payments.filter((p: any) => 
+    const thisMonthPayments = safePayments.filter((p: any) => 
       (p.dueDate || '').startsWith(currentMonth)
     );
     const paidThisMonth = thisMonthPayments.filter((p: any) => 
       p.status === 'paid'
     ).length;
-    const overdueCount = payments.filter((p: any) => 
+    const overdueCount = safePayments.filter((p: any) => 
       p.status === 'overdue' || p.status === 'late'
     ).length;
     // Guard against divide-by-zero
@@ -188,7 +202,7 @@ export function DashboardSmart() {
     // Expiring leases
     const sixtyDaysFromNow = new Date();
     sixtyDaysFromNow.setDate(sixtyDaysFromNow.getDate() + 60);
-    const expiringLeasesList = leases.filter((l: any) => {
+    const expiringLeasesList = safeLeases.filter((l: any) => {
       const endDate = new Date(l.endDate);
       return (l.status === 'active') && endDate <= sixtyDaysFromNow && endDate > new Date();
     });
@@ -199,14 +213,14 @@ export function DashboardSmart() {
       : 0;
     
     // Maintenance count
-    const pendingMaintenance = maintenanceRequests.filter((r: any) => 
+    const pendingMaintenance = safeMaintenance.filter((r: any) => 
       r.status === 'open' || r.status === 'in_progress'
     ).length;
     
     // New leads (last 7 days)
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    const newLeads = leads.filter((l: any) => 
+    const newLeads = safeLeads.filter((l: any) => 
       new Date(l.createdAt || 0) > oneWeekAgo
     ).length;
 
@@ -388,7 +402,7 @@ export function DashboardSmart() {
   return (
     <div className="space-y-6 relative">
       {/* Profile Setup Prompt - Progressive Onboarding */}
-      {missingProfileFields.length > 0 && (
+      {Array.isArray(missingProfileFields) && missingProfileFields.length > 0 && (
         <DashboardSetupPrompt missingFields={missingProfileFields} />
       )}
 
