@@ -29,16 +29,6 @@ const GoogleIcon = () => (
   </svg>
 );
 
-// Microsoft Icon Component
-const MicrosoftIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 23 23">
-    <path fill="#f25022" d="M1 1h10v10H1z" />
-    <path fill="#00a4ef" d="M12 1h10v10H12z" />
-    <path fill="#7fba00" d="M1 12h10v10H1z" />
-    <path fill="#ffb900" d="M12 12h10v10H12z" />
-  </svg>
-);
-
 // Building Illustration SVG
 const BuildingIllustration = () => (
   <svg viewBox="0 0 400 300" className="w-full h-auto max-w-[280px] mx-auto">
@@ -164,13 +154,12 @@ const GreenCheckBadge = ({ text }: { text: string }) => (
 
 export function SignupForm() {
   const navigate = useNavigate();
-  const { signInWithGoogle, signInWithMicrosoft, isAuthenticated, isLoading } = useAuth();
+  const { signInWithGoogle, isAuthenticated, isLoading } = useAuth();
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [isMicrosoftLoading, setIsMicrosoftLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -434,21 +423,6 @@ export function SignupForm() {
     }
   };
 
-  const handleMicrosoftSignIn = async () => {
-    setError('');
-    setMessage('');
-    setIsMicrosoftLoading(true);
-    analytics.trackEvent('signup_started', { method: 'microsoft' });
-
-    try {
-      await signInWithMicrosoft();
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign in with Microsoft');
-      analytics.trackEvent('signup_failed', { method: 'microsoft', error: err.message });
-      setIsMicrosoftLoading(false);
-    }
-  };
-
   const HelperText = ({ children }: { children: React.ReactNode }) => (
     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{children}</p>
   );
@@ -520,15 +494,6 @@ export function SignupForm() {
                 >
                   <GoogleIcon />
                   {isGoogleLoading ? 'Connecting...' : 'Continue with Google'}
-                </button>
-
-                <button
-                  onClick={handleMicrosoftSignIn}
-                  disabled={isMicrosoftLoading}
-                  className="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-3"
-                >
-                  <MicrosoftIcon />
-                  {isMicrosoftLoading ? 'Connecting...' : 'Continue with Microsoft'}
                 </button>
               </div>
 

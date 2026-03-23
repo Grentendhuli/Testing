@@ -27,21 +27,11 @@ const GoogleIcon = () => (
   </svg>
 );
 
-// Microsoft Icon Component
-const MicrosoftIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 23 23">
-    <path fill="#f25022" d="M1 1h10v10H1z" />
-    <path fill="#00a4ef" d="M12 1h10v10H12z" />
-    <path fill="#7fba00" d="M1 12h10v10H1z" />
-    <path fill="#ffb900" d="M12 12h10v10H12z" />
-  </svg>
-);
-
 export function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { login, signInWithGoogle, signInWithMicrosoft, isAuthenticated, isInitialized, isLoading } = useAuth();
+  const { login, signInWithGoogle, isAuthenticated, isInitialized, isLoading } = useAuth();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -50,7 +40,6 @@ export function Login() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [isMicrosoftLoading, setIsMicrosoftLoading] = useState(false);
   const [loginMethod, setLoginMethod] = useState<'password' | 'magic'>('password');
   const [showPassword, setShowPassword] = useState(false);
   
@@ -158,22 +147,6 @@ export function Login() {
     }
   };
 
-  const handleMicrosoftSignIn = async () => {
-    setError('');
-    setIsMicrosoftLoading(true);
-    
-    analytics.trackEvent('login_started', { method: 'microsoft' });
-
-    try {
-      await signInWithMicrosoft();
-      // OAuth will redirect to callback page - no need to handle success here
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign in with Microsoft');
-      analytics.trackEvent('login_failed', { method: 'microsoft', error: err.message });
-      setIsMicrosoftLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -217,16 +190,6 @@ export function Login() {
             >
               <GoogleIcon />
               {isGoogleLoading ? 'Connecting...' : 'Continue with Google'}
-            </button>
-
-            {/* Microsoft Sign In */}
-            <button
-              onClick={handleMicrosoftSignIn}
-              disabled={isMicrosoftLoading}
-              className="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-3"
-            >
-              <MicrosoftIcon />
-              {isMicrosoftLoading ? 'Connecting...' : 'Continue with Microsoft'}
             </button>
           </div>
 

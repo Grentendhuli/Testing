@@ -20,7 +20,6 @@ interface AuthContextType {
   updateUserData: (data: Partial<UserData>) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<void>;
   signInWithApple: () => Promise<void>;
-  signInWithMicrosoft: () => Promise<void>;
   refreshSession: () => Promise<void>;
   refetchUserData: () => Promise<void>; // NEW: Manual refetch
 }
@@ -476,17 +475,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   };
 
-  const signInWithMicrosoft = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'azure',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        scopes: 'email profile openid',
-      },
-    });
-    if (error) throw error;
-  };
-
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -550,7 +538,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateUserData,
         signInWithGoogle,
         signInWithApple,
-        signInWithMicrosoft,
         refreshSession,
         refetchUserData,
       }}

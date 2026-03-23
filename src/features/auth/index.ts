@@ -15,7 +15,6 @@ export {
   signupWithPassword,
   signInWithGoogle,
   signInWithApple,
-  signInWithMicrosoft,
   signOut,
   getCurrentSession,
   sendMagicLink,

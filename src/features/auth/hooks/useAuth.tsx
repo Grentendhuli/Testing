@@ -7,7 +7,6 @@ import {
   signupWithPassword,
   signInWithGoogle,
   signInWithApple,
-  signInWithMicrosoft,
   signOut,
   getCurrentSession,
 } from '../services/authService';
@@ -466,7 +465,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateUserData,
         signInWithGoogle,
         signInWithApple,
-        signInWithMicrosoft,
         refreshSession,
       }}
     >
