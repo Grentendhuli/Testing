@@ -26,7 +26,7 @@ const generateAIInsights = (metrics: any, unitsList: any[]) => {
     return [];
   }
   const safeUnitsList = Array.isArray(unitsList) ? unitsList : [];
-  const insights = [];
+  const insights: SmartSuggestionProps[] = []; // <-- FIX: Added type annotation
 
   // Rent collection insight
   if ((metrics.collectionRate || 0) < 90 && safeUnitsList.length > 0) {
@@ -38,7 +38,7 @@ const generateAIInsights = (metrics: any, unitsList: any[]) => {
       description: `Collection rate at ${(metrics.collectionRate || 0).toFixed(0)}%, below your usual 98%. ${metrics.overdueCount || 0} payment${(metrics.overdueCount || 0) > 1 ? 's are' : ' is'} overdue.`,
       confidence: 87,
       metadata: {
-        amount: (metrics.monthlyRent || 0) * (1 - (metrics.collectionRate || 0) / 100),
+        amount: String((metrics.monthlyRent || 0) * (1 - (metrics.collectionRate || 0) / 100)),
         percentage: (100 - (metrics.collectionRate || 0)).toFixed(0)
       },
       action: {

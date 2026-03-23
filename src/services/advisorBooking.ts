@@ -254,7 +254,7 @@ export class AdvisorService {
     const advisor = this.getAdvisorById(advisorId);
     if (!advisor) return [];
 
-    const availability = [];
+    const availability: Array<{ date: string; slots: string[] }> = [];
     const today = new Date();
     
     for (let i = 0; i < days; i++) {
@@ -274,7 +274,7 @@ export class AdvisorService {
   }
 
   private generateTimeSlots(start: string, end: string): string[] {
-    const slots = [];
+    const slots: string[] = [];
     const [startHour] = start.split(':').map(Number);
     const [endHour] = end.split(':').map(Number);
     

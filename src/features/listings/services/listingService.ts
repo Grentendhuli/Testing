@@ -127,7 +127,7 @@ export const listingService: ListingService = {
       const title = `${bedrooms}BR/${bathrooms}BA ${unit.unit_number || 'Apartment'} in ${unit.address?.split(',')[0] || 'NYC'}`;
 
       // Generate description
-      const amenities = [];
+      const amenities: string[] = [];
       if (defaults.listing_heat_included) amenities.push('heat included');
       if (defaults.listing_parking) amenities.push('parking available');
       if (defaults.listing_laundry === 'in_unit') amenities.push('in-unit laundry');
