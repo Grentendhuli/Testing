@@ -31,8 +31,9 @@ self.addEventListener('install', (event) => {
       })
   );
   
-  // Force activate even if there's a waiting service worker
-  self.skipWaiting();
+  // Wait for pages to close before activating new service worker
+  // This prevents data loss during updates
+  // self.skipWaiting();
 });
 
 // Fetch event - network first strategy with fallback

@@ -175,12 +175,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     
+    // Check localStorage cache first for instant load
+    const cachedUnits = localStorage.getItem(`lb_units_${userId}`);
+    const cachedLeads = localStorage.getItem(`lb_leads_${userId}`);
+    if (cachedUnits) {
+      try {
+        setUnits(JSON.parse(cachedUnits));
+      } catch {}
+    }
+    if (cachedLeads) {
+      try {
+        setLeads(JSON.parse(cachedLeads));
+      } catch {}
+    }
+    
     // Add timeout to prevent infinite loading
     const timeoutId = setTimeout(() => {
-      console.warn('[AppContext] loadUserData timed out after 10 seconds');
+      console.warn('[AppContext] loadUserData timed out after 15 seconds');
       setIsLoading(false);
-      setError('Data loading timed out. Please refresh.');
-    }, 10000); // 10 second timeout
+      setError('Data loading timed out. Data loaded from cache.');
+    }, 15000); // Increased to 15 seconds
     
     try {
       const [unitsRes, leadsRes, leasesRes, paymentsRes, maintRes, msgsRes] = await Promise.all([
@@ -217,12 +231,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       }
       
-      setUnits((unitsRes.data || []) as Unit[]);
-      setLeads((leadsRes.data || []) as Lead[]);
+      const loadedUnits = (unitsRes.data || []) as Unit[];
+      const loadedLeads = (leadsRes.data || []) as Lead[];
+      
+      setUnits(loadedUnits);
+      setLeads(loadedLeads);
       setLeases(((leasesRes.data || []) as Lease[]) || []);
       setPayments((paymentsRes.data || []) as Payment[]);
       setMaintenanceRequests((maintRes.data || []) as MaintenanceRequest[]);
       setMessages(((msgsRes.data || []) as Message[]) || []);
+      
+      // Cache units and leads in localStorage for persistence across deployments
+      try {
+        localStorage.setItem(`lb_units_${userId}`, JSON.stringify(loadedUnits));
+        localStorage.setItem(`lb_leads_${userId}`, JSON.stringify(loadedLeads));
+      } catch (e) {
+        console.warn('[AppContext] Failed to cache data:', e);
+      }
       
       // Track onboarding progress for PWA timing
       const hasUnits = (unitsRes.data?.length || 0) > 0;
@@ -377,6 +402,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setMaintenanceRequests([]);
     setPayments([]);
     setLeases([]);
+    // Clear localStorage cache on logout
+    const userId = authUser?.id;
+    if (userId) {
+      localStorage.removeItem(`lb_units_${userId}`);
+      localStorage.removeItem(`lb_leads_${userId}`);
+    }
   };
 
   const updateUser = (updates: Partial<User>) => {
