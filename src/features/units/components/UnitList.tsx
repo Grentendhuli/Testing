@@ -41,22 +41,40 @@ export function UnitList({
   // State for collapsed property groups
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
+  // Normalize address for consistent grouping
+  const normalizeAddress = (addr: string): string => {
+    if (!addr || addr.trim() === '') return 'No Address';
+    return addr
+      .trim()
+      .toLowerCase()
+      .replace(/,\s*,/g, ',')           // Remove double commas
+      .replace(/\s+/g, ' ')            // Normalize spaces
+      .replace(/,\s*usa?$/i, '')        // Remove trailing USA
+      .replace(/,\s*united states?$/i, '') // Remove trailing United States
+      .trim();
+  };
+
   // Group units by property address
   const groupedUnits = useMemo(() => {
     const groups: Record<string, PropertyGroup> = {};
+    const normalizedToDisplay: Record<string, string> = {};
     
     units.forEach((unit) => {
-      // Normalize the address for grouping (remove extra spaces, lowercase)
-      const address = (unit.address || 'No Address').trim();
+      const normalized = normalizeAddress(unit.address);
       
-      if (!groups[address]) {
-        groups[address] = {
-          address,
+      // Store the first (or longest) display version
+      if (!normalizedToDisplay[normalized] || unit.address?.length > normalizedToDisplay[normalized].length) {
+        normalizedToDisplay[normalized] = unit.address || 'No Address';
+      }
+      
+      if (!groups[normalized]) {
+        groups[normalized] = {
+          address: normalizedToDisplay[normalized],
           units: [],
         };
       }
       
-      groups[address].units.push(unit);
+      groups[normalized].units.push(unit);
     });
     
     // Convert to array and sort by address
