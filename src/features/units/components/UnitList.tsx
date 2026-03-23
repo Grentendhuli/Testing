@@ -42,7 +42,7 @@ export function UnitList({
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
   // Normalize address for consistent grouping
-  const normalizeAddress = (addr: string): string => {
+  const normalizeAddress = (addr: string | undefined): string => {
     if (!addr || addr.trim() === '') return 'No Address';
     return addr
       .trim()
@@ -61,10 +61,11 @@ export function UnitList({
     
     units.forEach((unit) => {
       const normalized = normalizeAddress(unit.address);
+      const displayAddr = unit.address || 'No Address';
       
       // Store the first (or longest) display version
-      if (!normalizedToDisplay[normalized] || unit.address?.length > normalizedToDisplay[normalized].length) {
-        normalizedToDisplay[normalized] = unit.address || 'No Address';
+      if (!normalizedToDisplay[normalized] || displayAddr.length > normalizedToDisplay[normalized].length) {
+        normalizedToDisplay[normalized] = displayAddr;
       }
       
       if (!groups[normalized]) {
