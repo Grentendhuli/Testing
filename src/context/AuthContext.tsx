@@ -22,6 +22,7 @@ interface AuthContextType {
   signInWithApple: () => Promise<void>;
   signInWithMicrosoft: () => Promise<void>;
   refreshSession: () => Promise<void>;
+  refetchUserData: () => Promise<void>; // NEW: Manual refetch
 }
 
 interface UserData {
@@ -38,6 +39,7 @@ interface UserData {
   storage_used: number;
   storage_limit: number;
   created_at: string;
+  updated_at?: string;
   // Listing defaults
   listing_laundry?: string;
   listing_pets?: string;
@@ -45,34 +47,62 @@ interface UserData {
   listing_parking?: boolean;
 }
 
-// Storage keys for auth persistence
-const AUTH_STORAGE_KEY = 'lb_auth_state';
-const AUTH_TIMESTAMP_KEY = 'lb_auth_timestamp';
+// Storage keys
+const AUTH_STATE_KEY = 'lb_auth_state_v2';
+const USER_DATA_CACHE_KEY = 'lb_user_data_cache_v2';
+const AUTH_TIMESTAMP_KEY = 'lb_auth_timestamp_v2';
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days cache
 
-// Helper to safely access localStorage
-const getStorageItem = (key: string): string | null => {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
+// Retry config
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
+
+// Safe localStorage helpers
+const safeStorage = {
+  get: (key: string): string | null => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  set: (key: string, value: string): void => {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      // Ignore storage errors (private mode)
+    }
+  },
+  remove: (key: string): void => {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Ignore
+    }
+  },
 };
 
-const setStorageItem = (key: string, value: string): void => {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // Ignore storage errors
+// Retry wrapper with exponential backoff
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = MAX_RETRIES,
+  delay = RETRY_DELAY_MS
+): Promise<T> {
+  let lastError: Error | null = null;
+  
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      if (i < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+      }
+    }
   }
-};
-
-const removeStorageItem = (key: string): void => {
-  try {
-    localStorage.removeItem(key);
-  } catch {
-    // Ignore storage errors
-  }
-};
+  
+  throw lastError;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -83,88 +113,169 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>('initializing');
   const [isInitialized, setIsInitialized] = useState(false);
   
-  // Use refs to prevent race conditions
-  const initializationRef = useRef(false);
-  const authStateChangeRef = useRef(false);
+  const initRef = useRef(false);
+  const authChangeRef = useRef(false);
+  const visibilityRefreshRef = useRef(false);
 
-  // Derived state
   const isLoading = authState === 'initializing';
   const isAuthenticated = authState === 'authenticated' && !!user;
 
-  // Fetch user data from database
-  const fetchUserData = useCallback(async (userId: string) => {
+  // Load userData from cache
+  const loadUserDataFromCache = useCallback((): UserData | null => {
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (!error && data) {
-        setUserData(data as UserData);
-        return data as UserData;
+      const cached = safeStorage.get(USER_DATA_CACHE_KEY);
+      if (cached) {
+        const data = JSON.parse(cached) as UserData & { _cachedAt?: number };
+        const age = Date.now() - (data._cachedAt || 0);
+        if (age < CACHE_TTL_MS) {
+          return data;
+        }
       }
-    } catch (error) {
-      console.error('[AuthContext] fetchUserData error:', error);
+    } catch {
+      // Ignore parse errors
     }
     return null;
   }, []);
 
-  // Update auth state and persist to storage
-  const updateAuthState = useCallback((newState: AuthState, newUser: User | null, newSession: Session | null) => {
-    setAuthState(newState);
-    setUser(newUser);
-    setSession(newSession);
-    
-    // Persist to localStorage for faster initial loads
-    if (newState === 'authenticated' && newUser) {
-      setStorageItem(AUTH_STORAGE_KEY, JSON.stringify({
-        user: { id: newUser.id, email: newUser.email },
-        timestamp: Date.now(),
-      }));
-      setStorageItem(AUTH_TIMESTAMP_KEY, Date.now().toString());
-    } else if (newState === 'unauthenticated') {
-      removeStorageItem(AUTH_STORAGE_KEY);
-      removeStorageItem(AUTH_TIMESTAMP_KEY);
+  // Save userData to cache
+  const saveUserDataToCache = useCallback((data: UserData | null) => {
+    if (data) {
+      safeStorage.set(USER_DATA_CACHE_KEY, JSON.stringify({ ...data, _cachedAt: Date.now() }));
+    } else {
+      safeStorage.remove(USER_DATA_CACHE_KEY);
     }
   }, []);
 
-  // Initialize auth state - runs once on mount
+  // Fetch user data with retry logic
+  const fetchUserData = useCallback(async (userId: string): Promise<UserData | null> => {
+    try {
+      const { data, error } = await withRetry(async () => {
+        const result = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single();
+        
+        if (result.error) throw result.error;
+        return result;
+      });
+
+      if (data && !error) {
+        const userData = data as UserData;
+        setUserData(userData);
+        saveUserDataToCache(userData);
+        return userData;
+      }
+    } catch (error) {
+      console.error('[AuthContext] fetchUserData failed after retries:', error);
+      // Try to load from cache as fallback
+      const cached = loadUserDataFromCache();
+      if (cached && cached.id === userId) {
+        setUserData(cached);
+        return cached;
+      }
+    }
+    return null;
+  }, [loadUserDataFromCache, saveUserDataToCache]);
+
+  // Manual refetch (for use after deployment)
+  const refetchUserData = useCallback(async () => {
+    if (user?.id) {
+      await fetchUserData(user.id);
+    }
+  }, [fetchUserData, user?.id]);
+
+  // Update auth state and persist
+  const updateAuthState = useCallback((
+    newState: AuthState, 
+    newUser: User | null, 
+    newSession: Session | null,
+    newUserData?: UserData | null
+  ) => {
+    setAuthState(newState);
+    setUser(newUser);
+    setSession(newSession);
+    if (newUserData !== undefined) {
+      setUserData(newUserData);
+    }
+    
+    // Persist auth state
+    if (newState === 'authenticated' && newUser) {
+      safeStorage.set(AUTH_STATE_KEY, JSON.stringify({
+        user: { id: newUser.id, email: newUser.email },
+        timestamp: Date.now(),
+      }));
+      safeStorage.set(AUTH_TIMESTAMP_KEY, Date.now().toString());
+    } else if (newState === 'unauthenticated') {
+      safeStorage.remove(AUTH_STATE_KEY);
+      safeStorage.remove(AUTH_TIMESTAMP_KEY);
+      safeStorage.remove(USER_DATA_CACHE_KEY);
+    }
+  }, []);
+
+  // Initialize auth
   useEffect(() => {
-    // Prevent double initialization in React StrictMode
-    if (initializationRef.current) return;
-    initializationRef.current = true;
+    if (initRef.current) return;
+    initRef.current = true;
 
     const initAuth = async () => {
-      // Guard: supabase client might not be initialized
-      if (!supabase || typeof supabase.auth?.getSession !== 'function') {
-        console.warn('[AuthContext] Supabase not initialized, skipping auth check');
+      if (!supabase?.auth?.getSession) {
         updateAuthState('unauthenticated', null, null);
         setIsInitialized(true);
         return;
       }
 
       try {
-        // Check for existing session
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+        // Load from cache first for immediate UI
+        const cachedUserData = loadUserDataFromCache();
+        
+        // Get current session
+        const { data: { session: currentSession }, error: sessionError } = 
+          await supabase.auth.getSession();
         
         if (sessionError) {
           console.error('[AuthContext] getSession error:', sessionError);
+          // Try to recover from cache
+          if (cachedUserData) {
+            setUserData(cachedUserData);
+          }
           updateAuthState('unauthenticated', null, null);
           setIsInitialized(true);
           return;
         }
 
         if (currentSession?.user) {
-          console.log('[AuthContext] Session found, user:', currentSession.user.email);
+          // Show cached data immediately while fetching fresh
+          if (cachedUserData && cachedUserData.id === currentSession.user.id) {
+            setUserData(cachedUserData);
+          }
+          
+          // Fetch fresh data
           await fetchUserData(currentSession.user.id);
           updateAuthState('authenticated', currentSession.user, currentSession);
         } else {
-          console.log('[AuthContext] No session found');
-          updateAuthState('unauthenticated', null, null);
+          // Check for expired session in cache
+          const authed = safeStorage.get(AUTH_STATE_KEY);
+          if (authed) {
+            const parsed = JSON.parse(authed);
+            const age = Date.now() - parsed.timestamp;
+            // If less than 7 days, try to refresh
+            if (age < CACHE_TTL_MS) {
+              await refreshSession();
+            } else {
+              updateAuthState('unauthenticated', null, null);
+            }
+          } else {
+            updateAuthState('unauthenticated', null, null);
+          }
         }
       } catch (error) {
         console.error('[AuthContext] initAuth error:', error);
+        // Try cache as last resort
+        const cached = loadUserDataFromCache();
+        if (cached) {
+          setUserData(cached);
+        }
         updateAuthState('unauthenticated', null, null);
       } finally {
         setIsInitialized(true);
@@ -172,71 +283,94 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     initAuth();
-  }, [fetchUserData, updateAuthState]);
+  }, [fetchUserData, loadUserDataFromCache, updateAuthState]);
 
   // Auth state change listener
   useEffect(() => {
-    // Guard: supabase client might not be initialized
-    if (!supabase || typeof supabase.auth?.onAuthStateChange !== 'function') {
-      console.warn('[AuthContext] Supabase auth listener not available');
-      return;
-    }
+    if (!supabase?.auth?.onAuthStateChange) return;
 
-    try {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (event, newSession) => {
-          console.log('[AuthContext] Auth state change:', event, newSession?.user?.email);
-          
-          // Prevent duplicate processing
-          if (authStateChangeRef.current) return;
-          authStateChangeRef.current = true;
-          
-          // Small delay to prevent race conditions with other tabs
-          setTimeout(() => {
-            authStateChangeRef.current = false;
-          }, 100);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, newSession) => {
+        if (authChangeRef.current) return;
+        authChangeRef.current = true;
+        
+        setTimeout(() => { authChangeRef.current = false; }, 100);
 
-          switch (event) {
-            case 'SIGNED_IN':
-              if (newSession?.user) {
-                await fetchUserData(newSession.user.id);
-                updateAuthState('authenticated', newSession.user, newSession);
-              }
-              break;
-            case 'SIGNED_OUT':
-              setUserData(null);
-              updateAuthState('unauthenticated', null, null);
-              break;
-            case 'TOKEN_REFRESHED':
-              if (newSession) {
-                setSession(newSession);
-              }
-              break;
-            case 'USER_UPDATED':
-              if (newSession?.user) {
-                setUser(newSession.user);
-              }
-              break;
+        switch (event) {
+          case 'SIGNED_IN':
+            if (newSession?.user) {
+              await fetchUserData(newSession.user.id);
+              updateAuthState('authenticated', newSession.user, newSession);
+            }
+            break;
+          case 'SIGNED_OUT':
+            setUserData(null);
+            saveUserDataToCache(null);
+            updateAuthState('unauthenticated', null, null);
+            break;
+          case 'TOKEN_REFRESHED':
+            if (newSession) {
+              setSession(newSession);
+            }
+            break;
+          case 'USER_UPDATED':
+            if (newSession?.user) {
+              setUser(newSession.user);
+              // Re-fetch userData after update
+              await fetchUserData(newSession.user.id);
+            }
+            break;
+          case 'INITIAL_SESSION':
+            // Handle initial session
+            if (newSession?.user) {
+              await fetchUserData(newSession.user.id);
+              updateAuthState('authenticated', newSession.user, newSession);
+            }
+            break;
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [fetchUserData, updateAuthState, saveUserDataToCache]);
+
+  // Refresh on window focus (handles deployment updates)
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && !visibilityRefreshRef.current) {
+        visibilityRefreshRef.current = true;
+        
+        // Verify session is still valid
+        if (authState === 'authenticated' && user?.id) {
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (currentSession?.user) {
+            // Re-fetch userData to get any deployment updates
+            await fetchUserData(currentSession.user.id);
+          } else {
+            // Session expired, logout
+            await logout();
           }
         }
-      );
+        
+        setTimeout(() => { visibilityRefreshRef.current = false; }, 1000);
+      }
+    };
 
-      return () => subscription.unsubscribe();
-    } catch (error) {
-      console.error('[AuthContext] Failed to setup auth listener:', error);
-    }
-  }, [fetchUserData, updateAuthState]);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [authState, user?.id, fetchUserData]);
 
-  // Listen for storage events to sync auth state across tabs
+  // Cross-tab sync
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === AUTH_STORAGE_KEY) {
-        // Another tab changed auth state, refresh our session
+      if (e.key === AUTH_STATE_KEY) {
         supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
           if (currentSession?.user) {
             setUser(currentSession.user);
             setSession(currentSession);
             setAuthState('authenticated');
+            // Also refresh userData
+            fetchUserData(currentSession.user.id);
           } else {
             setUser(null);
             setSession(null);
@@ -249,12 +383,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+  }, [fetchUserData]);
 
-  // Refresh session manually
   const refreshSession = useCallback(async () => {
     try {
-      const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+      const { data: { session: currentSession }, error } = 
+        await supabase.auth.getSession();
+      
       if (error) throw error;
       
       if (currentSession?.user) {
@@ -292,15 +427,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (data.user && !error) {
-      await (supabase as any).from('users').upsert({
-        id: data.user.id,
-        email: data.user.email,
-        first_name: newUserData.first_name || null,
-        last_name: newUserData.last_name || null,
-        phone_number: newUserData.phone_number || null,
-        property_address: newUserData.property_address || null,
-      }, {
-        onConflict: 'id'
+      // Retry upsert with backoff
+      await withRetry(async () => {
+        const { error: upsertError } = await (supabase as any)
+          .from('users')
+          .upsert({
+            id: data.user!.id,
+            email: data.user!.email,
+            first_name: newUserData.first_name || null,
+            last_name: newUserData.last_name || null,
+            phone_number: newUserData.phone_number || null,
+            property_address: newUserData.property_address || null,
+          }, { onConflict: 'id' });
+        
+        if (upsertError) throw upsertError;
       });
 
       await fetchUserData(data.user.id);
@@ -308,7 +448,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.user.email && newUserData.first_name) {
         try {
           await sendWelcomeEmail(data.user.email, newUserData.first_name);
-          console.log('[AuthContext] Welcome email sent to:', data.user.email);
         } catch (emailError) {
           console.error('[AuthContext] Failed to send welcome email:', emailError);
         }
@@ -323,31 +462,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        },
+        queryParams: { access_type: 'offline', prompt: 'consent' },
       },
     });
-
-    if (error) {
-      console.error('Google sign-in error:', error);
-      throw error;
-    }
+    if (error) throw error;
   };
 
   const signInWithApple = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
-
-    if (error) {
-      console.error('Apple sign-in error:', error);
-      throw error;
-    }
+    if (error) throw error;
   };
 
   const signInWithMicrosoft = async () => {
@@ -358,11 +484,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         scopes: 'email profile openid',
       },
     });
-
-    if (error) {
-      console.error('Microsoft sign-in error:', error);
-      throw error;
-    }
+    if (error) throw error;
   };
 
   const logout = async () => {
@@ -370,22 +492,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setUserData(null);
+    safeStorage.remove(USER_DATA_CACHE_KEY);
     updateAuthState('unauthenticated', null, null);
   };
 
   const updateUserData = async (data: Partial<UserData>) => {
     if (!user) return { error: new Error('Not authenticated') };
 
-    const { error } = await (supabase as any)
-      .from('users')
-      .update(data)
-      .eq('id', user.id);
-
-    if (!error) {
-      await fetchUserData(user.id);
+    // Optimistic update
+    const previousData = userData;
+    if (previousData) {
+      const optimisticData = { ...previousData, ...data };
+      setUserData(optimisticData);
+      saveUserDataToCache(optimisticData);
     }
 
-    return { error };
+    try {
+      const { error } = await withRetry(async () => {
+        const result = await (supabase as any)
+          .from('users')
+          .update(data)
+          .eq('id', user.id);
+        if (result.error) throw result.error;
+        return result;
+      });
+
+      if (!error) {
+        await fetchUserData(user.id);
+      } else {
+        // Rollback on error
+        setUserData(previousData);
+        saveUserDataToCache(previousData);
+      }
+
+      return { error };
+    } catch (err) {
+      // Rollback
+      setUserData(previousData);
+      saveUserDataToCache(previousData);
+      return { error: err as Error };
+    }
   };
 
   return (
@@ -406,6 +552,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signInWithApple,
         signInWithMicrosoft,
         refreshSession,
+        refetchUserData,
       }}
     >
       {children}
