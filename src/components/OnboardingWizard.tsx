@@ -350,7 +350,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                   value={propertyAddress}
                   onChange={(value) => setPropertyAddress(value)}
                   placeholder="123 Main St, Brooklyn, NY 11201"
-                  useGooglePlaces={!!import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+                  useGooglePlaces={!!(import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY}
                 />
                 <p className="text-xs text-slate-500 mt-2">Enter the street address of your NYC property</p>
               </div>

@@ -141,7 +141,7 @@ export function RentEstimator({
             value={address}
             onChange={(value) => setAddress(value)}
             placeholder="123 Main St, New York, NY 10001"
-            useGooglePlaces={!!import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+            useGooglePlaces={!!(import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY}
           />
         </div>
 

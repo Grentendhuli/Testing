@@ -152,7 +152,7 @@ export function NYCComplianceChecker({
                 value={addressInput}
                 onChange={(value) => setAddressInput(value)}
                 placeholder="Enter NYC address (e.g., 123 Main Street, Brooklyn)"
-                useGooglePlaces={!!import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+                useGooglePlaces={!!(import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY}
               />
             </div>
             <button

@@ -38,7 +38,7 @@ import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfService } from './pages/TermsOfService';
 import { EULA } from './pages/EULA';
 
-import './App.css';
+import { ForgotPassword } from './pages/ForgotPassword';
 
 // Build: Sentry v2.2.0 - Error tracking enabled
 if ((import.meta as any).env?.DEV) {
@@ -244,6 +244,11 @@ function App() {
                 <Route path="/signup" element={
                   <PublicRoute>
                     <SignupForm />
+                  </PublicRoute>
+                } />
+                <Route path="/forgot-password" element={
+                  <PublicRoute>
+                    <ForgotPassword />
                   </PublicRoute>
                 } />
                 <Route path="/privacy" element={<PrivacyPolicy />} />

@@ -181,7 +181,7 @@ export function UnitList({
                             onTenantConnect={onTenantConnect}
                             botUsername={botUsername}
                             expandedQR={expandedQR?.[unit.id]}
-                            onToggleQR={() => onToggleQR?.(unit.id)}
+                            onToggleQR={onToggleQR ? () => onToggleQR(unit.id) : undefined}
                           />
                         ))}
                       </AnimatePresence>

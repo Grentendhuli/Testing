@@ -127,9 +127,6 @@ export function Sidebar() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const sidebarRef = useRef<HTMLElement>(null);
 
-  // Telegram menu item - visible until setup is complete
-  const telegramItem = { path: '/config', label: 'Telegram', icon: MessageCircle, shortLabel: 'TG', shortcut: 'T', badge: 'Setup' };
-
   // Compute notification counts
   const overduePayments = payments?.filter(p => p.status === 'overdue' || p.status === 'late').length || 0;
   const openMaintenance = maintenanceRequests?.filter(r => r.status === 'open').length || 0;
@@ -219,7 +216,6 @@ export function Sidebar() {
 
   // Check if Telegram is configured
   const isTelegramConfigured = !!(userData?.bot_phone_number || user?.botPhoneNumber);
-  const shouldShowTelegram = !isTelegramConfigured;
   
   const renderNavItem = (item: typeof navItems[0] & { badge?: string }, isCompact: boolean = false) => {
     const Icon = item.icon;
@@ -371,7 +367,6 @@ export function Sidebar() {
             <p className="text-xs font-semibold text-lb-text-muted uppercase tracking-wider mb-2 px-3">System</p>
             <ul className="space-y-0.5">
               {systemItems.map((item) => renderNavItem(item))}
-              {shouldShowTelegram && renderNavItem(telegramItem)}
             </ul>
           </div>
 
@@ -495,7 +490,6 @@ export function Sidebar() {
             <p className="text-xs font-semibold text-lb-text-muted uppercase tracking-wider mb-2 px-3">System</p>
             <ul className="space-y-0.5">
               {systemItems.map((item) => renderNavItem(item))}
-              {shouldShowTelegram && renderNavItem(telegramItem)}
             </ul>
           </div>
 

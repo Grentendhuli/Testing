@@ -527,7 +527,7 @@ export function SignupForm() {
                     onChange={(value) => handleChange('propertyAddress', value)}
                     placeholder="96 Meserole St, Brooklyn, NY 11206"
                     error={fieldErrors.propertyAddress}
-                    useGooglePlaces={!!import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+                    useGooglePlaces={!!(import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY}
                   />
                   {fieldErrors.propertyAddress ? (
                     <p className="text-sm text-red-600 dark:text-red-400 mt-1">
