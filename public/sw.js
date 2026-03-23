@@ -1,8 +1,8 @@
 // LandlordBot Service Worker for PWA
-// BUILD TIMESTAMP: 2025-03-19-1200
-// VERSION: v4.2-windows-pwa-support
+// BUILD TIMESTAMP: 2026-03-23-1600-FORCE-UPDATE
+// VERSION: v5.0-cache-bust-fix
 
-const CACHE_NAME = 'landlordbot-v4-2025-03-19-1200';
+const CACHE_NAME = 'landlordbot-v5-2026-03-23-1600';
 const urlsToCache = [
   '/',
   '/dashboard',
@@ -31,9 +31,8 @@ self.addEventListener('install', (event) => {
       })
   );
   
-  // Wait for pages to close before activating new service worker
-  // This prevents data loss during updates
-  // self.skipWaiting();
+  // Force activate for cache bust update
+  self.skipWaiting();
 });
 
 // Fetch event - network first strategy with fallback
