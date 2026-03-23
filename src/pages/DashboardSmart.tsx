@@ -475,7 +475,7 @@ export function DashboardSmart() {
               data={{
                 occupied: safeMetrics.occupiedUnits,
                 vacant: safeMetrics.totalUnits - safeMetrics.occupiedUnits,
-                maintenance: units.filter((u: any) => u?.status === 'maintenance').length || 0
+                maintenance: Array.isArray(units) ? units.filter((u: any) => u?.status === 'maintenance').length : 0
               }}
               size={160}
             />
