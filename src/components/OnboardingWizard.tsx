@@ -10,6 +10,7 @@ import { useApp } from '../context/AppContext';
 import { twilioService, isValidPhoneNumber, formatPhoneNumber, type PhoneNumber } from '../services/twilio';
 import { propertyValuationService, type PropertyValuation } from '../services/propertyValuation';
 import { listingsAPIService } from '../services/listingsAPI';
+import { AddressAutocomplete } from './AddressAutocomplete';
 
 interface OnboardingWizardProps {
   isOpen: boolean;
@@ -345,16 +346,12 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
             <div className="max-w-lg mx-auto space-y-6">
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Property Address</label>
-                <div className="relative">
-                  <Home className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                  <input
-                    type="text"
-                    placeholder="123 Main St, Brooklyn, NY 11201"
-                    value={propertyAddress}
-                    onChange={(e) => setPropertyAddress(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all"
-                  />
-                </div>
+                <AddressAutocomplete
+                  value={propertyAddress}
+                  onChange={(value) => setPropertyAddress(value)}
+                  placeholder="123 Main St, Brooklyn, NY 11201"
+                  useGooglePlaces={!!import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+                />
                 <p className="text-xs text-slate-500 mt-2">Enter the street address of your NYC property</p>
               </div>
               

@@ -23,6 +23,7 @@ import {
   parseBBL,
   type ComplianceCheckResult 
 } from '../services/nycOpenData';
+import { AddressAutocomplete } from './AddressAutocomplete';
 
 interface NYCComplianceCheckerProps {
   initialBbl?: string;
@@ -146,15 +147,12 @@ export function NYCComplianceChecker({
       <div className="space-y-4">
         {searchMode === 'address' ? (
           <div className="flex gap-2">
-            <div className="flex-1 relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-              <input
-                type="text"
+            <div className="flex-1">
+              <AddressAutocomplete
                 value={addressInput}
-                onChange={(e) => setAddressInput(e.target.value)}
+                onChange={(value) => setAddressInput(value)}
                 placeholder="Enter NYC address (e.g., 123 Main Street, Brooklyn)"
-                className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500/50"
-                onKeyDown={(e) => e.key === 'Enter' && handleAddressSearch()}
+                useGooglePlaces={!!import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
               />
             </div>
             <button

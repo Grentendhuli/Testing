@@ -13,6 +13,7 @@ import {
   ZillowComparableRental,
   isZillowConfigured
 } from '../services/zillow';
+import { AddressAutocomplete } from './AddressAutocomplete';
 
 interface RentEstimatorProps {
   initialAddress?: string;
@@ -136,16 +137,12 @@ export function RentEstimator({
           <label className="block text-sm font-medium text-slate-400 mb-2">
             Property Address
           </label>
-          <div className="relative">
-            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-            <input
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="123 Main St, New York, NY 10001"
-              className="w-full pl-10 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50"
-            />
-          </div>
+          <AddressAutocomplete
+            value={address}
+            onChange={(value) => setAddress(value)}
+            placeholder="123 Main St, New York, NY 10001"
+            useGooglePlaces={!!import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
