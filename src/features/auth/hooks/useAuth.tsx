@@ -14,8 +14,61 @@ import {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Storage key for cross-tab auth sync (kept for backwards compatibility)
+// Storage keys
 const AUTH_STORAGE_KEY = 'lb_auth_state';
+const USER_DATA_CACHE_KEY = 'lb_user_data_cache_v3';
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+// Retry config
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
+
+// Safe localStorage helpers
+const safeStorage = {
+  get: (key: string): string | null => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  set: (key: string, value: string): void => {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      // Ignore storage errors
+    }
+  },
+  remove: (key: string): void => {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Ignore
+    }
+  },
+};
+
+// Retry wrapper with exponential backoff
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = MAX_RETRIES,
+  delay = RETRY_DELAY_MS
+): Promise<T> {
+  let lastError: Error | null = null;
+  
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      if (i < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+      }
+    }
+  }
+  
+  throw lastError;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -24,34 +77,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>('initializing');
   const [isInitialized, setIsInitialized] = useState(false);
   
-  // Use refs to prevent race conditions
   const initializationRef = useRef(false);
   const authStateChangeRef = useRef(false);
+  const visibilityRefreshRef = useRef(false);
+  const previousUserDataRef = useRef<UserData | null>(null);
 
-  // Derived state
   const isLoading = authState === 'initializing';
   const isAuthenticated = authState === 'authenticated' && !!user;
 
-  // Fetch user data from database - creates record if it doesn't exist (for OAuth users)
-  const fetchUserData = useCallback(async (userId: string, user?: User | null) => {
+  // Load userData from cache
+  const loadUserDataFromCache = useCallback((): UserData | null => {
     try {
-      // First try to fetch existing user data
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      const cached = safeStorage.get(USER_DATA_CACHE_KEY);
+      if (cached) {
+        const data = JSON.parse(cached) as UserData & { _cachedAt?: number };
+        const age = Date.now() - (data._cachedAt || 0);
+        if (age < CACHE_TTL_MS) {
+          return data;
+        }
+      }
+    } catch {
+      // Ignore parse errors
+    }
+    return null;
+  }, []);
+
+  // Save userData to cache
+  const saveUserDataToCache = useCallback((data: UserData | null) => {
+    if (data) {
+      safeStorage.set(USER_DATA_CACHE_KEY, JSON.stringify({ ...data, _cachedAt: Date.now() }));
+    } else {
+      safeStorage.remove(USER_DATA_CACHE_KEY);
+    }
+  }, []);
+
+  // Fetch user data with retry logic - creates record if it doesn't exist (for OAuth users)
+  const fetchUserData = useCallback(async (userId: string, user?: User | null) => {
+    // Show cached data immediately if available
+    const cached = loadUserDataFromCache();
+    if (cached && cached.id === userId) {
+      setUserData(cached);
+    }
+
+    try {
+      // First try to fetch existing user data with retry
+      const { data, error } = await withRetry(async () => {
+        const result = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single();
+        
+        if (result.error && result.error.code !== 'PGRST116') {
+          throw result.error;
+        }
+        return result;
+      });
 
       if (!error && data) {
-        setUserData(data as UserData);
-        return data as UserData;
+        const userData = data as UserData;
+        setUserData(userData);
+        saveUserDataToCache(userData);
+        return userData;
       }
 
       // If no user data found, create it (for OAuth logins)
       if (error?.code === 'PGRST116' || !data) {
         console.log('[AuthContext] No user record found, creating one for OAuth user...');
         
-        // Extract user metadata from Supabase user
         const userMetadata = user?.user_metadata || {};
         const fullName = userMetadata.full_name || userMetadata.name || '';
         const nameParts = fullName.split(' ');
@@ -65,58 +158,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           first_name: firstName,
           last_name: lastName,
           phone_number: userMetadata.phone || '',
-          property_address: '', // Will be set during onboarding
+          property_address: '',
           avatar_url: avatarUrl,
           subscription_tier: 'free',
           subscription_status: 'active',
-          max_units: -1, // Unlimited for free tier
+          max_units: -1,
           storage_used: 0,
-          storage_limit: 1073741824, // 1GB
+          storage_limit: 1073741824,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
 
-        const { data: createdUser, error: createError } = await supabase
-          .from('users')
-          .upsert(newUserData as any, { onConflict: 'id' })
-          .select()
-          .single();
+        const { data: createdUser, error: createError } = await withRetry(async () => {
+          const result = await supabase
+            .from('users')
+            .upsert(newUserData as any, { onConflict: 'id' })
+            .select()
+            .single();
+          
+          if (result.error) throw result.error;
+          return result;
+        });
 
         if (createError) {
           console.error('[AuthContext] Error creating user record:', createError);
-          return null;
+          // Return cached data if available
+          return cached;
         }
 
         if (createdUser) {
           console.log('[AuthContext] User record created successfully');
           setUserData(createdUser as UserData);
+          saveUserDataToCache(createdUser as UserData);
           return createdUser as UserData;
         }
       }
     } catch (error) {
-      console.error('[AuthContext] fetchUserData error:', error);
+      console.error('[AuthContext] fetchUserData failed after retries:', error);
+      // Return cached data as fallback
+      if (cached && cached.id === userId) {
+        return cached;
+      }
     }
     return null;
-  }, []);
+  }, [loadUserDataFromCache, saveUserDataToCache]);
 
-  // Update auth state - removed localStorage persistence for security
+  // Update auth state
   const updateAuthState = useCallback((newState: AuthState, newUser: User | null, newSession: Session | null) => {
     setAuthState(newState);
     setUser(newUser);
     setSession(newSession);
-    
-    // Note: Auth tokens are no longer persisted to localStorage for security
-    // They remain in memory only and are managed by Supabase's secure cookie-based session
   }, []);
 
   // Initialize auth state - runs once on mount
   useEffect(() => {
-    // Prevent double initialization in React StrictMode
     if (initializationRef.current) return;
     initializationRef.current = true;
 
     const initAuth = async () => {
-      // Guard: supabase client might not be initialized
       if (!supabase || typeof supabase.auth?.getSession !== 'function') {
         console.warn('[AuthContext] Supabase not initialized, skipping auth check');
         updateAuthState('unauthenticated', null, null);
@@ -124,15 +223,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Add timeout to prevent infinite loading
       const timeoutId = setTimeout(() => {
         console.warn('[AuthContext] Auth initialization timed out');
+        // Try to load from cache
+        const cached = loadUserDataFromCache();
+        if (cached) {
+          setUserData(cached);
+        }
         updateAuthState('unauthenticated', null, null);
         setIsInitialized(true);
-      }, 5000); // 5 second timeout
+      }, 5000);
 
       try {
-        // Check for existing session
         const { session: currentSession, error: sessionError } = await getCurrentSession();
         
         clearTimeout(timeoutId);
@@ -154,6 +256,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error('[AuthContext] initAuth error:', error);
+        // Try cache as fallback
+        const cached = loadUserDataFromCache();
+        if (cached) {
+          setUserData(cached);
+        }
         updateAuthState('unauthenticated', null, null);
       } finally {
         clearTimeout(timeoutId);
@@ -162,11 +269,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     initAuth();
-  }, [fetchUserData, updateAuthState]);
+  }, [fetchUserData, loadUserDataFromCache, updateAuthState]);
 
   // Auth state change listener
   useEffect(() => {
-    // Guard: supabase client might not be initialized
     if (!supabase || typeof supabase.auth?.onAuthStateChange !== 'function') {
       console.warn('[AuthContext] Supabase auth listener not available');
       return;
@@ -177,11 +283,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         async (event, newSession) => {
           console.log('[AuthContext] Auth state change:', event, newSession?.user?.email);
           
-          // Prevent duplicate processing
           if (authStateChangeRef.current) return;
           authStateChangeRef.current = true;
           
-          // Small delay to prevent race conditions with other tabs
           setTimeout(() => {
             authStateChangeRef.current = false;
           }, 100);
@@ -195,6 +299,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               break;
             case 'SIGNED_OUT':
               setUserData(null);
+              saveUserDataToCache(null);
               updateAuthState('unauthenticated', null, null);
               break;
             case 'TOKEN_REFRESHED':
@@ -205,6 +310,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             case 'USER_UPDATED':
               if (newSession?.user) {
                 setUser(newSession.user);
+                await fetchUserData(newSession.user.id);
               }
               break;
           }
@@ -215,19 +321,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('[AuthContext] Failed to setup auth listener:', error);
     }
-  }, [fetchUserData, updateAuthState]);
+  }, [fetchUserData, updateAuthState, saveUserDataToCache]);
 
-  // Listen for storage events to sync auth state across tabs
-  // Note: This now relies on Supabase's cookie-based session instead of localStorage
+  // Refresh on window focus (handles deployment updates)
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && !visibilityRefreshRef.current) {
+        visibilityRefreshRef.current = true;
+        
+        if (authState === 'authenticated' && user?.id) {
+          const { session: currentSession } = await getCurrentSession();
+          if (currentSession?.user) {
+            await fetchUserData(currentSession.user.id);
+          } else {
+            await logout();
+          }
+        }
+        
+        setTimeout(() => { visibilityRefreshRef.current = false; }, 1000);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [authState, user?.id, fetchUserData]);
+
+  // Cross-tab sync
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === AUTH_STORAGE_KEY) {
-        // Another tab changed auth state, refresh our session from Supabase
         supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
           if (currentSession?.user) {
             setUser(currentSession.user);
             setSession(currentSession);
             setAuthState('authenticated');
+            fetchUserData(currentSession.user.id);
           } else {
             setUser(null);
             setSession(null);
@@ -240,9 +368,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+  }, [fetchUserData]);
 
-  // Refresh session manually
   const refreshSession = useCallback(async () => {
     try {
       const { session: currentSession, error } = await getCurrentSession();
@@ -274,22 +401,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setUserData(null);
+    saveUserDataToCache(null);
     updateAuthState('unauthenticated', null, null);
   };
 
   const updateUserData = async (data: Partial<UserData>) => {
     if (!user) return { error: new Error('Not authenticated') };
 
-    const { error } = await (supabase as any)
-      .from('users')
-      .update(data)
-      .eq('id', user.id);
-
-    if (!error) {
-      await fetchUserData(user.id);
+    // Optimistic update
+    const previousData = userData;
+    previousUserDataRef.current = previousData;
+    
+    if (previousData) {
+      const optimisticData = { ...previousData, ...data };
+      setUserData(optimisticData);
+      saveUserDataToCache(optimisticData);
     }
 
-    return { error };
+    try {
+      const { error } = await withRetry(async () => {
+        const result = await (supabase as any)
+          .from('users')
+          .update(data)
+          .eq('id', user.id);
+        
+        if (result.error) throw result.error;
+        return result;
+      });
+
+      if (!error) {
+        await fetchUserData(user.id);
+      } else {
+        // Rollback on error
+        if (previousUserDataRef.current) {
+          setUserData(previousUserDataRef.current);
+          saveUserDataToCache(previousUserDataRef.current);
+        }
+      }
+
+      return { error };
+    } catch (err) {
+      // Rollback
+      if (previousUserDataRef.current) {
+        setUserData(previousUserDataRef.current);
+        saveUserDataToCache(previousUserDataRef.current);
+      }
+      return { error: err as Error };
+    }
   };
 
   return (
