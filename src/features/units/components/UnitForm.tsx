@@ -191,6 +191,9 @@ export function UnitForm({
               </label>
               <input
                 type="text"
+                inputMode="text"
+                autoComplete="address-unit" 
+                enterKeyHint="next"
                 value={unitData?.unitNumber || ''}
                 onChange={(e) => handleChange('unitNumber', e.target.value)}
                 placeholder="e.g., 1A, 2B, 101"
@@ -230,6 +233,7 @@ export function UnitForm({
                   type="number"
                   min="0"
                   inputMode="numeric"
+                  enterKeyHint="next"
                   value={unitData?.bedrooms === 0 ? '' : (unitData?.bedrooms || '')}
                   onChange={(e) => handleNumberChange('bedrooms', e.target.value)}
                   onBlur={() => handleNumberBlur('bedrooms', unitData?.bedrooms || 0)}
@@ -250,6 +254,7 @@ export function UnitForm({
                   min="0"
                   step="0.5"
                   inputMode="decimal"
+                  enterKeyHint="next"
                   value={unitData?.bathrooms === 0 ? '' : (unitData?.bathrooms || '')}
                   onChange={(e) => handleNumberChange('bathrooms', e.target.value)}
                   onBlur={() => handleNumberBlur('bathrooms', unitData?.bathrooms || 0)}
@@ -272,6 +277,7 @@ export function UnitForm({
                 type="number"
                 min="0"
                 inputMode="numeric"
+                enterKeyHint="next"
                 value={unitData?.squareFeet === 0 ? '' : (unitData?.squareFeet || '')}
                 onChange={(e) => handleNumberChange('squareFeet', e.target.value)}
                 onBlur={() => handleNumberBlur('squareFeet', unitData?.squareFeet || 0)}
@@ -288,6 +294,7 @@ export function UnitForm({
                 type="number"
                 min="0"
                 inputMode="decimal"
+                enterKeyHint="next"
                 value={unitData?.rentAmount === 0 ? '' : (unitData?.rentAmount || '')}
                 onChange={(e) => handleNumberChange('rentAmount', e.target.value)}
                 onBlur={() => handleNumberBlur('rentAmount', unitData?.rentAmount || 0)}
@@ -419,6 +426,8 @@ export function UnitForm({
                         type="text"
                         name="tenant-name"
                         autoComplete="name"
+                        inputMode="text"
+                        enterKeyHint="next"
                         value={unitData?.tenantName || ''}
                         onChange={(e) => handleChange('tenantName', e.target.value)}
                         placeholder="e.g., Alex Rivera"
@@ -440,6 +449,8 @@ export function UnitForm({
                           type="email"
                           name="tenant-email"
                           autoComplete="email"
+                          inputMode="email"
+                          enterKeyHint="next"
                           value={unitData?.tenantEmail || ''}
                           onChange={(e) => handleChange('tenantEmail', e.target.value)}
                           placeholder="tenant@email.com"
@@ -468,6 +479,7 @@ export function UnitForm({
                         type="number"
                         min="0"
                         inputMode="decimal"
+                        enterKeyHint="done"
                         value={unitData?.securityDeposit === 0 ? '' : (unitData?.securityDeposit || '')}
                         onChange={(e) => handleNumberChange('securityDeposit', e.target.value)}
                         onBlur={() => handleNumberBlur('securityDeposit', unitData?.securityDeposit || 0)}
