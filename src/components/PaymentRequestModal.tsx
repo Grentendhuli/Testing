@@ -38,6 +38,9 @@ export function PaymentRequestModal({
   const [showCashForm, setShowCashForm] = useState(false);
   const [cashNote, setCashNote] = useState('');
   const [cashDate, setCashDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedMethod, setSelectedMethod] = useState(preferredMethod);
 
   if (!isOpen) return null;
@@ -74,11 +77,20 @@ export function PaymentRequestModal({
     setTimeout(() => setZelleCopied(false), 2000);
   };
 
-  const handleMarkAsPaid = () => {
-    if (onMarkPaid && paymentId) {
-      onMarkPaid(paymentId, selectedMethod, showCashForm ? cashNote : undefined);
+  const handleMarkAsPaid = async () => {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      if (onMarkPaid && paymentId) {
+        await onMarkPaid(paymentId, selectedMethod, showCashForm ? cashNote : undefined);
+        setSuccess(true);
+        setTimeout(onClose, 1500);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to record payment');
+    } finally {
+      setIsSubmitting(false);
     }
-    onClose();
   };
 
   const hasAnyHandle = venmoHandle || zelleContact || cashappTag || paypalHandle;
@@ -229,6 +241,16 @@ export function PaymentRequestModal({
               </button>
             ) : (
               <div className="space-y-3">
+                {success && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+                    ✓ Payment recorded successfully!
+                  </div>
+                )}
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                    ✗ {error}
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     Payment Method
@@ -286,9 +308,10 @@ export function PaymentRequestModal({
                   </button>
                   <button
                     onClick={handleMarkAsPaid}
-                    className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors"
+                    disabled={isSubmitting}
+                    className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 text-white rounded-lg font-medium transition-colors"
                   >
-                    Confirm Payment
+                    {isSubmitting ? 'Recording...' : 'Confirm Payment'}
                   </button>
                 </div>
               </div>

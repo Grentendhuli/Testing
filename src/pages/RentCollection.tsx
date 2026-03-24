@@ -114,7 +114,11 @@ export function RentCollection() {
     
     const lateFees = payments
       .filter(p => p.paymentDate?.startsWith(currentMonth) && p.status === 'late')
-      .reduce((sum, p) => sum + p.amount * 0.05, 0); // 5% late fee
+      .reduce((sum, p) => {
+        const unit = units.find(u => u.id === p.unitId);
+        const rentAmount = unit?.rentAmount || 0;
+        return sum + (rentAmount * 0.05);
+      }, 0); // 5% late fee based on unit rent
 
     return { totalExpected, totalCollected, outstanding, lateFees };
   }, [units, payments, currentMonth]);
@@ -241,7 +245,7 @@ export function RentCollection() {
   const paidThisMonth = currentMonthPayments.filter(p => p.status === 'paid').length;
   // Guard against divide-by-zero
   const totalDuePayments = currentMonthPayments.length || 1;
-  const collectionRate = (paidThisMonth / totalDuePayments) * 100;
+  const collectionRate = Math.round((paidThisMonth / totalDuePayments) * 100 * 100) / 100;
 
   return (
     <div className="space-y-6">

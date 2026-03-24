@@ -204,6 +204,16 @@ try {
   }
 }
 
+// Force activate waiting service workers (fixes cache v5 to v6 transition)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.ready.then(registration => {
+    if (registration.waiting) {
+      console.log('[SW] Force activating waiting service worker');
+      registration.waiting.postMessage('skipWaiting');
+    }
+  });
+}
+
 // Register Service Worker for PWA support
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
