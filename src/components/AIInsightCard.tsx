@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Sparkles, ChevronDown, ChevronUp, ExternalLink, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -31,7 +31,7 @@ interface AIInsightCardProps {
   onDismiss?: (id: string) => void;
 }
 
-export function AIInsightCard({ insight, onDismiss }: AIInsightCardProps) {
+export const AIInsightCard = React.memo(function AIInsightCard({ insight, onDismiss }: AIInsightCardProps) {
   const [expanded, setExpanded] = useState(false);
   const styles = SEVERITY_STYLES[insight.severity];
   const preview = insight.body.length > 100 ? insight.body.slice(0, 100) + '...' : insight.body;
@@ -106,4 +106,6 @@ export function AIInsightCard({ insight, onDismiss }: AIInsightCardProps) {
       )}
     </motion.div>
   );
-}
+});
+
+AIInsightCard.displayName = 'AIInsightCard';

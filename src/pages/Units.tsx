@@ -3,12 +3,12 @@ import { Plus, Building2, Users, Home, Wrench, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ComplianceFooter } from '@/components/ComplianceFooter';
 import { Button } from '@/components/Button';
-import { EmptyStateCard, MetricCard } from '@/components/Card';
-import { SkeletonUnits } from '@/components/Skeleton';
+import { EmptyStateCard, MetricCard } from '@/components/ui/Card';
+import { SkeletonUnits } from '@/components/ui/Skeleton';
 import { PageHeader } from '@/components/Breadcrumb';
 import { TenantConnectCard } from '@/components/TenantConnectCard';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { Toast, useToast } from '@/components/Toast';
+import { Toast, useToast } from '@/components/ui/Toast';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/features/auth';
 import { useNavigate } from 'react-router-dom';
@@ -242,6 +242,15 @@ export function Units() {
     return leases.find(lease => lease.unitId === selectedUnit.id) || null;
   }, [leases, selectedUnit]);
 
+  // Memoized callbacks for child components
+  const handleTenantConnect = useCallback((unit: Unit) => {
+    setInviteUnit(unit);
+  }, []);
+
+  const handleToggleQR = useCallback((unitId: string) => {
+    setExpandedQR(prev => ({ ...prev, [unitId]: !prev[unitId] }));
+  }, []);
+
   if (isLoading) {
     return (
       <div className="space-y-6 px-6 py-6">
@@ -379,10 +388,10 @@ export function Units() {
         onEditUnit={handleEdit}
         onDeleteUnit={openDeleteConfirm}
         formatDate={formatDate}
-        onTenantConnect={setInviteUnit}
+        onTenantConnect={handleTenantConnect}
         botUsername={botUsername}
         expandedQR={expandedQR}
-        onToggleQR={(unitId) => setExpandedQR(prev => ({ ...prev, [unitId]: !prev[unitId] }))}
+        onToggleQR={handleToggleQR}
       />
 
       {/* Create Unit Modal */}
