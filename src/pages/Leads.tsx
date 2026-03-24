@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Lead } from '../types';
 import { Plus, Phone, Mail, Trash2, Edit2, Calendar, DollarSign, Clock, X, Check, Users, Sparkles } from 'lucide-react';
 import { SmartLeadResponseModal } from '../components/SmartLeadResponseModal';
+import { validateLeadData, sanitizeInput } from '../utils/validation';
 
 export function Leads() {
   const { leads, updateLead, addLead, deleteLead } = useApp();
@@ -23,6 +24,9 @@ export function Leads() {
     bathrooms: undefined,
   });
 
+  // Add error state for validation
+  const [formError, setFormError] = useState<string | null>(null);
+
   const leadStatusColors: Record<string, string> = {
     new: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
     contacted: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
@@ -38,7 +42,16 @@ export function Leads() {
 
   const handleSave = () => {
     if (editingLead && editForm) {
-      updateLead(editingLead, editForm);
+      // Sanitize edit form data
+      const sanitizedForm = {
+        ...editForm,
+        name: sanitizeInput(editForm.name || ''),
+        phone: sanitizeInput(editForm.phone || ''),
+        email: sanitizeInput(editForm.email || ''),
+        notes: sanitizeInput(editForm.notes || ''),
+      };
+      
+      updateLead(editingLead, sanitizedForm);
       setEditingLead(null);
       setEditForm({});
     }
@@ -50,29 +63,49 @@ export function Leads() {
   };
 
   const handleAdd = () => {
-    if (newLead.name && newLead.phone && newLead.email) {
-      addLead({
-        name: newLead.name,
-        phone: newLead.phone,
-        email: newLead.email,
-        status: (newLead.status as Lead['status']) || 'new',
-        notes: newLead.notes || '',
-        budget: newLead.budget,
-        moveInDate: newLead.moveInDate,
-        bedrooms: newLead.bedrooms,
-        bathrooms: newLead.bathrooms,
-        inquiryDate: new Date().toISOString(),
-      });
-      setNewLead({
-        status: 'new',
-        notes: '',
-        budget: undefined,
-        moveInDate: '',
-        bedrooms: undefined,
-        bathrooms: undefined,
-      });
-      setShowAddModal(false);
+    // Clear previous errors
+    setFormError(null);
+
+    // Validate required fields
+    const validation = validateLeadData({
+      name: newLead.name || '',
+      email: newLead.email || '',
+      phone: newLead.phone || '',
+      notes: newLead.notes,
+    });
+
+    if (!validation.isValid) {
+      setFormError(validation.error || 'Please check your input');
+      return;
     }
+
+    // Use sanitized data
+    const sanitized = validation.sanitized!;
+
+    addLead({
+      name: sanitized.name,
+      phone: sanitized.phone,
+      email: sanitized.email,
+      status: (newLead.status as Lead['status']) || 'new',
+      notes: sanitized.notes || '',
+      budget: newLead.budget,
+      moveInDate: newLead.moveInDate,
+      bedrooms: newLead.bedrooms,
+      bathrooms: newLead.bathrooms,
+      inquiryDate: new Date().toISOString(),
+    });
+
+    // Reset form
+    setNewLead({
+      status: 'new',
+      notes: '',
+      budget: undefined,
+      moveInDate: '',
+      bedrooms: undefined,
+      bathrooms: undefined,
+    });
+    setFormError(null);
+    setShowAddModal(false);
   };
 
   const handleDelete = (leadId: string) => {
@@ -275,12 +308,21 @@ export function Leads() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-white">Add New Lead</h3>
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={() => {
+                  setShowAddModal(false);
+                  setFormError(null);
+                }}
                 className="text-lb-text-secondary hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
+            
+            {formError && (
+              <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
+                {formError}
+              </div>
+            )}
             
             <div className="space-y-4">
               <div>

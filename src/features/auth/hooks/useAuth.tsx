@@ -10,6 +10,12 @@ import {
   signOut,
   getCurrentSession,
 } from '../services/authService';
+import { 
+  checkRateLimit, 
+  recordFailedAttempt, 
+  clearFailedAttempts,
+  getRemainingAttempts 
+} from '@/utils/validation';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -387,7 +393,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchUserData, updateAuthState]);
 
   const login = async (email: string, password: string) => {
-    return loginWithPassword(email, password);
+    // Check rate limit before attempting login
+    const rateLimit = checkRateLimit(email);
+    
+    if (!rateLimit.allowed) {
+      const minutesLeft = Math.ceil(rateLimit.lockoutTimeLeft! / 60000);
+      return {
+        error: new Error(`Too many failed attempts. Please try again in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}.`),
+        remainingAttempts: 0,
+        isLocked: true,
+      };
+    }
+
+    // Add exponential backoff delay based on remaining attempts
+    const remainingAttempts = getRemainingAttempts(email);
+    if (remainingAttempts < 5) {
+      const delay = Math.min(1000 * Math.pow(2, 5 - remainingAttempts), 5000);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+
+    const result = await loginWithPassword(email, password);
+
+    if (result.error) {
+      // Record failed attempt
+      recordFailedAttempt(email);
+      const remaining = getRemainingAttempts(email);
+      
+      return {
+        error: result.error,
+        remainingAttempts: remaining,
+        attemptsBeforeLockout: remaining,
+      };
+    }
+
+    // Clear failed attempts on successful login
+    clearFailedAttempts(email);
+    return { error: null, remainingAttempts: 5 };
   };
 
   const signup = async (email: string, password: string, newUserData: Partial<UserData>) => {
