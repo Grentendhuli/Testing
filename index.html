@@ -4,11 +4,22 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://js.stripe.com https://*.stripe.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.vapi.ai https://api.sendgrid.com https://api.twilio.com https://*.workers.dev https://data.cityofnewyork.us https://fonts.googleapis.com https://api.stripe.com; img-src 'self' data: https: blob:; frame-src 'self' https://js.stripe.com https://*.stripe.com; base-uri 'self'; form-action 'self';" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://js.stripe.com https://*.stripe.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.vapi.ai https://api.sendgrid.com https://api.twilio.com https://*.workers.dev https://data.cityofnewyork.us https://fonts.googleapis.com https://api.stripe.com; img-src 'self' data: https: blob:; frame-src 'self' https://js.stripe.com https://*.stripe.com; base-uri 'self'; form-action 'self';" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="-1" />
     <title>LandlordBot AI — NYC Property Management</title>
+    
+    <!-- Runtime Config: Allows env vars to be injected without rebuild -->
+    <script>
+      // Check for runtime-injected config from Vercel or server
+      (function() {
+        const runtimeConfig = window.__RUNTIME_CONFIG__;
+        if (runtimeConfig && runtimeConfig.VITE_CLOUDFLARE_WORKER_URL) {
+          window.__CLOUDFLARE_WORKER_URL__ = runtimeConfig.VITE_CLOUDFLARE_WORKER_URL;
+        }
+      })();
+    </script>
     <!-- BUILD: 2026-03-12-0655-CACHE-BUST-v2 -->
     <!-- PWA Meta Tags -->
     <meta name="description" content="Free NYC property management software for NYC landlords. Automate rent collection, tenant screening, HPD compliance tracking, and Good Cause Eviction requirements. Save 10+ hours weekly." />
@@ -20,26 +31,128 @@
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://landlord-bot-live.vercel.app" />
-    <meta property="og:title" content="Free NYC Property Management Software | LandlordBot" />
+    <meta property="og:url" content="https://landlord-bot-testing.vercel.app" />
+    <meta property="og:title" content="Free NYC Property Management Software | LandlordBot Testing" />
     <meta property="og:description" content="The only NYC property management software built for city compliance. Track HPD, DHCR, Good Cause Eviction. Save 10+ hours weekly. Free forever." />
-    <meta property="og:image" content="https://landlord-bot-live.vercel.app/og-image.svg" />
+    <meta property="og:image" content="https://landlord-bot-testing.vercel.app/og-image.svg" />
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://landlord-bot-live.vercel.app" />
-    <meta property="twitter:title" content="Free NYC Property Management Software | LandlordBot" />
+    <meta property="twitter:url" content="https://landlord-bot-testing.vercel.app" />
+    <meta property="twitter:title" content="Free NYC Property Management Software | LandlordBot Testing" />
     <meta property="twitter:description" content="The only NYC property management software built for city compliance. Free for NYC landlords." />
-    <meta property="twitter:image" content="https://landlord-bot-live.vercel.app/og-image.svg" />
+    <meta property="twitter:image" content="https://landlord-bot-testing.vercel.app/og-image.svg" />
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="https://landlord-bot-live.vercel.app" />
+    <link rel="canonical" href="https://landlord-bot-testing.vercel.app" />
     
     <link rel="manifest" href="/manifest.json" crossorigin="use-credentials" />
+    
+    <!-- Performance: Preconnect to critical domains -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://*.supabase.co" />
+    <link rel="preconnect" href="https://landlordbot-ai.grentendhuli.workers.dev" />
+    
+    <!-- Performance: DNS Prefetch for third-party APIs -->
     <link rel="dns-prefetch" href="https://api.vapi.ai" />
     <link rel="dns-prefetch" href="https://api.sendgrid.com" />
+    <link rel="dns-prefetch" href="https://api.twilio.com" />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+    
+    <!-- CRITICAL CSS: Above-the-fold styles for LCP -->
+    <style>
+      /* === CRITICAL CSS - Above the fold === */
+      /* Reset & Base */
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      
+      /* Design Tokens */
+      :root {
+        --lb-base: #F8FAFC;
+        --lb-surface: #FFFFFF;
+        --lb-border: #E2E8F0;
+        --lb-orange: #F59E0B;
+        --lb-text-primary: #0F172A;
+        --lb-text-secondary: #1F2937;
+        --lb-text-muted: #475569;
+        --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+        --header-height: 64px;
+        --sidebar-width: 260px;
+      }
+      
+      /* Critical Layout */
+      html, body, #root {
+        background-color: var(--lb-base);
+        min-height: 100vh;
+        color: var(--lb-text-primary);
+        font-family: var(--font-sans);
+        line-height: 1.5;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      
+      /* Loading State - Skeleton */
+      .skeleton {
+        background: linear-gradient(90deg, #E2E8F0 25%, #F1F5F9 50%, #E2E8F0 75%);
+        background-size: 200% 100%;
+        animation: skeleton-loading 1.5s ease-in-out infinite;
+        border-radius: 0.375rem;
+      }
+      @keyframes skeleton-loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+      
+      /* Header placeholder */
+      .header-critical {
+        height: var(--header-height);
+        background: var(--lb-surface);
+        border-bottom: 1px solid var(--lb-border);
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 30;
+      }
+      
+      /* Main content area with padding for fixed header */
+      .main-content-critical {
+        padding-top: var(--header-height);
+        min-height: 100vh;
+      }
+      
+      /* Spinner for async content */
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #E2E8F0;
+        border-top-color: var(--lb-orange);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      
+      /* Reduced motion preference */
+      @media (prefers-reduced-motion: reduce) {
+        .skeleton, .spinner { animation: none; }
+      }
+      
+      /* iOS Safe Area Support */
+      @supports (padding: max(0px)) {
+        .safe-area-top { padding-top: max(env(safe-area-inset-top), 0px); }
+        .safe-area-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0px); }
+      }
+    </style>
+    
+    <!-- Performance: Preload critical fonts -->
+    <link rel="preload" href="https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfAZ9hiJ-Ek-_EeA.woff2" as="font" type="font/woff2" crossorigin />
+    
+    <!-- Performance: Preload critical SVG assets -->
+    <link rel="preload" href="/brand/landlordbot-logo.svg" as="image" type="image/svg+xml" />
+    
+    <!-- Fonts with display=swap for faster rendering -->
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     
     <!-- Safari Fallback: Show content even if JS fails -->
@@ -49,35 +162,6 @@
       @media all {
         html:not(.js-loaded) .safari-fallback { display: block !important; }
       }
-    </style>
-    <!-- Critical CSS: Above-the-fold styles for instant render -->
-    <style>
-      :root {
-        --amber-500: #f59e0b;
-        --amber-600: #d97706;
-        --slate-50: #f8fafc;
-        --slate-100: #f1f5f9;
-        --slate-900: #0f172a;
-        --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-        --font-display: 'Fraunces', Georgia, serif;
-      }
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      html { font-family: var(--font-sans); line-height: 1.5; -webkit-font-smoothing: antialiased; }
-      body { min-height: 100vh; background: var(--slate-50); color: var(--slate-900); }
-      #root { min-height: 100vh; }
-      /* Skeleton loading states */
-      .skeleton { 
-        background: linear-gradient(90deg, var(--slate-100) 25%, #e2e8f0 50%, var(--slate-100) 75%);
-        background-size: 200% 100%;
-        animation: skeleton 1.5s ease-in-out infinite;
-        border-radius: 4px;
-      }
-      @keyframes skeleton {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
-      }
-      /* Ensure text remains visible during font load */
-      .font-display { font-family: var(--font-display); }
     </style>
     <noscript>
       <style>.safari-fallback { display: block !important; }</style>
@@ -115,13 +199,52 @@
         window.safariDetected = true;
       }
       
-      // Catch any errors during load
+      // CRITICAL: Global error handler to show errors before React loads
+      window.__CRASH_ERRORS__ = [];
       window.addEventListener('error', function(e) {
         console.error('[Global Error]', e.message, 'at', e.filename, ':', e.lineno);
+        window.__CRASH_ERRORS__.push({
+          message: e.message,
+          filename: e.filename,
+          lineno: e.lineno,
+          colno: e.colno,
+          error: e.error?.toString?.() || 'N/A'
+        });
+        
+        // Show error on screen for mobile debugging
+        const errorDiv = document.getElementById('global-error-display');
+        if (errorDiv) {
+          errorDiv.style.display = 'block';
+          errorDiv.innerHTML += '<p style="margin:5px 0;font-size:12px;word-break:break-word;"><strong>Error:</strong> ' + 
+            e.message + ' (at ' + (e.filename || 'unknown') + ':' + e.lineno + ')</p>';
+        }
+      });
+      
+      // Also catch unhandled promise rejections
+      window.addEventListener('unhandledrejection', function(e) {
+        console.error('[Unhandled Rejection]', e.reason);
+        window.__CRASH_ERRORS__.push({
+          message: 'Unhandled Promise: ' + (e.reason?.message || e.reason),
+          filename: 'promise',
+          lineno: 0,
+          type: 'rejection'
+        });
+        
+        const errorDiv = document.getElementById('global-error-display');
+        if (errorDiv) {
+          errorDiv.style.display = 'block';
+          errorDiv.innerHTML += '<p style="margin:5px 0;font-size:12px;word-break:break-word;color:#991b1b;"><strong>Promise Error:</strong> ' + 
+            (e.reason?.message || e.reason) + '</p>';
+        }
       });
     </script>
   </head>
   <body class="font-sans antialiased">
+    <!-- Global error display for mobile debugging -->
+    <div id="global-error-display" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:#fee2e2;border-bottom:2px solid #ef4444;padding:10px;font-family:monospace;font-size:12px;max-height:50vh;overflow:auto;">
+      <strong style="color:#991b1b;">⚠️ JavaScript Errors Detected:</strong>
+    </div>
+    
     <div id="root"></div>
     
     <!-- Fallback for Safari/JS issues -->
@@ -138,29 +261,49 @@
     <script>
       // Mark that JS loaded
       document.documentElement.classList.add('js-loaded');
-      
-      // Register service worker for PWA support
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then((registration) => {
-              console.log('[PWA] Service Worker registered:', registration.scope);
-            })
-            .catch((error) => {
-              console.log('[PWA] Service Worker registration failed:', error);
-            });
-        });
-      }
-      
-      // Store deferred install prompt for PWA
-      let deferredPrompt;
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        window.deferredPrompt = e;
-        console.log('[PWA] Install prompt saved');
-      });
     </script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      (function() {
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', function() {
+            navigator.serviceWorker.register('/sw.js')
+              .then(function(registration) {
+                console.log('[SW] Registered:', registration.scope);
+                
+                // Listen for updates
+                registration.addEventListener('updatefound', function() {
+                  const newWorker = registration.installing;
+                  if (newWorker) {
+                    newWorker.addEventListener('statechange', function() {
+                      if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        console.log('[SW] New version available');
+                        // Show update notification
+                        if (window.confirm('A new version is available! Reload to update?')) {
+                          newWorker.postMessage({ type: 'SKIP_WAITING' });
+                          window.location.reload();
+                        }
+                      }
+                    });
+                  }
+                });
+              })
+              .catch(function(error) {
+                console.log('[SW] Registration failed:', error);
+              });
+          });
+          
+          // Listen for messages from service worker
+          navigator.serviceWorker.addEventListener('message', function(event) {
+            if (event.data.type === 'SW_ACTIVATED') {
+              console.log('[SW] Activated version:', event.data.version);
+            }
+          });
+        }
+      })();
+    </script>
+    
     <script type="module" src="/src/main.tsx"></script>
     <!-- Schema.org Structured Data -->
     <script type="application/ld+json" src="/schema-software.json"></script>
