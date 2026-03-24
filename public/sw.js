@@ -127,7 +127,7 @@ async function networkFirstStrategy(request, cacheName) {
     
     if (networkResponse.ok) {
       const cache = await caches.open(cacheName);
-      cache.put(request, networkResponse.clone());
+      await cache.put(request, networkResponse.clone());
       await enforceCacheLimit(cacheName);
       return networkResponse;
     }
@@ -163,7 +163,7 @@ async function cacheFirstStrategy(request, cacheName) {
     
     if (networkResponse.ok) {
       const cache = await caches.open(cacheName);
-      cache.put(request, networkResponse.clone());
+      await cache.put(request, networkResponse.clone());
       await enforceCacheLimit(cacheName);
     }
     
@@ -179,22 +179,21 @@ async function staleWhileRevalidateStrategy(event, request, cacheName) {
   const cachedResponse = await caches.match(request);
   
   const fetchPromise = fetch(request)
-    .then((networkResponse) => {
+    .then(async (networkResponse) => {
       if (networkResponse.ok) {
-        const cache = caches.open(cacheName)
-          .then((cache) => {
-            cache.put(request, networkResponse.clone());
-            return enforceCacheLimit(cacheName);
-          });
+        const cache = await caches.open(cacheName);
+        await cache.put(request, networkResponse.clone());
+        await enforceCacheLimit(cacheName);
       }
       return networkResponse;
     })
     .catch((error) => {
       console.log('[SW v6] Background fetch failed:', error);
+      throw error;
     });
   
-  // Always wait for fetch to complete
-  event.waitUntil(fetchPromise);
+  // Always wait for fetch to complete in background
+  event.waitUntil(fetchPromise.catch(() => {}));
   
   if (cachedResponse) {
     return cachedResponse;
