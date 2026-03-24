@@ -53,7 +53,7 @@ export default defineConfig({
           // Libraries that access React Scheduler internals MUST bundle with React
           // to avoid "Cannot set properties of undefined (setting 'unstable_now')" errors
           // This happens when these libs load before React's scheduler is initialized
-          if (id.includes('framer-motion') || id.includes('react-window')) {
+          if (id.includes('framer-motion')) {
             return 'vendor';
           }
           
@@ -115,7 +115,7 @@ export default defineConfig({
   optimizeDeps: {
     // Pre-bundle these for faster dev starts and to ensure proper load order
     // React MUST be pre-bundled before any libraries that depend on it
-    include: ['react', 'react-dom', 'react-router-dom', 'framer-motion', 'react-window'],
+    include: ['react', 'react-dom', 'react-router-dom', 'framer-motion'],
     // Exclude heavy deps from pre-bundling (they'll be lazy loaded)
     exclude: ['jspdf', '@sentry/react', 'lucide-react'],
   },
