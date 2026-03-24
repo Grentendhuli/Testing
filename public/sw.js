@@ -4,7 +4,7 @@
  * Following Workbox strategy patterns
  */
 
-const CACHE_VERSION = 'v6';
+const CACHE_VERSION = 'v7';
 const CACHE_NAMES = {
   static: `${CACHE_VERSION}-static`,      // Critical assets - 24h TTL
   assets: `${CACHE_VERSION}-assets`,     // JS/CSS bundles - 7 days TTL
@@ -106,13 +106,13 @@ self.addEventListener('fetch', (event) => {
   
   // Strategy: Stale While Revalidate for static assets
   if (isStaticAsset(url)) {
-    event.respondWith(staleWhileRevalidateStrategy(request, CACHE_NAMES.assets));
+    event.respondWith(staleWhileRevalidateStrategy(event, request, CACHE_NAMES.assets));
     return;
   }
   
   // Strategy: Stale While Revalidate for images
   if (isImageRequest(url)) {
-    event.respondWith(staleWhileRevalidateStrategy(request, CACHE_NAMES.images));
+    event.respondWith(staleWhileRevalidateStrategy(event, request, CACHE_NAMES.images));
     return;
   }
   
@@ -175,7 +175,7 @@ async function cacheFirstStrategy(request, cacheName) {
 }
 
 // Stale While Revalidate Strategy - Serve cache, update in background
-async function staleWhileRevalidateStrategy(request, cacheName) {
+async function staleWhileRevalidateStrategy(event, request, cacheName) {
   const cachedResponse = await caches.match(request);
   
   const fetchPromise = fetch(request)
