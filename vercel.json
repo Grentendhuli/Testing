@@ -11,7 +11,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://js.stripe.com https://*.stripe.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.vapi.ai https://api.sendgrid.com https://api.twilio.com https://*.workers.dev https://data.cityofnewyork.us https://fonts.googleapis.com https://fonts.gstatic.com https://www.googletagmanager.com https://api.stripe.com; img-src 'self' data: https: blob:; frame-src 'self' https://js.stripe.com https://hooks.stripe.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://js.stripe.com https://*.stripe.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.vapi.ai https://api.sendgrid.com https://api.twilio.com https://*.workers.dev https://data.cityofnewyork.us https://fonts.googleapis.com https://fonts.gstatic.com https://www.googletagmanager.com https://api.stripe.com; img-src 'self' data: https: blob:; frame-src 'self' https://js.stripe.com https://hooks.stripe.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
         },
         {
           "key": "X-Frame-Options",
