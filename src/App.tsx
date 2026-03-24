@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/features/auth';
 import { AppProvider } from './context/AppContext';
@@ -8,37 +8,39 @@ import { Sidebar } from './components/Sidebar';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { BetaFeedbackBanner } from './components/BetaFeedbackBanner';
 import { ForceRebuild } from './components/ForceRebuild';
+import { PageLoadingScreen } from './components/PageLoadingScreen';
 import { setUserContext, trackNavigation, addBreadcrumb } from './lib/errorReporting';
 import { LoginForm, SignupForm, AuthCallback } from '@/features/auth';
 import { AuthLoadingScreen } from './components/AuthLoadingScreen';
-import { Landing } from './pages/Landing';
-import { Dashboard } from './pages/Dashboard';
-import { Units } from './pages/Units';
-import { RentCollection } from './pages/RentCollection';
-import { Leases } from './pages/Leases';
-import { Leads } from './pages/Leads';
-import { Messages } from './pages/Messages';
-import { Reports } from './pages/Reports';
-import { Config } from './pages/Config';
-import { Profile } from './pages/Profile';
-import { Billing } from './pages/Billing';
-import { Pricing } from './pages/Pricing';
-import { NotFound } from './pages/NotFound';
-import { LandlordAssistant } from './pages/LandlordAssistant';
-import { NYCCompliance } from './pages/NYCCompliance';
-import { MarketInsights } from './pages/MarketInsights';
-import { Recommendations } from './pages/Recommendations';
-import { Listings } from './pages/Listings';
 
-// AI-Enhanced Pages
-import { DashboardSmart } from './pages/DashboardSmart';
-import { LandingSmart } from './pages/LandingSmart';
-import { MaintenanceSmart } from './pages/MaintenanceSmart';
-import { PrivacyPolicy } from './pages/PrivacyPolicy';
-import { TermsOfService } from './pages/TermsOfService';
-import { EULA } from './pages/EULA';
-
-import { ForgotPassword } from './pages/ForgotPassword';
+// Lazy-loaded pages
+import {
+  Landing,
+  LandingSmart,
+  Pricing,
+  PrivacyPolicy,
+  TermsOfService,
+  EULA,
+  ForgotPassword,
+  NotFound,
+  Dashboard,
+  DashboardSmart,
+  Units,
+  RentCollection,
+  Leases,
+  Leads,
+  Messages,
+  Reports,
+  Config,
+  Profile,
+  Billing,
+  LandlordAssistant,
+  NYCCompliance,
+  MarketInsights,
+  Recommendations,
+  Listings,
+  MaintenanceSmart,
+} from './pages/lazyPages';
 
 // Build: Sentry v2.2.0 - Error tracking enabled
 if ((import.meta as any).env?.DEV) {
@@ -224,116 +226,120 @@ function App() {
             <AppProvider>
               <NavigationTracker />
               <ForceRebuild />
-              <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={
-                  <PublicRoute>
-                    <LandingSmart />
-                  </PublicRoute>
-                } />
-                <Route path="/legacy" element={
-                  <PublicRoute>
-                    <Landing />
-                  </PublicRoute>
-                } />
-                <Route path="/login" element={
-                  <PublicRoute>
-                    <LoginForm />
-                  </PublicRoute>
-                } />
-                <Route path="/signup" element={
-                  <PublicRoute>
-                    <SignupForm />
-                  </PublicRoute>
-                } />
-                <Route path="/forgot-password" element={
-                  <PublicRoute>
-                    <ForgotPassword />
-                  </PublicRoute>
-                } />
-                <Route path="/privacy" element={<PrivacyPolicy />} />
-                <Route path="/terms" element={<TermsOfService />} />
-                <Route path="/eula" element={<EULA />} />
-                <Route path="/pricing" element={<Pricing />} />
+              <ErrorBoundary>
+                <Suspense fallback={<PageLoadingScreen />}>
+                  <Routes>
+                    {/* Public Routes */}
+                    <Route path="/" element={
+                      <PublicRoute>
+                        <LandingSmart />
+                      </PublicRoute>
+                    } />
+                    <Route path="/legacy" element={
+                      <PublicRoute>
+                        <Landing />
+                      </PublicRoute>
+                    } />
+                    <Route path="/login" element={
+                      <PublicRoute>
+                        <LoginForm />
+                      </PublicRoute>
+                    } />
+                    <Route path="/signup" element={
+                      <PublicRoute>
+                        <SignupForm />
+                      </PublicRoute>
+                    } />
+                    <Route path="/forgot-password" element={
+                      <PublicRoute>
+                        <ForgotPassword />
+                      </PublicRoute>
+                    } />
+                    <Route path="/privacy" element={<PrivacyPolicy />} />
+                    <Route path="/terms" element={<TermsOfService />} />
+                    <Route path="/eula" element={<EULA />} />
+                    <Route path="/pricing" element={<Pricing />} />
 
-                {/* OAuth Callback Route - Special handling */}
-                <Route path="/auth/callback" element={<AuthCallback />} />
+                    {/* OAuth Callback Route - Special handling */}
+                    <Route path="/auth/callback" element={<AuthCallback />} />
 
-                {/* Protected Routes - AI Enhanced */}
-                <Route path="/dashboard" element={
-                  <ProtectedRoute>
-                    <DashboardSmart />
-                  </ProtectedRoute>
-                } />
-                <Route path="/dashboard-classic" element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/units" element={
-                  <ProtectedRoute>
-                    <Units />
-                  </ProtectedRoute>
-                } />
-                <Route path="/rent" element={
-                  <ProtectedRoute>
-                    <RentCollection />
-                  </ProtectedRoute>
-                } />
-                <Route path="/leases" element={
-                  <ProtectedRoute>
-                    <Leases />
-                  </ProtectedRoute>
-                } />
-                <Route path="/leads" element={
-                  <ProtectedRoute>
-                    <Leads />
-                  </ProtectedRoute>
-                } />
-                <Route path="/maintenance" element={
-                  <ProtectedRoute>
-                    <MaintenanceSmart />
-                  </ProtectedRoute>
-                } />
-                <Route path="/messages" element={
-                  <ProtectedRoute>
-                    <Messages />
-                  </ProtectedRoute>
-                } />
-                <Route path="/reports" element={
-                  <ProtectedRoute>
-                    <Reports />
-                  </ProtectedRoute>
-                } />
-                <Route path="/config" element={
-                  <ProtectedRoute>
-                    <Config />
-                  </ProtectedRoute>
-                } />
-                <Route path="/profile" element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                } />
-                <Route path="/billing" element={
-                  <ProtectedRoute>
-                    <Billing />
-                  </ProtectedRoute>
-                } />
-                <Route path="/concierge" element={
-                  <ProtectedRoute>
-                    <Billing />
-                  </ProtectedRoute>
-                } />
-                <Route path="/assistant" element={<ProtectedRoute><LandlordAssistant /></ProtectedRoute>} />
-                <Route path="/nyc-compliance" element={<ProtectedRoute><NYCCompliance /></ProtectedRoute>} />
-                <Route path="/market-insights" element={<ProtectedRoute><MarketInsights /></ProtectedRoute>} />
-                <Route path="/recommendations" element={<ProtectedRoute><Recommendations /></ProtectedRoute>} />
-                <Route path="/listings" element={<ProtectedRoute><Listings /></ProtectedRoute>} />
+                    {/* Protected Routes - AI Enhanced */}
+                    <Route path="/dashboard" element={
+                      <ProtectedRoute>
+                        <DashboardSmart />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/dashboard-classic" element={
+                      <ProtectedRoute>
+                        <Dashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/units" element={
+                      <ProtectedRoute>
+                        <Units />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/rent" element={
+                      <ProtectedRoute>
+                        <RentCollection />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/leases" element={
+                      <ProtectedRoute>
+                        <Leases />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/leads" element={
+                      <ProtectedRoute>
+                        <Leads />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/maintenance" element={
+                      <ProtectedRoute>
+                        <MaintenanceSmart />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/messages" element={
+                      <ProtectedRoute>
+                        <Messages />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/reports" element={
+                      <ProtectedRoute>
+                        <Reports />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/config" element={
+                      <ProtectedRoute>
+                        <Config />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/profile" element={
+                      <ProtectedRoute>
+                        <Profile />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/billing" element={
+                      <ProtectedRoute>
+                        <Billing />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/concierge" element={
+                      <ProtectedRoute>
+                        <Billing />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/assistant" element={<ProtectedRoute><LandlordAssistant /></ProtectedRoute>} />
+                    <Route path="/nyc-compliance" element={<ProtectedRoute><NYCCompliance /></ProtectedRoute>} />
+                    <Route path="/market-insights" element={<ProtectedRoute><MarketInsights /></ProtectedRoute>} />
+                    <Route path="/recommendations" element={<ProtectedRoute><Recommendations /></ProtectedRoute>} />
+                    <Route path="/listings" element={<ProtectedRoute><Listings /></ProtectedRoute>} />
 
-                {/* 404 */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+                    {/* 404 */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
+              </ErrorBoundary>
             </AppProvider>
           </LanguageProvider>
         </AuthProvider>
