@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { FileText, Download, Wrench, FileSignature, Loader2, CheckCircle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
-// jsPDF is lazy loaded in handleGenerate
-import { sanitizeText } from '@/lib/sanitize';
+
+// Lazy load jsPDF - reduces initial bundle by ~300KB
+const loadJsPDF = () => import('jspdf').then(module => module.default);
 
 export type DocumentType = 'lease' | 'work-order';
 
@@ -54,27 +55,15 @@ export function DocumentGenerator({ defaultType = 'lease', unitId, maintenanceId
   });
 
   // Work order form state
-  const [workOrderData, setWorkOrderData] = useState<Partial<WorkOrderData>>({
+  const [workOrderData, setWorkOrderData] = useState<Partial<WorkOrderData>>(({
     priority: 'medium',
     dateSubmitted: new Date().toISOString().split('T')[0],
-  });
+  }));
 
-  const generateLeasePDF = (jsPDFClass: typeof jsPDF) => {
-    const doc = new jsPDFClass();
-    // Sanitize all user inputs before using in PDF
-    const data = {
-      landlordName: sanitizeText(leaseData.landlordName),
-      landlordAddress: sanitizeText(leaseData.landlordAddress),
-      tenantName: sanitizeText(leaseData.tenantName),
-      tenantAddress: sanitizeText(leaseData.tenantAddress),
-      propertyAddress: sanitizeText(leaseData.propertyAddress),
-      unitNumber: sanitizeText(leaseData.unitNumber),
-      leaseStart: sanitizeText(leaseData.leaseStart),
-      leaseEnd: sanitizeText(leaseData.leaseEnd),
-      monthlyRent: leaseData.monthlyRent || 0,
-      securityDeposit: leaseData.securityDeposit || 0,
-      leaseType: leaseData.leaseType || 'free-market',
-    } as LeaseData;
+  const generateLeasePDF = async () => {
+    const jsPDF = await loadJsPDF();
+    const doc = new jsPDF();
+    const data = leaseData as LeaseData;
     
     // Header
     doc.setFontSize(20);
@@ -138,105 +127,63 @@ export function DocumentGenerator({ defaultType = 'lease', unitId, maintenanceId
     return doc;
   };
 
-  const generateWorkOrderPDF = (jsPDFClass: typeof jsPDF) => {
-    const doc = new jsPDFClass();
-    // Sanitize all user inputs before using in PDF
-    const data = {
-      requestId: sanitizeText(workOrderData.requestId),
-      unitNumber: sanitizeText(workOrderData.unitNumber),
-      propertyAddress: sanitizeText(workOrderData.propertyAddress),
-      tenantName: sanitizeText(workOrderData.tenantName),
-      issueDescription: sanitizeText(workOrderData.issueDescription),
-      priority: workOrderData.priority || 'medium',
-      category: sanitizeText(workOrderData.category),
-      dateSubmitted: sanitizeText(workOrderData.dateSubmitted),
-      estimatedCost: workOrderData.estimatedCost,
-    } as WorkOrderData;
+  const generateWorkOrderPDF = async () => {
+    const jsPDF = await loadJsPDF();
+    const doc = new jsPDF();
+    const data = workOrderData as WorkOrderData;
     
     // Header
-    doc.setFillColor(245, 158, 11);
-    doc.rect(0, 0, 210, 40, 'F');
-    
-    doc.setFontSize(24);
-    doc.setTextColor(255, 255, 255);
-    doc.text('WORK ORDER', 105, 25, { align: 'center' });
-    
-    // Work Order Info
-    doc.setFontSize(12);
+    doc.setFontSize(20);
     doc.setTextColor(33, 37, 41);
-    doc.text(`Work Order #: ${data.requestId || 'WO-XXXX'}`, 20, 55);
-    doc.text(`Date: ${data.dateSubmitted || new Date().toLocaleDateString()}`, 120, 55);
-    
-    // Priority Badge
-    const priorityColors = {
-      low: [108, 117, 125],
-      medium: [245, 158, 11],
-      high: [220, 53, 69],
-      urgent: [185, 28, 28],
-    };
-    const color = priorityColors[data.priority || 'medium'];
-    doc.setFillColor(color[0], color[1], color[2]);
-    doc.roundedRect(160, 62, 30, 10, 2, 2, 'F');
-    doc.setFontSize(10);
-    doc.setTextColor(255, 255, 255);
-    doc.text((data.priority || 'MEDIUM').toUpperCase(), 175, 69, { align: 'center' });
-    
-    // Property Info
-    doc.setFontSize(12);
-    doc.setTextColor(33, 37, 41);
-    doc.text('PROPERTY INFORMATION', 20, 85);
+    doc.text('MAINTENANCE WORK ORDER', 105, 20, { align: 'center' });
     
     doc.setFontSize(10);
     doc.setTextColor(108, 117, 125);
-    doc.text(`Property Address: ${data.propertyAddress || '[Property Address]'}`, 25, 95);
-    doc.text(`Unit Number: ${data.unitNumber || '[Unit Number]'}`, 25, 102);
-    doc.text(`Tenant Name: ${data.tenantName || '[Tenant Name]'}`, 25, 109);
+    doc.text(`Request ID: ${data.requestId || '[Request ID]'}`, 105, 30, { align: 'center' });
+    
+    // Request Details
+    doc.setFontSize(12);
+    doc.setTextColor(33, 37, 41);
+    doc.text('1. REQUEST DETAILS', 20, 45);
+    
+    doc.setFontSize(10);
+    doc.text(`Unit Number: ${data.unitNumber || '[Unit Number]'}`, 25, 55);
+    doc.text(`Property Address: ${data.propertyAddress || '[Property Address]'}`, 25, 62);
+    doc.text(`Tenant Name: ${data.tenantName || '[Tenant Name]'}`, 25, 69);
+    doc.text(`Date Submitted: ${data.dateSubmitted || '[Date]'}`, 25, 76);
+    doc.text(`Priority: ${(data.priority || 'medium').toUpperCase()}`, 25, 83);
+    doc.text(`Category: ${data.category || '[Category]'}`, 25, 90);
     
     // Issue Description
     doc.setFontSize(12);
-    doc.setTextColor(33, 37, 41);
-    doc.text('ISSUE DESCRIPTION', 20, 125);
+    doc.text('2. ISSUE DESCRIPTION', 20, 110);
     
     doc.setFontSize(10);
-    doc.setTextColor(108, 117, 125);
-    const splitDescription = doc.splitTextToSize(data.issueDescription || '[No description provided]', 170);
-    doc.text(splitDescription, 25, 135);
-    
-    // Category
-    doc.setFontSize(12);
-    doc.setTextColor(33, 37, 41);
-    doc.text('CATEGORY', 20, 165);
-    
-    doc.setFontSize(10);
-    doc.setTextColor(108, 117, 125);
-    doc.text(data.category || '[Category]', 25, 175);
+    const splitDescription = doc.splitTextToSize(data.issueDescription || '[Issue Description]', 160);
+    doc.text(splitDescription, 25, 120);
     
     // Cost Estimate
     if (data.estimatedCost) {
       doc.setFontSize(12);
-      doc.setTextColor(33, 37, 41);
-      doc.text('ESTIMATED COST', 120, 165);
+      doc.text('3. COST ESTIMATE', 20, 200);
       
       doc.setFontSize(10);
-      doc.setTextColor(108, 117, 125);
-      doc.text(`$${data.estimatedCost.toLocaleString()}`, 125, 175);
+      doc.text(`Estimated Cost: $${data.estimatedCost.toLocaleString()}`, 25, 210);
     }
     
-    // Signatures
+    // Assignment
     doc.setFontSize(12);
-    doc.setTextColor(33, 37, 41);
-    doc.text('AUTHORIZATION', 20, 210);
+    doc.text(data.estimatedCost ? '4. ASSIGNMENT' : '3. ASSIGNMENT', 20, 230);
     
     doc.setFontSize(10);
-    doc.setTextColor(108, 117, 125);
-    doc.text('Landlord/Manager Signature: _________________________ Date: ___________', 25, 225);
-    doc.text('Vendor Signature: _________________________ Date: ___________', 25, 245);
-    doc.text('Completion Date: ___________', 25, 265);
+    doc.text('Assigned To: _________________________', 25, 245);
+    doc.text('Date Assigned: _________________________', 25, 255);
+    doc.text('Expected Completion: _________________________', 25, 265);
     
     // Footer
     doc.setFontSize(8);
     doc.setTextColor(108, 117, 125);
-    doc.text('Generated by LandlordBot', 105, 280, { align: 'center' });
+    doc.text('Generated by LandlordBot - Work Order Template', 105, 280, { align: 'center' });
     
     return doc;
   };
@@ -244,428 +191,434 @@ export function DocumentGenerator({ defaultType = 'lease', unitId, maintenanceId
   const handleGenerate = async () => {
     setIsGenerating(true);
     
-    // Lazy load jsPDF only when needed (~300KB)
-    const { default: jsPDF } = await import('jspdf');
-    
-    // Simulate generation delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    let doc;
-    let filename;
-    
-    if (documentType === 'lease') {
-      doc = generateLeasePDF(jsPDF);
-      filename = `lease-agreement-${leaseData.tenantName?.replace(/\s+/g, '-').toLowerCase() || 'template'}.pdf`;
-    } else {
-      doc = generateWorkOrderPDF(jsPDF);
-      filename = `work-order-${workOrderData.requestId || 'new'}.pdf`;
+    try {
+      let doc;
+      let fileName: string;
+      
+      if (documentType === 'lease') {
+        doc = await generateLeasePDF();
+        fileName = `lease-agreement-${leaseData.tenantName || 'template'}.pdf`;
+      } else {
+        doc = await generateWorkOrderPDF();
+        fileName = `work-order-${workOrderData.requestId || 'template'}.pdf`;
+      }
+      
+      doc.save(fileName);
+      
+      setIsComplete(true);
+      setTimeout(() => {
+        setIsComplete(false);
+        setShowModal(false);
+      }, 2000);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setIsGenerating(false);
     }
-    
-    doc.save(filename);
-    
-    setIsGenerating(false);
-    setIsComplete(true);
-    
-    setTimeout(() => {
-      setIsComplete(false);
-      setShowModal(false);
-    }, 2000);
   };
 
-  const openModal = () => {
-    // Pre-fill data if unitId or maintenanceId is provided
-    if (unitId) {
-      const unit = units.find(u => u.id === unitId);
+  const handleDownload = async () => {
+    setIsGenerating(true);
+    
+    try {
+      // Generate and download
+      let doc;
+      let fileName: string;
+      
+      if (documentType === 'lease') {
+        doc = await generateLeasePDF();
+        fileName = `lease-agreement-${leaseData.tenantName || 'template'}.pdf`;
+      } else {
+        doc = await generateWorkOrderPDF();
+        fileName = `work-order-${workOrderData.requestId || 'template'}.pdf`;
+      }
+      
+      doc.save(fileName);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const autoFillFromUnit = (unitId: string) => {
+    const unit = units.find(u => u.id === unitId);
+    if (unit) {
+      setWorkOrderData(prev => ({
+        ...prev,
+        unitNumber: unit.unitNumber,
+        propertyAddress: unit.address || '',
+      }));
+      
+      setLeaseData(prev => ({
+        ...prev,
+        unitNumber: unit.unitNumber,
+        propertyAddress: unit.address || '',
+        monthlyRent: unit.monthlyRent || unit.rentAmount || 0,
+      }));
+    }
+  };
+
+  const autoFillFromMaintenance = (maintenanceId: string) => {
+    const request = maintenanceRequests.find(r => r.id === maintenanceId);
+    if (request) {
+      // Map priority to WorkOrderData priority (strip 'emergency' to 'urgent')
+      const mappedPriority: WorkOrderData['priority'] = 
+        request.priority === 'emergency' ? 'urgent' : 
+        ['low', 'medium', 'high', 'urgent'].includes(request.priority) ? 
+          request.priority as WorkOrderData['priority'] : 'medium';
+      
+      setWorkOrderData(prev => ({
+        ...prev,
+        requestId: request.id,
+        unitNumber: request.unitNumber,
+        issueDescription: request.description,
+        priority: mappedPriority,
+        category: request.category || 'general',
+        dateSubmitted: request.createdAt?.split('T')[0] || new Date().toISOString().split('T')[0],
+      }));
+      
+      // Also try to get property address
+      const unit = units.find(u => u.unitNumber === request.unitNumber);
       if (unit) {
-        setLeaseData(prev => ({
-          ...prev,
-          propertyAddress: unit.address,
-          unitNumber: unit.unitNumber,
-          monthlyRent: unit.rentAmount || 0,
-        }));
         setWorkOrderData(prev => ({
           ...prev,
-          propertyAddress: unit.address,
-          unitNumber: unit.unitNumber,
-          tenantName: unit.tenant?.name || '',
+          propertyAddress: unit.address || '',
         }));
       }
     }
-    
-    if (maintenanceId) {
-      const request = maintenanceRequests.find(r => r.id === maintenanceId);
-      if (request) {
-        const unit = units.find(u => u.id === request.unitId);
-        setWorkOrderData(prev => ({
-          ...prev,
-          requestId: request.id.slice(0, 8).toUpperCase(),
-          issueDescription: request.description,
-          priority: request.priority as any,
-          category: request.category || 'General',
-          estimatedCost: request.costEstimate || undefined,
-          propertyAddress: unit?.address || '',
-          unitNumber: unit?.unitNumber || '',
-          tenantName: unit?.tenant?.name || '',
-        }));
-        setDocumentType('work-order');
-      }
-    }
-    
-    setShowModal(true);
   };
 
   return (
     <>
-      <button
-        onClick={openModal}
-        className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg transition-colors"
+      {/* Trigger Button */}
+      <motion.button
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        onClick={() => {
+          // Pre-fill data if IDs provided
+          if (unitId) autoFillFromUnit(unitId);
+          if (maintenanceId) autoFillFromMaintenance(maintenanceId);
+          setShowModal(true);
+        }}
+        className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-900 rounded-lg font-medium hover:bg-amber-200 transition-colors"
       >
         <FileText className="w-4 h-4" />
-        <span>Generate Document</span>
-      </button>
+        Generate Document
+      </motion.button>
 
+      {/* Document Generator Modal */}
       <AnimatePresence>
         {showModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={() => setShowModal(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            onClick={() => !isGenerating && setShowModal(false)}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-auto"
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
             >
-              <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-500/20 rounded-lg">
-                    <FileSignature className="w-5 h-5 text-amber-500" />
+                  <div className="p-2 bg-amber-100 rounded-lg">
+                    <FileSignature className="w-5 h-5 text-amber-600" />
                   </div>
-                  <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-                    Generate Document
-                  </h2>
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900">Document Generator</h3>
+                    <p className="text-sm text-slate-500">Generate professional documents instantly</p>
+                  </div>
                 </div>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="p-1 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                {!isGenerating && (
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
               </div>
 
-              <div className="p-6">
-                {/* Document Type Selection */}
-                <div className="flex gap-4 mb-6">
+              {/* Document Type Tabs */}
+              <div className="p-6 border-b">
+                <div className="flex gap-2">
                   <button
                     onClick={() => setDocumentType('lease')}
-                    className={`flex-1 p-4 rounded-lg border-2 transition-all ${
+                    disabled={isGenerating}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
                       documentType === 'lease'
-                        ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
-                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
+                        ? 'border-amber-500 bg-amber-50 text-amber-900'
+                        : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
-                    <FileText className={`w-6 h-6 mx-auto mb-2 ${
-                      documentType === 'lease' ? 'text-amber-500' : 'text-slate-400'
-                    }`} />
-                    <p className={`font-medium ${
-                      documentType === 'lease' ? 'text-slate-900 dark:text-slate-100' : 'text-slate-500'
-                    }`}>
-                      Lease Agreement
-                    </p>
+                    <FileSignature className="w-4 h-4" />
+                    Lease Agreement
                   </button>
-                  
                   <button
                     onClick={() => setDocumentType('work-order')}
-                    className={`flex-1 p-4 rounded-lg border-2 transition-all ${
+                    disabled={isGenerating}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
                       documentType === 'work-order'
-                        ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
-                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
+                        ? 'border-amber-500 bg-amber-50 text-amber-900'
+                        : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
-                    <Wrench className={`w-6 h-6 mx-auto mb-2 ${
-                      documentType === 'work-order' ? 'text-amber-500' : 'text-slate-400'
-                    }`} />
-                    <p className={`font-medium ${
-                      documentType === 'work-order' ? 'text-slate-900 dark:text-slate-100' : 'text-slate-500'
-                    }`}>
-                      Work Order
-                    </p>
+                    <Wrench className="w-4 h-4" />
+                    Work Order
                   </button>
                 </div>
+              </div>
 
-                {/* Form Fields */}
-                {documentType === 'lease' ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                          Landlord Name
-                        </label>
+              {/* Form Content */}
+              {isComplete ? (
+                <div className="p-12 flex flex-col items-center justify-center text-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4"
+                  >
+                    <CheckCircle className="w-8 h-8 text-green-600" />
+                  </motion.div>
+                  <h4 className="text-lg font-semibold text-slate-900">Document Generated!</h4>
+                  <p className="text-slate-500">Your PDF has been downloaded.</p>
+                </div>
+              ) : (
+                <div className="p-6 space-y-6">
+                  {documentType === 'lease' ? (
+                    <div className="space-y-4">
+                      <div className="text-sm font-medium text-slate-900">1. Parties</div>
+                      <div className="grid grid-cols-2 gap-4">
                         <input
                           type="text"
+                          placeholder="Landlord Name"
                           value={leaseData.landlordName || ''}
                           onChange={(e) => setLeaseData({ ...leaseData, landlordName: e.target.value })}
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
+                          disabled={isGenerating}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
                         />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                          Tenant Name
-                        </label>
                         <input
                           type="text"
+                          placeholder="Tenant Name"
                           value={leaseData.tenantName || ''}
                           onChange={(e) => setLeaseData({ ...leaseData, tenantName: e.target.value })}
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
+                          disabled={isGenerating}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
                         />
                       </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                          Property Address
-                        </label>
+                      <div className="grid grid-cols-2 gap-4">
                         <input
                           type="text"
+                          placeholder="Landlord Address"
+                          value={leaseData.landlordAddress || ''}
+                          onChange={(e) => setLeaseData({ ...leaseData, landlordAddress: e.target.value })}
+                          disabled={isGenerating}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Tenant Address"
+                          value={leaseData.tenantAddress || ''}
+                          onChange={(e) => setLeaseData({ ...leaseData, tenantAddress: e.target.value })}
+                          disabled={isGenerating}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
+                        />
+                      </div>
+
+                      <div className="text-sm font-medium text-slate-900">2. Property Information</div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <input
+                          type="text"
+                          placeholder="Property Address"
                           value={leaseData.propertyAddress || ''}
                           onChange={(e) => setLeaseData({ ...leaseData, propertyAddress: e.target.value })}
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
+                          disabled={isGenerating}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
                         />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                          Unit Number
-                        </label>
                         <input
                           type="text"
+                          placeholder="Unit Number"
                           value={leaseData.unitNumber || ''}
                           onChange={(e) => setLeaseData({ ...leaseData, unitNumber: e.target.value })}
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
+                          disabled={isGenerating}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
                         />
                       </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                          Lease Start
-                        </label>
+
+                      <div className="text-sm font-medium text-slate-900">3. Lease Terms</div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <select
+                          value={leaseData.leaseType}
+                          onChange={(e) => setLeaseData({ ...leaseData, leaseType: e.target.value as LeaseData['leaseType'] })}
+                          disabled={isGenerating}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
+                        >
+                          <option value="free-market">Free Market</option>
+                          <option value="rent-stabilized">Rent Stabilized</option>
+                        </select>
                         <input
                           type="date"
+                          placeholder="Start Date"
                           value={leaseData.leaseStart || ''}
                           onChange={(e) => setLeaseData({ ...leaseData, leaseStart: e.target.value })}
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
+                          disabled={isGenerating}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
                         />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                          Lease End
-                        </label>
                         <input
                           type="date"
+                          placeholder="End Date"
                           value={leaseData.leaseEnd || ''}
                           onChange={(e) => setLeaseData({ ...leaseData, leaseEnd: e.target.value })}
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
+                          disabled={isGenerating}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
                         />
                       </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                          Monthly Rent ($)
-                        </label>
+
+                      <div className="text-sm font-medium text-slate-900">4. Financial Terms</div>
+                      <div className="grid grid-cols-2 gap-4">
                         <input
                           type="number"
+                          placeholder="Monthly Rent ($)"
                           value={leaseData.monthlyRent || ''}
-                          onChange={(e) => setLeaseData({ ...leaseData, monthlyRent: parseInt(e.target.value) || 0 })}
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
+                          onChange={(e) => setLeaseData({ ...leaseData, monthlyRent: Number(e.target.value) })}
+                          disabled={isGenerating}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
                         />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                          Security Deposit ($)
-                        </label>
                         <input
                           type="number"
+                          placeholder="Security Deposit ($)"
                           value={leaseData.securityDeposit || ''}
-                          onChange={(e) => setLeaseData({ ...leaseData, securityDeposit: parseInt(e.target.value) || 0 })}
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
+                          onChange={(e) => setLeaseData({ ...leaseData, securityDeposit: Number(e.target.value) })}
+                          disabled={isGenerating}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
                         />
                       </div>
                     </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                        Lease Type
-                      </label>
-                      <select
-                        value={leaseData.leaseType}
-                        onChange={(e) => setLeaseData({ ...leaseData, leaseType: e.target.value as any })}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
-                      >
-                        <option value="free-market">Free Market</option>
-                        <option value="rent-stabilized">Rent Stabilized</option>
-                      </select>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                          Work Order ID
-                        </label>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="text-sm font-medium text-slate-900">1. Request Information</div>
+                      <div className="grid grid-cols-2 gap-4">
                         <input
                           type="text"
+                          placeholder="Request ID"
                           value={workOrderData.requestId || ''}
                           onChange={(e) => setWorkOrderData({ ...workOrderData, requestId: e.target.value })}
-                          placeholder="WO-1234"
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
+                          disabled={isGenerating}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Unit Number"
+                          value={workOrderData.unitNumber || ''}
+                          onChange={(e) => setWorkOrderData({ ...workOrderData, unitNumber: e.target.value })}
+                          disabled={isGenerating}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
                         />
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                          Date Submitted
-                        </label>
+                      <input
+                        type="text"
+                        placeholder="Property Address"
+                        value={workOrderData.propertyAddress || ''}
+                        onChange={(e) => setWorkOrderData({ ...workOrderData, propertyAddress: e.target.value })}
+                        disabled={isGenerating}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
+                      />
+
+                      <div className="text-sm font-medium text-slate-900">2. Issue Details</div>
+                      <textarea
+                        rows={3}
+                        placeholder="Issue description"
+                        value={workOrderData.issueDescription || ''}
+                        onChange={(e) => setWorkOrderData({ ...workOrderData, issueDescription: e.target.value })}
+                        disabled={isGenerating}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
+                      />
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <select
+                          value={workOrderData.priority}
+                          onChange={(e) => setWorkOrderData({ ...workOrderData, priority: e.target.value as WorkOrderData['priority'] })}
+                          disabled={isGenerating}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
+                        >
+                          <option value="urgent">🔴 Urgent</option>
+                          <option value="high">🟠 High</option>
+                          <option value="medium">🟡 Medium</option>
+                          <option value="low">🟢 Low</option>
+                        </select>
+                        <select
+                          value={workOrderData.category || 'general'}
+                          onChange={(e) => setWorkOrderData({ ...workOrderData, category: e.target.value })}
+                          disabled={isGenerating}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
+                        >
+                          <option value="plumbing">Plumbing</option>
+                          <option value="electrical">Electrical</option>
+                          <option value="hvac">HVAC</option>
+                          <option value="appliance">Appliance</option>
+                          <option value="structural">Structural</option>
+                          <option value="general">General</option>
+                        </select>
                         <input
                           type="date"
                           value={workOrderData.dateSubmitted || ''}
                           onChange={(e) => setWorkOrderData({ ...workOrderData, dateSubmitted: e.target.value })}
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
+                          disabled={isGenerating}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
                         />
                       </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                          Property Address
-                        </label>
-                        <input
-                          type="text"
-                          value={workOrderData.propertyAddress || ''}
-                          onChange={(e) => setWorkOrderData({ ...workOrderData, propertyAddress: e.target.value })}
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                          Unit Number
-                        </label>
-                        <input
-                          type="text"
-                          value={workOrderData.unitNumber || ''}
-                          onChange={(e) => setWorkOrderData({ ...workOrderData, unitNumber: e.target.value })}
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                        Tenant Name
-                      </label>
-                      <input
-                        type="text"
-                        value={workOrderData.tenantName || ''}
-                        onChange={(e) => setWorkOrderData({ ...workOrderData, tenantName: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                        Issue Description
-                      </label>
-                      <textarea
-                        value={workOrderData.issueDescription || ''}
-                        onChange={(e) => setWorkOrderData({ ...workOrderData, issueDescription: e.target.value })}
-                        rows={3}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg resize-none"
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                          Priority
-                        </label>
-                        <select
-                          value={workOrderData.priority}
-                          onChange={(e) => setWorkOrderData({ ...workOrderData, priority: e.target.value as any })}
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
-                        >
-                          <option value="low">Low</option>
-                          <option value="medium">Medium</option>
-                          <option value="high">High</option>
-                          <option value="urgent">Urgent</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                          Category
-                        </label>
-                        <select
-                          value={workOrderData.category || ''}
-                          onChange={(e) => setWorkOrderData({ ...workOrderData, category: e.target.value })}
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
-                        >
-                          <option value="">Select category...</option>
-                          <option value="Plumbing">Plumbing</option>
-                          <option value="Electrical">Electrical</option>
-                          <option value="HVAC">HVAC</option>
-                          <option value="Appliance">Appliance</option>
-                          <option value="General Repair">General Repair</option>
-                          <option value="Cleaning">Cleaning</option>
-                          <option value="Other">Other</option>
-                        </select>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                        Estimated Cost ($)
-                      </label>
+
+                      <div className="text-sm font-medium text-slate-900">3. Cost Estimate (Optional)</div>
                       <input
                         type="number"
+                        placeholder="Estimated Cost ($)"
                         value={workOrderData.estimatedCost || ''}
-                        onChange={(e) => setWorkOrderData({ ...workOrderData, estimatedCost: parseInt(e.target.value) || undefined })}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
+                        onChange={(e) => setWorkOrderData({ ...workOrderData, estimatedCost: Number(e.target.value) })}
+                        disabled={isGenerating}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500"
                       />
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+              )}
 
-                {/* Actions */}
-                <div className="flex gap-3 mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
-                  <button
-                    onClick={handleGenerate}
-                    disabled={isGenerating || isComplete}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 text-white font-medium rounded-lg transition-colors"
-                  >
-                    {isGenerating ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /> <span>Generating...</span></>
-                    ) : isComplete ? (
-                      <><CheckCircle className="w-4 h-4" /> <span>Downloaded!</span></>
-                    ) : (
-                      <><Download className="w-4 h-4" /> <span>Generate PDF</span></>
-                    )}
-                  </button>
-                  
+              {/* Footer Actions */}
+              {!isComplete && (
+                <div className="flex items-center justify-end gap-3 p-6 border-t bg-slate-50">
                   <button
                     onClick={() => setShowModal(false)}
-                    className="px-6 py-3 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                    disabled={isGenerating}
+                    className="px-4 py-2 text-slate-600 hover:text-slate-800 transition-colors disabled:opacity-50"
                   >
                     Cancel
                   </button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleGenerate}
+                    disabled={isGenerating}
+                    className="flex items-center gap-2 px-6 py-2 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors disabled:opacity-50"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Generate & Download PDF
+                      </>
+                    )}
+                  </motion.button>
                 </div>
-              </div>
+              )}
             </motion.div>
           </motion.div>
         )}
@@ -673,5 +626,3 @@ export function DocumentGenerator({ defaultType = 'lease', unitId, maintenanceId
     </>
   );
 }
-
-export default DocumentGenerator;
