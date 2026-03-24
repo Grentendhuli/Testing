@@ -424,3 +424,6 @@ export function TermsOfService() {
     </div>
   );
 }
+
+
+export default TermsOfService;
