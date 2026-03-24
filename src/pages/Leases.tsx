@@ -397,31 +397,6 @@ export function Leases() {
     setCreatingReminderFor(null);
   }, [leases, units, createRenewalReminder]);
 
-  const handleTerminateLease = async () => {
-    if (!leaseToTerminate) return;
-
-    setIsTerminating(true);
-
-    try {
-      await terminateLease(leaseToTerminate.id, terminationReason);
-      setShowTerminateConfirm(false);
-      setLeaseToTerminate(null);
-      setTerminationReason('');
-      showSuccess('Lease terminated successfully');
-    } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to terminate lease');
-    } finally {
-      setIsTerminating(false);
-    }
-  };
-
-  const closeModals = () => {
-    setShowNewLeaseModal(false);
-    setShowEditModal(false);
-    setEditingLease(null);
-    resetForm();
-  };
-
   useEffect(() => {
     const unitId = searchParams.get('unitId');
     if (!unitId) return;
@@ -444,26 +419,6 @@ export function Leases() {
     nextParams.delete('action');
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, setSearchParams, units]);
-
-  // Handle setting renewal reminder
-  const handleSetRenewalReminder = async (leaseId: string) => {
-    const lease = leases.find(l => l.id === leaseId);
-    if (!lease) return;
-
-    setCreatingReminderFor(leaseId);
-
-    const unit = units.find(u => u.id === lease.unitId);
-
-    await createRenewalReminder({
-      tenantName: lease.tenantName,
-      unitNumber: lease.unitNumber,
-      leaseEndDate: lease.endDate,
-      location: unit?.address,
-      leaseId: lease.id,
-    });
-
-    setCreatingReminderFor(null);
-  };
 
   // Lease Form Modal Component
   const LeaseFormModal = ({ mode }: { mode: 'create' | 'edit' }) => {
