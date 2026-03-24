@@ -134,7 +134,7 @@ export function LoginForm() {
                   ? 'text-emerald-600 dark:text-emerald-400'
                   : 'text-red-600 dark:text-red-400'
               }`} />
-              <p className={`text-sm ${
+              <p id="form-error" role="alert" className={`text-sm ${
                 error.includes('magic link')
                   ? 'text-emerald-700 dark:text-emerald-400'
                   : 'text-red-700 dark:text-red-400'
@@ -170,12 +170,13 @@ export function LoginForm() {
           {/* Magic Link Form */}
           <form onSubmit={handleMagicLink} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              <label htmlFor="login-email" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Email
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
+                  id="login-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

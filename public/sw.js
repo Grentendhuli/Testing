@@ -92,6 +92,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
+  // Skip chrome-extension:// and other extension protocols
+  if (url.protocol === 'chrome-extension:' || 
+      url.protocol === 'moz-extension:' || 
+      url.protocol === 'safari-extension:' ||
+      url.protocol === 'ms-browser-extension:') {
+    return;
+  }
+  
   // Strategy: Network First for API calls (Supabase)
   if (isAPIRequest(url)) {
     event.respondWith(networkFirstStrategy(request, CACHE_NAMES.api));

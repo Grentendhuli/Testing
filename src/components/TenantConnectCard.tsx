@@ -174,6 +174,7 @@ export function TenantConnectCard({
                   width={200}
                   height={200}
                   alt="QR Code"
+                  loading="lazy"
                   className="rounded-xl border border-slate-100 p-2 mx-auto"
                 />
                 <p className="text-xs text-slate-400 font-mono mt-2 truncate px-4">
