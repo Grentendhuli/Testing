@@ -1,143 +1,163 @@
-import React from 'react';
-import { cn } from '../../lib/utils';
+import { motion } from 'framer-motion';
 
 interface SkeletonProps {
+  className?: string;
   variant?: 'text' | 'circular' | 'rectangular' | 'rounded';
   width?: string | number;
   height?: string | number;
-  animation?: 'pulse' | 'shimmer' | 'none';
-  className?: string;
+  animate?: boolean;
   key?: React.Key;
 }
 
 export function Skeleton({
+  className = '',
   variant = 'text',
   width,
   height,
-  animation = 'shimmer',
-  className,
+  animate = true,
 }: SkeletonProps) {
-  const style: React.CSSProperties = {};
-  if (width) style.width = typeof width === 'number' ? `${width}px` : width;
-  if (height) style.height = typeof height === 'number' ? `${height}px` : height;
+  const baseClasses = 'bg-slate-200 dark:bg-slate-700';
+  
+  const variantClasses = {
+    text: 'rounded',
+    circular: 'rounded-full',
+    rectangular: 'rounded-none',
+    rounded: 'rounded-lg',
+  };
+
+  const style: React.CSSProperties = {
+    width: width,
+    height: height,
+  };
+
+  if (animate) {
+    return (
+      <motion.div
+        className={`${baseClasses} ${variantClasses[variant]} ${className}`}
+        style={style}
+        initial={{ opacity: 0.5 }}
+        animate={{ opacity: [0.5, 0.8, 0.5] }}
+        transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+      />
+    );
+  }
 
   return (
     <div
-      className={cn(
-        'bg-lb-muted',
-        variant === 'text' && 'h-4 rounded',
-        variant === 'circular' && 'rounded-full',
-        variant === 'rectangular' && 'rounded-none',
-        variant === 'rounded' && 'rounded-lg',
-        animation === 'pulse' && 'animate-pulse',
-        animation === 'shimmer' && 'skeleton-shimmer',
-        className
-      )}
+      className={`${baseClasses} ${variantClasses[variant]} ${className}`}
       style={style}
     />
   );
 }
 
-// Pre-built skeleton layouts
-export function SkeletonCard({ className }: { className?: string }) {
+// Pre-built skeleton patterns
+export function SkeletonCard({ className = '' }: { className?: string }) {
   return (
-    <div className={cn('bg-lb-surface border border-lb-border rounded-xl p-5', className)}>
-      <div className="flex items-start justify-between mb-4">
-        <div className="space-y-2">
-          <Skeleton width={120} />
-          <Skeleton width={80} variant="text" className="h-3" />
-        </div>
-        <Skeleton variant="circular" width={40} height={40} />
-      </div>
-      
-      <Skeleton width="60%" height={32} className="mb-2" />
-      <Skeleton width="40%" height={20} />
-    </div>
-  );
-}
-
-export function SkeletonMetricCard({ className }: { className?: string }) {
-  return (
-    <div className={cn('bg-lb-surface border border-lb-border rounded-xl p-5', className)}>
-      <div className="flex items-start justify-between">
-        <div className="space-y-3 flex-1">
-          <Skeleton width={100} variant="text" className="h-4" />
-          <Skeleton width={80} height={36} />
-          <Skeleton width={60} variant="text" className="h-3" />
-        </div>
+    <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-6 ${className}`}>
+      <div className="flex items-start gap-4">
         <Skeleton variant="circular" width={48} height={48} />
+        <div className="flex-1 space-y-3">
+          <Skeleton width="60%" height={20} />
+          <Skeleton width="40%" height={16} />
+        </div>
+      </div>
+      <div className="mt-4 space-y-2">
+        <Skeleton width="100%" height={12} />
+        <Skeleton width="80%" height={12} />
       </div>
     </div>
   );
 }
 
-export function SkeletonList({ count = 3, className }: { count?: number; className?: string }) {
+export function SkeletonMetricCard({ className = '' }: { className?: string }) {
   return (
-    <div className={cn('space-y-3', className)}>
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4 p-4 bg-lb-surface border border-lb-border rounded-lg">
-          <Skeleton variant="circular" width={40} height={40} />
-          <div className="flex-1 space-y-2">
-            <Skeleton width="40%" />
-            <Skeleton width="60%" variant="text" className="h-3" />
-          </div>
-          <Skeleton width={60} height={28} variant="rounded" />
+    <div className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 ${className}`}>
+      <div className="flex items-center gap-3 mb-3">
+        <Skeleton variant="rounded" width={40} height={40} />
+        <Skeleton width={80} height={16} />
+      </div>
+      <Skeleton width="50%" height={32} className="mb-2" />
+      <Skeleton width="30%" height={14} />
+    </div>
+  );
+}
+
+export function SkeletonTable({ rows = 5, columns = 4 }: { rows?: number; columns?: number }) {
+  return (
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="flex gap-4 pb-3 border-b border-slate-200 dark:border-slate-700">
+        {Array.from({ length: columns }).map((_, i) => (
+          <Skeleton key={`header-${i}`} width={`${100 / columns}%`} height={16} />
+        ))}
+      </div>
+      {/* Rows */}
+      {Array.from({ length: rows }).map((_, rowIndex) => (
+        <div key={`row-${rowIndex}`} className="flex gap-4 py-3">
+          {Array.from({ length: columns }).map((_, colIndex) => (
+            <Skeleton key={`cell-${rowIndex}-${colIndex}`} width={`${100 / columns}%`} height={14} />
+          ))}
         </div>
       ))}
     </div>
   );
 }
 
-export function SkeletonTable({ rows = 3, columns = 4 }: { rows?: number; columns?: number }) {
+export function SkeletonDashboard({ className = '' }: { className?: string }) {
   return (
-    <div className="w-full">
+    <div className={`space-y-6 ${className}`}>
       {/* Header */}
-      <div className="flex gap-4 pb-4 border-b border-lb-border">
-        {Array.from({ length: columns }).map((_, i) => (
-          <div key={i}>
-            <Skeleton className="flex-1 h-5" />
-          </div>
-        ))}
+      <div className="space-y-2">
+        <Skeleton width={200} height={28} />
+        <Skeleton width={300} height={16} />
       </div>
       
-      {/* Rows */}
-      <div className="space-y-3 pt-3">
-        {Array.from({ length: rows }).map((_, rowIndex) => (
-          <div key={rowIndex} className="flex gap-4">
-            {Array.from({ length: columns }).map((_, colIndex) => (
-              <Skeleton key={colIndex} className="flex-1 h-10" />
-            ))}
-          </div>
-        ))}
+      {/* Health Ring */}
+      <div className="flex justify-center py-4">
+        <Skeleton variant="circular" width={160} height={160} />
+      </div>
+      
+      {/* Metric Rings */}
+      <div className="grid grid-cols-3 gap-4">
+        <Skeleton variant="circular" width={80} height={80} className="mx-auto" />
+        <Skeleton variant="circular" width={80} height={80} className="mx-auto" />
+        <Skeleton variant="circular" width={80} height={80} className="mx-auto" />
+      </div>
+      
+      {/* Insights */}
+      <div className="space-y-4">
+        <Skeleton width={120} height={20} />
+        <SkeletonCard />
+        <SkeletonCard />
       </div>
     </div>
   );
 }
 
-export function SkeletonDashboard() {
+export function SkeletonUnits({ className = '' }: { className?: string }) {
   return (
-    <div className="space-y-6">
-      {/* Welcome section */}
-      <div className="bg-lb-surface border border-lb-border rounded-xl p-6">
-        <Skeleton width={200} height={32} className="mb-2" />
-        <Skeleton width={300} variant="text" className="mb-4" />
-        <div className="flex gap-3">
-          <Skeleton width={100} height={36} variant="rounded" />
-          <Skeleton width={100} height={36} variant="rounded" />
+    <div className={`space-y-6 ${className}`}>
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div className="space-y-2">
+          <Skeleton width={180} height={28} />
+          <Skeleton width={250} height={16} />
         </div>
+        <Skeleton variant="rounded" width={120} height={40} />
       </div>
-
-      {/* Metric cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i}><SkeletonMetricCard /></div>
+      
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <SkeletonMetricCard />
+        <SkeletonMetricCard />
+        <SkeletonMetricCard />
+      </div>
+      
+      {/* Units Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i}><SkeletonCard /></div>
         ))}
-      </div>
-
-      {/* Content area */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <SkeletonCard className="lg:col-span-2" />
-        <SkeletonCard />
       </div>
     </div>
   );

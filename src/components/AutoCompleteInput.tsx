@@ -133,6 +133,7 @@ export function AutoCompleteInput({
   
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch suggestions when input changes
   useEffect(() => {
@@ -154,8 +155,21 @@ export function AutoCompleteInput({
       }
     };
 
-    const timer = setTimeout(fetchSuggestions, 200);
-    return () => clearTimeout(timer);
+    // Clear existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    // Set new timer
+    debounceTimerRef.current = setTimeout(fetchSuggestions, 200);
+    
+    // Cleanup on unmount or when dependencies change
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+    };
   }, [value, context, getSuggestions, aiEnabled]);
 
   // Handle click outside to close suggestions

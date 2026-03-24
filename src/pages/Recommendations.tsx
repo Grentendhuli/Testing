@@ -453,3 +453,5 @@ export function Recommendations() {
     </div>
   );
 }
+
+export default Recommendations;

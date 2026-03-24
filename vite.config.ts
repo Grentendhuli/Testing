@@ -3,8 +3,7 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 
 // FORCE CACHE BUST - Unique timestamp in filenames
-// Updated: 2026-03-12 00:20 UTC
-const TIMESTAMP = 'a91c19787b1ed1'
+const TIMESTAMP = 'b91c19787b1ed2'
 
 export default defineConfig({
   plugins: [react()],
@@ -23,36 +22,62 @@ export default defineConfig({
     },
   },
   build: {
-    target: ['es2020', 'safari14'],
+    target: 'es2020',
     outDir: 'dist',
     emptyOutDir: true,
-    minify: 'esbuild',
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor': ['react', 'react-dom', 'react-router-dom'],
-          'ui-vendor': ['lucide-react', 'framer-motion'],
-          'pdf': ['jspdf'],
-          'sentry': ['@sentry/react', '@sentry/browser'],
-          'supabase': ['@supabase/supabase-js'],
-        },
-        entryFileNames: `assets/entry-[name]-${TIMESTAMP}-[hash].js`,
-        chunkFileNames: `assets/chunk-[name]-${TIMESTAMP}-[hash].js`,
+        entryFileNames: `assets/[name]-${TIMESTAMP}-[hash].js`,
+        chunkFileNames: `assets/[name]-${TIMESTAMP}-[hash].js`,
         assetFileNames: (assetInfo) => {
           const info = assetInfo.name.split('.')
           const ext = info[info.length - 1]
-          return `assets/asset-${TIMESTAMP}-[hash][extname]`
+          return `assets/[name]-${TIMESTAMP}-[hash][extname]`
+        },
+        manualChunks(id) {
+          // Vendor chunking from node_modules
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'vendor-react';
+            }
+            if (id.includes('framer-motion')) {
+              return 'vendor-react'; // Bundle with react to avoid scheduler issues
+            }
+            if (id.includes('@supabase')) {
+              return 'vendor-db';
+            }
+            if (id.includes('recharts')) {
+              return 'vendor-charts';
+            }
+            if (id.includes('jspdf') || id.includes('html2canvas')) {
+              return 'vendor-pdf';
+            }
+            if (id.includes('@sentry')) {
+              return 'vendor-sentry';
+            }
+            if (id.includes('lucide-react')) {
+              return 'vendor-icons';
+            }
+            if (id.includes('@stripe')) {
+              return 'vendor-stripe';
+            }
+            return 'vendor-other';
+          }
+          
+          // Source file chunking - let React.lazy handle page chunks naturally
+          // Other source files will be in their appropriate chunk or the main chunk
+          return null;
         },
       },
     },
+    chunkSizeWarningLimit: 500,
   },
-  esbuild: {
- target: 'es2020',
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom', 'framer-motion'],
   },
   define: {
     __BUILD_TIMESTAMP__: JSON.stringify(new Date().toISOString()),
     __BUILD_VERSION__: JSON.stringify(`2.1.0-${TIMESTAMP}`),
-    __FORCE_REBUILD__: 'true',
   },
 })

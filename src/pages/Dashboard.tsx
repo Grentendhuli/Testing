@@ -21,8 +21,8 @@ import { useApp } from '../context/AppContext';
 import { HealthScoreRing } from '../components/HealthScoreRing';
 import { AIInsightCard } from '../components/AIInsightCard';
 import { FloatingActionButton, createFabActions } from '../components/FloatingActionButton';
-import { MetricCard } from '../components/Card';
-import { SkeletonDashboard } from '../components/Skeleton';
+import { MetricCard } from '@/components/ui/Card';
+import { SkeletonDashboard } from '@/components/ui/Skeleton';
 import { Button } from '../components/Button';
 import type { AIInsight } from '../components/AIInsightCard';
 

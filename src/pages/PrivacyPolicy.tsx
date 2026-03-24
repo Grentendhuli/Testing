@@ -480,14 +480,14 @@ export function PrivacyPolicy() {
                   <p>Internet Bureau<br />
                   28 Liberty Street, 15th Floor<br />
                   New York, NY 10005<br />
-                  <a href="https://ag.ny.gov" className="text-amber-400 hover:underline">ag.ny.gov</a></p>
+                  <a href="https://ag.ny.gov" target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:underline">ag.ny.gov</a></p>
                 </div>
                 <div>
                   <p className="font-semibold text-slate-300">NYC Department of Consumer and Worker Protection</p>
                   <p>42 Broadway<br />
                   New York, NY 10004<br />
                   Consumer Hotline: 311 (in NYC) or 212-NEW-YORK (outside NYC)<br />
-                  <a href="https://nyc.gov/consumers" className="text-amber-400 hover:underline">nyc.gov/consumers</a></p>
+                  <a href="https://nyc.gov/consumers" target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:underline">nyc.gov/consumers</a></p>
                 </div>
               </div>
             </section>
@@ -505,3 +505,6 @@ export function PrivacyPolicy() {
     </div>
   );
 }
+
+
+export default PrivacyPolicy;

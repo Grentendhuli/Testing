@@ -141,3 +141,24 @@ export {
   useGoodCauseEligibility,
   useViolationQueries,
 } from './useNYCCompliance';
+
+// Rate limiting hook
+export {
+  default as useRateLimiter,
+  RATE_LIMITS,
+  type RateLimitConfig,
+  type RateLimitStatus,
+} from './useRateLimiter';
+
+// Auth rate limiting hook
+export {
+  default as useAuthRateLimiter,
+  type AuthEndpointType,
+  type AuthRateLimitState,
+} from './useAuthRateLimiter';
+
+// AI rate limiting hook
+export {
+  default as useAIRateLimiter,
+  type AIRateLimitState,
+} from './useAIRateLimiter';

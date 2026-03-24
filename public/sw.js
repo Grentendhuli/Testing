@@ -4,7 +4,7 @@
  * Following Workbox strategy patterns
  */
 
-const CACHE_VERSION = 'v6';
+const CACHE_VERSION = 'v7';
 const CACHE_NAMES = {
   static: `${CACHE_VERSION}-static`,      // Critical assets - 24h TTL
   assets: `${CACHE_VERSION}-assets`,     // JS/CSS bundles - 7 days TTL
@@ -92,6 +92,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
+  // Skip chrome-extension:// and other extension protocols
+  if (url.protocol === 'chrome-extension:' || 
+      url.protocol === 'moz-extension:' || 
+      url.protocol === 'safari-extension:' ||
+      url.protocol === 'ms-browser-extension:') {
+    return;
+  }
+  
   // Strategy: Network First for API calls (Supabase)
   if (isAPIRequest(url)) {
     event.respondWith(networkFirstStrategy(request, CACHE_NAMES.api));
@@ -106,13 +114,13 @@ self.addEventListener('fetch', (event) => {
   
   // Strategy: Stale While Revalidate for static assets
   if (isStaticAsset(url)) {
-    event.respondWith(staleWhileRevalidateStrategy(request, CACHE_NAMES.assets));
+    event.respondWith(staleWhileRevalidateStrategy(event, request, CACHE_NAMES.assets));
     return;
   }
   
   // Strategy: Stale While Revalidate for images
   if (isImageRequest(url)) {
-    event.respondWith(staleWhileRevalidateStrategy(request, CACHE_NAMES.images));
+    event.respondWith(staleWhileRevalidateStrategy(event, request, CACHE_NAMES.images));
     return;
   }
   
@@ -127,7 +135,7 @@ async function networkFirstStrategy(request, cacheName) {
     
     if (networkResponse.ok) {
       const cache = await caches.open(cacheName);
-      cache.put(request, networkResponse.clone());
+      await cache.put(request, networkResponse.clone());
       await enforceCacheLimit(cacheName);
       return networkResponse;
     }
@@ -163,7 +171,7 @@ async function cacheFirstStrategy(request, cacheName) {
     
     if (networkResponse.ok) {
       const cache = await caches.open(cacheName);
-      cache.put(request, networkResponse.clone());
+      await cache.put(request, networkResponse.clone());
       await enforceCacheLimit(cacheName);
     }
     
@@ -175,26 +183,25 @@ async function cacheFirstStrategy(request, cacheName) {
 }
 
 // Stale While Revalidate Strategy - Serve cache, update in background
-async function staleWhileRevalidateStrategy(request, cacheName) {
+async function staleWhileRevalidateStrategy(event, request, cacheName) {
   const cachedResponse = await caches.match(request);
   
   const fetchPromise = fetch(request)
-    .then((networkResponse) => {
+    .then(async (networkResponse) => {
       if (networkResponse.ok) {
-        const cache = caches.open(cacheName)
-          .then((cache) => {
-            cache.put(request, networkResponse.clone());
-            return enforceCacheLimit(cacheName);
-          });
+        const cache = await caches.open(cacheName);
+        await cache.put(request, networkResponse.clone());
+        await enforceCacheLimit(cacheName);
       }
       return networkResponse;
     })
     .catch((error) => {
       console.log('[SW v6] Background fetch failed:', error);
+      throw error;
     });
   
-  // Always wait for fetch to complete
-  event.waitUntil(fetchPromise);
+  // Always wait for fetch to complete in background
+  event.waitUntil(fetchPromise.catch(() => {}));
   
   if (cachedResponse) {
     return cachedResponse;

@@ -9,11 +9,11 @@ export type TableInsert<T extends keyof Tables> = Tables[T]['Insert'];
 export type TableUpdate<T extends keyof Tables> = Tables[T]['Update'];
 
 // Environment variables for Supabase
-const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
-const supabaseKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Debug logging - only in development
-if ((import.meta as any).env?.DEV) {
+if (import.meta.env.DEV) {
   console.log('[Supabase Debug] URL exists:', !!supabaseUrl);
   console.log('[Supabase Debug] Key exists:', !!supabaseKey);
 }
@@ -71,15 +71,21 @@ if (!isValidUrl || !isValidKey) {
     }
   }) as SupabaseClient<Database>;
 } else {
-  // Create real client (implicit flow; Supabase handles magic links)
+  // SECURE: Memory-only token storage to prevent XSS attacks
+  // Tokens are NOT stored in localStorage, preventing malicious scripts from stealing them
+  // Trade-offs:
+  //   - User must re-login after closing tab/refreshing page (session is memory-only)
+  //   - autoRefreshToken keeps session alive while tab is open
+  //   - OAuth flows still work via URL hash detection (detectSessionInUrl)
+  //   - 1-hour default session TTL from Supabase (configured in Supabase Dashboard > Auth > Sessions)
   supabase = createClient<Database>(supabaseUrl, supabaseKey, {
     auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true,
+      autoRefreshToken: true,      // Auto-refresh token while tab is open
+      persistSession: false,       // SECURITY: Don't store tokens in localStorage (XSS protection)
+      detectSessionInUrl: true,    // Handle OAuth redirects (Google/Apple sign-in)
     },
   });
-  console.log('[Supabase] Client initialized successfully');
+  console.log('[Supabase] Client initialized securely (memory-only tokens)');
 }
 
 export { supabase };

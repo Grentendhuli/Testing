@@ -920,6 +920,7 @@ export function Config() {
                       
                       <div className="space-y-2">
                         <input
+                          id="botToken"
                           type="text"
                           value={botToken}
                           onChange={(e) => {
@@ -927,13 +928,15 @@ export function Config() {
                             setBotTokenError('');
                           }}
                           placeholder="Paste your token from BotFather"
-                          className="w-full px-4 py-3 bg-lb-muted border border-lb-border rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:border-amber-500/50"
+                          aria-describedby={botTokenError ? 'botToken-error' : undefined}
+                          aria-invalid={!!botTokenError}
+                          className={`w-full px-4 py-3 bg-lb-muted border rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:border-amber-500/50 ${botTokenError ? 'border-red-500' : 'border-lb-border'}`}
                         />
-                        <p className="text-xs text-slate-500">
+                        <p id="botToken-help" className="text-xs text-slate-500">
                           It looks like: <code className="bg-slate-100 px-1 rounded">7234819203:ABCDef_ghIJKLmnop...</code>
                         </p>
                         {botTokenError && (
-                          <p className="text-sm text-red-500">{botTokenError}</p>
+                          <p id="botToken-error" role="alert" className="text-sm text-red-500">{botTokenError}</p>
                         )}
                       </div>
                       
@@ -1483,5 +1486,6 @@ export function Config() {
   );
 }
 
-export default Config;
 
+
+export default Config;

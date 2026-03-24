@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useAuthRateLimiter } from '@/hooks';
 import { analytics } from '@/utils/analytics';
 import { Mail, User, Phone, Home, CheckCircle, AlertCircle, Lock, Eye, EyeOff, MapPin, Shield, Sparkles } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -155,6 +156,7 @@ const GreenCheckBadge = ({ text }: { text: string }) => (
 export function SignupForm() {
   const navigate = useNavigate();
   const { signInWithGoogle, isAuthenticated, isLoading } = useAuth();
+  const authRateLimiter = useAuthRateLimiter();
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -314,6 +316,14 @@ export function SignupForm() {
       return;
     }
 
+    // Check rate limit before attempting signup
+    if (!authRateLimiter.canAttempt('signup', formData.email)) {
+      const errorMsg = authRateLimiter.getErrorMessage('signup', formData.email);
+      setError(errorMsg || 'Too many signup attempts. Please try again later.');
+      analytics.trackEvent('signup_rate_limited', { email_domain: formData.email.split('@')[1] });
+      return;
+    }
+
     setError('');
     setMessage('');
     setIsSubmitting(true);
@@ -403,6 +413,8 @@ export function SignupForm() {
         }, 1500);
       }
     } catch (err: any) {
+      // Record failed signup attempt for rate limiting
+      authRateLimiter.recordAttempt('signup', formData.email);
       setError(err.message || 'Signup failed. Please try again.');
       setIsSubmitting(false);
     }
@@ -481,7 +493,7 @@ export function SignupForm() {
               {error && (
                 <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
-                  <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+                  <p id="step1-error" role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p>
                 </div>
               )}
 
@@ -519,7 +531,7 @@ export function SignupForm() {
               >
                 {/* Property Address Field */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  <label htmlFor="propertyAddress" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                     Property Address <span className="text-red-500">*</span>
                   </label>
                   <AddressAutocomplete
@@ -530,7 +542,7 @@ export function SignupForm() {
                     useGooglePlaces={!!(import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY}
                   />
                   {fieldErrors.propertyAddress ? (
-                    <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                    <p id="propertyAddress-error" role="alert" className="text-sm text-red-600 dark:text-red-400 mt-1">
                       {fieldErrors.propertyAddress}
                     </p>
                   ) : (
@@ -585,7 +597,7 @@ export function SignupForm() {
               {error && (
                 <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
-                  <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+                  <p id="step2-error" role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p>
                 </div>
               )}
 
@@ -598,15 +610,18 @@ export function SignupForm() {
               >
                 {/* Email Field */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  <label htmlFor="signup-email" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                     Email <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
+                      id="signup-email"
                       type="email"
                       value={formData.email}
                       onChange={(e) => handleChange('email', e.target.value)}
+                      aria-describedby={fieldErrors.email ? 'email-error' : undefined}
+                      aria-invalid={!!fieldErrors.email}
                       className={`w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#1E3A5F] focus:ring-2 focus:ring-[#1E3A5F]/20 transition-colors ${
                         fieldErrors.email
                           ? 'border-red-500'
@@ -616,7 +631,7 @@ export function SignupForm() {
                     />
                   </div>
                   {fieldErrors.email && (
-                    <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                    <p id="email-error" role="alert" className="text-sm text-red-600 dark:text-red-400 mt-1">
                       {fieldErrors.email}
                     </p>
                   )}
@@ -624,17 +639,20 @@ export function SignupForm() {
 
                 {/* Password Field */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  <label htmlFor="signup-password" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                     Password <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
+                      id="signup-password"
                       type={showPassword ? 'text' : 'password'}
                       value={formData.password}
                       onChange={(e) =>
                         handleChange('password', e.target.value)
                       }
+                      aria-describedby={fieldErrors.password ? 'password-error password-help' : 'password-help'}
+                      aria-invalid={!!fieldErrors.password}
                       className={`w-full pl-10 pr-12 py-3 bg-white dark:bg-slate-800 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#1E3A5F] focus:ring-2 focus:ring-[#1E3A5F]/20 transition-colors ${
                         fieldErrors.password
                           ? 'border-red-500'
@@ -646,6 +664,7 @@ export function SignupForm() {
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? (
                         <EyeOff className="w-5 h-5" />
@@ -655,27 +674,30 @@ export function SignupForm() {
                     </button>
                   </div>
                   {fieldErrors.password ? (
-                    <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                    <p id="password-error" role="alert" className="text-sm text-red-600 dark:text-red-400 mt-1">
                       {fieldErrors.password}
                     </p>
                   ) : (
-                    <HelperText>Min 8 chars, uppercase, lowercase, number, special char</HelperText>
+                    <p id="password-help" className="text-xs text-slate-500 dark:text-slate-400 mt-1">Min 8 chars, uppercase, lowercase, number, special char</p>
                   )}
                 </div>
 
                 {/* Confirm Password Field */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  <label htmlFor="signup-confirm-password" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                     Confirm Password <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
+                      id="signup-confirm-password"
                       type={showConfirmPassword ? 'text' : 'password'}
                       value={formData.confirmPassword}
                       onChange={(e) =>
                         handleChange('confirmPassword', e.target.value)
                       }
+                      aria-describedby={fieldErrors.confirmPassword ? 'confirmPassword-error' : undefined}
+                      aria-invalid={!!fieldErrors.confirmPassword}
                       className={`w-full pl-10 pr-12 py-3 bg-white dark:bg-slate-800 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#1E3A5F] focus:ring-2 focus:ring-[#1E3A5F]/20 transition-colors ${
                         fieldErrors.confirmPassword
                           ? 'border-red-500'
@@ -689,6 +711,7 @@ export function SignupForm() {
                         setShowConfirmPassword(!showConfirmPassword)
                       }
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                      aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                     >
                       {showConfirmPassword ? (
                         <EyeOff className="w-5 h-5" />
@@ -698,7 +721,7 @@ export function SignupForm() {
                     </button>
                   </div>
                   {fieldErrors.confirmPassword && (
-                    <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                    <p id="confirmPassword-error" role="alert" className="text-sm text-red-600 dark:text-red-400 mt-1">
                       {fieldErrors.confirmPassword}
                     </p>
                   )}
@@ -729,14 +752,14 @@ export function SignupForm() {
               {error && (
                 <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
-                  <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+                  <p id="step3-error" role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p>
                 </div>
               )}
 
               {message && (
                 <div className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg flex items-center gap-3">
                   <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-                  <p className="text-sm text-emerald-700 dark:text-emerald-400">{message}</p>
+                  <p id="step3-message" role="status" className="text-sm text-emerald-700 dark:text-emerald-400">{message}</p>
                 </div>
               )}
 
@@ -768,17 +791,20 @@ export function SignupForm() {
                 {/* First and Last Name */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    <label htmlFor="signup-firstName" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                       First Name <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                       <input
+                        id="signup-firstName"
                         type="text"
                         value={formData.firstName}
                         onChange={(e) =>
                           handleChange('firstName', e.target.value)
                         }
+                        aria-describedby={fieldErrors.firstName ? 'firstName-error' : undefined}
+                        aria-invalid={!!fieldErrors.firstName}
                         className={`w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#1E3A5F] focus:ring-2 focus:ring-[#1E3A5F]/20 transition-colors ${
                           fieldErrors.firstName
                             ? 'border-red-500'
@@ -788,24 +814,27 @@ export function SignupForm() {
                       />
                     </div>
                     {fieldErrors.firstName && (
-                      <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                      <p id="firstName-error" role="alert" className="text-sm text-red-600 dark:text-red-400 mt-1">
                         {fieldErrors.firstName}
                       </p>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    <label htmlFor="signup-lastName" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                       Last Name <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                       <input
+                        id="signup-lastName"
                         type="text"
                         value={formData.lastName}
                         onChange={(e) =>
                           handleChange('lastName', e.target.value)
                         }
+                        aria-describedby={fieldErrors.lastName ? 'lastName-error' : undefined}
+                        aria-invalid={!!fieldErrors.lastName}
                         className={`w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#1E3A5F] focus:ring-2 focus:ring-[#1E3A5F]/20 transition-colors ${
                           fieldErrors.lastName
                             ? 'border-red-500'
@@ -815,7 +844,7 @@ export function SignupForm() {
                       />
                     </div>
                     {fieldErrors.lastName && (
-                      <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                      <p id="lastName-error" role="alert" className="text-sm text-red-600 dark:text-red-400 mt-1">
                         {fieldErrors.lastName}
                       </p>
                     )}
@@ -824,17 +853,20 @@ export function SignupForm() {
 
                 {/* Phone Number */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  <label htmlFor="signup-phoneNumber" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                     Phone Number <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
+                      id="signup-phoneNumber"
                       type="tel"
                       value={formData.phoneNumber}
                       onChange={(e) =>
                         handleChange('phoneNumber', e.target.value)
                       }
+                      aria-describedby={fieldErrors.phoneNumber ? 'phoneNumber-error phoneNumber-help' : 'phoneNumber-help'}
+                      aria-invalid={!!fieldErrors.phoneNumber}
                       className={`w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#1E3A5F] focus:ring-2 focus:ring-[#1E3A5F]/20 transition-colors ${
                         fieldErrors.phoneNumber
                           ? 'border-red-500'
@@ -844,13 +876,13 @@ export function SignupForm() {
                     />
                   </div>
                   {fieldErrors.phoneNumber ? (
-                    <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                    <p id="phoneNumber-error" role="alert" className="text-sm text-red-600 dark:text-red-400 mt-1">
                       {fieldErrors.phoneNumber}
                     </p>
                   ) : (
-                    <HelperText>
+                    <p id="phoneNumber-help" className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       We'll use this for emergency alerts from your tenant bot
-                    </HelperText>
+                    </p>
                   )}
                 </div>
 

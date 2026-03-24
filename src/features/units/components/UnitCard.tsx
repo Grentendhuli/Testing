@@ -1,3 +1,4 @@
+import React from 'react';
 import { motion } from 'framer-motion';
 import { Users, Home, Wrench, Edit2, FileText, QrCode, MessageSquare, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -47,7 +48,7 @@ interface UnitCardProps {
   selectionMode?: boolean;
 }
 
-export function UnitCard({ 
+export const UnitCard = React.memo(function UnitCard({ 
   unit, 
   index, 
   unitHealth, 
@@ -269,4 +270,6 @@ export function UnitCard({
       </div>
     </motion.div>
   );
-}
+});
+
+UnitCard.displayName = 'UnitCard';

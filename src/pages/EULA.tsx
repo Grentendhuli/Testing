@@ -470,3 +470,6 @@ export function EULA() {
     </div>
   );
 }
+
+
+export default EULA;

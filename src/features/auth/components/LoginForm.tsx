@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Navigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useAuthRateLimiter } from '@/hooks';
 import { analytics } from '@/utils/analytics';
-import { Building2, Mail, AlertCircle, Loader2 } from 'lucide-react';
+import { Building2, Mail, AlertCircle, Loader2, Shield } from 'lucide-react';
 import { LogoMark } from '@/components/LogoMark';
 import { sendMagicLink } from '../services/authService';
 
@@ -32,7 +33,8 @@ export function LoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { signInWithGoogle, isAuthenticated, isInitialized, isLoading } = useAuth();
+  const { signInWithGoogle, isAuthenticated, isInitialized, isLoading, login } = useAuth();
+  const authRateLimiter = useAuthRateLimiter();
   
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -71,6 +73,15 @@ export function LoginForm() {
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    // Check rate limit
+    if (!authRateLimiter.canAttempt('login', email)) {
+      const errorMsg = authRateLimiter.getErrorMessage('login', email);
+      setError(errorMsg || 'Too many login attempts. Please try again later.');
+      analytics.trackEvent('login_rate_limited', { email_domain: email.split('@')[1] });
+      return;
+    }
+    
     setIsSubmitting(true);
     
     analytics.trackEvent('login_started', { 
@@ -81,7 +92,11 @@ export function LoginForm() {
     try {
       const { error } = await sendMagicLink(email);
       
-      if (error) throw error;
+      if (error) {
+        // Only record attempt if there was an actual error
+        authRateLimiter.recordAttempt('login', email);
+        throw error;
+      }
       
       setIsSubmitting(false);
       analytics.trackEvent('magic_link_sent', { email_domain: email.split('@')[1] });
@@ -122,6 +137,21 @@ export function LoginForm() {
 
         {/* Auth Card */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm">
+          {/* Security Notice */}
+          <div className="mb-4 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <Shield className="w-4 h-4" />
+            <span>Protected by rate limiting</span>
+          </div>
+          
+          {/* Rate Limit Warning */}
+          {email && !authRateLimiter.canAttempt('login', email) && (
+            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                Rate limit reached. Please try again in {authRateLimiter.getRetryAfterText('login', email)}.
+              </p>
+            </div>
+          )}
+          
           {/* Error/Success Message */}
           {error && (
             <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
@@ -134,7 +164,7 @@ export function LoginForm() {
                   ? 'text-emerald-600 dark:text-emerald-400'
                   : 'text-red-600 dark:text-red-400'
               }`} />
-              <p className={`text-sm ${
+              <p id="form-error" role="alert" className={`text-sm ${
                 error.includes('magic link')
                   ? 'text-emerald-700 dark:text-emerald-400'
                   : 'text-red-700 dark:text-red-400'
@@ -170,12 +200,13 @@ export function LoginForm() {
           {/* Magic Link Form */}
           <form onSubmit={handleMagicLink} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              <label htmlFor="login-email" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Email
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
+                  id="login-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

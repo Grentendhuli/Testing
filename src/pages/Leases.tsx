@@ -35,7 +35,7 @@ import { useLeaseRenewalCalendar, useGoogleCalendarStatus } from '../hooks/useGo
 import type { LeaseStatus, LeaseType } from '../types';
 import { useSearchParams } from 'react-router-dom';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { Toast, useToast } from '@/components/Toast';
+import { Toast, useToast } from '@/components/ui/Toast';
 
 const statusConfig = {
   active: { label: '● Active', color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', icon: CheckCircle, dot: 'bg-emerald-500' },
@@ -305,7 +305,7 @@ export function Leases() {
     }
   };
 
-  const openEditModal = (lease: typeof leases[0]) => {
+  const openEditModal = useCallback((lease: typeof leases[0]) => {
     setEditingLease(lease);
     setNewLease({
       unitId: lease.unitId,
@@ -323,14 +323,20 @@ export function Leases() {
     });
     setFormErrors({});
     setShowEditModal(true);
-  };
+  }, []);
 
-  const openDeleteConfirm = (lease: typeof leases[0]) => {
+  const openDeleteConfirm = useCallback((lease: typeof leases[0]) => {
     setLeaseToDelete(lease);
     setShowDeleteConfirm(true);
-  };
+  }, []);
 
-  const handleDeleteLease = async () => {
+  const openTerminateConfirm = useCallback((lease: typeof leases[0]) => {
+    setLeaseToTerminate(lease);
+    setTerminationReason('');
+    setShowTerminateConfirm(true);
+  }, []);
+
+  const handleDeleteLease = useCallback(async () => {
     if (!leaseToDelete) return;
 
     setIsDeleting(true);
@@ -345,15 +351,9 @@ export function Leases() {
     } finally {
       setIsDeleting(false);
     }
-  };
+  }, [leaseToDelete, deleteLease]);
 
-  const openTerminateConfirm = (lease: typeof leases[0]) => {
-    setLeaseToTerminate(lease);
-    setTerminationReason('');
-    setShowTerminateConfirm(true);
-  };
-
-  const handleTerminateLease = async () => {
+  const handleTerminateLease = useCallback(async () => {
     if (!leaseToTerminate) return;
 
     setIsTerminating(true);
@@ -369,14 +369,33 @@ export function Leases() {
     } finally {
       setIsTerminating(false);
     }
-  };
+  }, [leaseToTerminate, terminationReason, terminateLease]);
 
-  const closeModals = () => {
+  const closeModals = useCallback(() => {
     setShowNewLeaseModal(false);
     setShowEditModal(false);
     setEditingLease(null);
     resetForm();
-  };
+  }, [resetForm]);
+
+  const handleSetRenewalReminder = useCallback(async (leaseId: string) => {
+    const lease = leases.find(l => l.id === leaseId);
+    if (!lease) return;
+
+    setCreatingReminderFor(leaseId);
+
+    const unit = units.find(u => u.id === lease.unitId);
+
+    await createRenewalReminder({
+      tenantName: lease.tenantName,
+      unitNumber: lease.unitNumber,
+      leaseEndDate: lease.endDate,
+      location: unit?.address,
+      leaseId: lease.id,
+    });
+
+    setCreatingReminderFor(null);
+  }, [leases, units, createRenewalReminder]);
 
   useEffect(() => {
     const unitId = searchParams.get('unitId');
@@ -400,26 +419,6 @@ export function Leases() {
     nextParams.delete('action');
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, setSearchParams, units]);
-
-  // Handle setting renewal reminder
-  const handleSetRenewalReminder = async (leaseId: string) => {
-    const lease = leases.find(l => l.id === leaseId);
-    if (!lease) return;
-
-    setCreatingReminderFor(leaseId);
-
-    const unit = units.find(u => u.id === lease.unitId);
-
-    await createRenewalReminder({
-      tenantName: lease.tenantName,
-      unitNumber: lease.unitNumber,
-      leaseEndDate: lease.endDate,
-      location: unit?.address,
-      leaseId: lease.id,
-    });
-
-    setCreatingReminderFor(null);
-  };
 
   // Lease Form Modal Component
   const LeaseFormModal = ({ mode }: { mode: 'create' | 'edit' }) => {

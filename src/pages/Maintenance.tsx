@@ -672,6 +672,7 @@ export function Maintenance() {
                         <img 
                           src={photo} 
                           alt={`Upload ${index + 1}`}
+                          loading="lazy"
                           className="w-20 h-20 object-cover rounded-lg"
                         />
                         <button

@@ -461,3 +461,6 @@ export function Leads() {
   );
 }
 
+
+
+export default Leads;

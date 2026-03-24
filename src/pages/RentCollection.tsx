@@ -766,3 +766,6 @@ export function RentCollection() {
   );
 }
 
+
+
+export default RentCollection;

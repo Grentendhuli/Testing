@@ -279,7 +279,7 @@ export function Landing() {
             )}
           </form>
           
-          <p className="text-sm text-gray-500">No credit card. Takes 2 minutes. Built by NYC landlords, for NYC landlords.</p>
+          <p className="text-sm text-gray-500">No credit card. Takes 2 minutes. Built by an NYC asset manager, for NYC landlords.</p>
         </div>
       </section>
 
@@ -386,7 +386,7 @@ export function Landing() {
             Get Started Free
             <ArrowRight className="w-5 h-5" />
           </button>
-          <p className="text-sm text-gray-500 mt-4">Built by NYC landlords, for NYC landlords. Free forever.</p>        
+          <p className="text-sm text-gray-500 mt-4">Built by an NYC asset manager, for NYC landlords. Free forever.</p>        
         </div>
       </section>
 
@@ -412,3 +412,6 @@ export function Landing() {
     </div>
   );
 }
+
+
+export default Landing;

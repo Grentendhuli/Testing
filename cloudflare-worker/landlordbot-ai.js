@@ -1,3 +1,5 @@
+import { rateLimitMiddleware, RATE_LIMITS, getRateLimitConfig, checkRateLimit, checkIPRateLimit, createRateLimitResponse, applyRateLimitHeaders } from './rateLimiter.js';
+
 export default {
   async fetch(request, env) {
     // Allowed origins - restrict to your production domain
@@ -16,14 +18,14 @@ export default {
       return new Response(null, {
         headers: {
           'Access-Control-Allow-Origin': corsOrigin,
-          'Access-Control-Allow-Methods': 'POST',
-          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Allow-Methods': 'POST, GET',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
           'Access-Control-Max-Age': '86400',
         },
       });
     }
 
-    if (request.method !== 'POST') {
+    if (request.method !== 'POST' && request.method !== 'GET') {
       return new Response('Method not allowed', { 
         status: 405,
         headers: {
@@ -35,35 +37,45 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
     
-    // Route to email handler if path is /send-email
-    if (path === '/send-email') {
-      return handleEmailSend(request, env, corsOrigin);
+    // Handle health check
+    if (path === '/health') {
+      return new Response(JSON.stringify({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        rateLimits: {
+          ai: `${RATE_LIMITS.ai.requestsPerWindow}/${RATE_LIMITS.ai.windowSizeInSeconds}s`,
+          auth: `${RATE_LIMITS.auth.requestsPerWindow}/${RATE_LIMITS.auth.windowSizeInSeconds}s`,
+          communication: `${RATE_LIMITS.communication.requestsPerWindow}/${RATE_LIMITS.communication.windowSizeInSeconds}s`,
+          export: `${RATE_LIMITS.export.requestsPerWindow}/${RATE_LIMITS.export.windowSizeInSeconds}s`,
+          default: `${RATE_LIMITS.default.requestsPerWindow}/${RATE_LIMITS.default.windowSizeInSeconds}s`,
+        }
+      }), {
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': corsOrigin,
+        }
+      });
     }
     
-    // Route to Vapi handler if path is /vapi/call
-    if (path === '/vapi/call') {
-      return handleVapiCall(request, env, corsOrigin);
-    }
+    // Route handlers with rate limiting
+    const router = {
+      '/send-email': handleEmailSend,
+      '/vapi/call': handleVapiCall,
+      '/vapi/status': handleVapiStatus,
+      '/telegram/validate': handleTelegramValidate,
+    };
     
-    // Route to Vapi status handler if path is /vapi/status
-    if (path === '/vapi/status') {
-      return handleVapiStatus(request, env, corsOrigin);
-    }
+    const handler = router[path] || handleAIChat;
     
-    // Route to Telegram token validation handler if path is /telegram/validate
-    if (path === '/telegram/validate') {
-      return handleTelegramValidate(request, env, corsOrigin);
-    }
-    
-    // Otherwise handle AI chat
-    return handleAIChat(request, env, corsOrigin);
+    // Apply rate limiting middleware
+    return await rateLimitMiddleware(request, env, corsOrigin, handler);
   }
 };
 
 // Email sending handler - keeps SendGrid API key server-side
 async function handleEmailSend(request, env, corsOrigin) {
   try {
-    const { to, subject, html, text } = await request.json().catch(() => ({}));
+    const { to, subject, html, text, userId } = await request.json().catch(() => ({}));
     
     // Validate required fields
     if (!to || !subject || !html) {
@@ -449,13 +461,7 @@ async function handleTelegramValidate(request, env, corsOrigin) {
 
 // AI Chat handler
 async function handleAIChat(request, env, corsOrigin) {
-    // Rate limiting check (simple in-memory per IP)
-    const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
-    const rateLimitKey = `rate_limit:${clientIP}`;
-    
-    // Check for prompt injection patterns server-side
-    const requestData = await request.json().catch(() => ({}));
-    const { message, context, type } = requestData;
+    const { message, context, type, userId } = await request.json().catch(() => ({}));
     
     if (!message || typeof message !== 'string') {
       return new Response(JSON.stringify({ 
@@ -589,4 +595,3 @@ Request context: ${JSON.stringify(context || {})}`;
       });
     }
   }
-};
