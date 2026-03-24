@@ -1,235 +1,271 @@
-// LandlordBot Service Worker for PWA
-// BUILD TIMESTAMP: 2026-03-23-1600-FORCE-UPDATE
-// VERSION: v5.0-cache-bust-fix
+/**
+ * LandlordBot Service Worker v6.0
+ * Production-grade caching with offline support
+ * Following Workbox strategy patterns
+ */
 
-const CACHE_NAME = 'landlordbot-v5-2026-03-23-1600';
-const urlsToCache = [
+const CACHE_VERSION = 'v6';
+const CACHE_NAMES = {
+  static: `${CACHE_VERSION}-static`,      // Critical assets - 24h TTL
+  assets: `${CACHE_VERSION}-assets`,     // JS/CSS bundles - 7 days TTL
+  api: `${CACHE_VERSION}-api`,            // API responses - 5 min TTL
+  images: `${CACHE_VERSION}-images`,      // Images - 30 days TTL
+  fonts: `${CACHE_VERSION}-fonts`,         // Fonts - 1 year TTL
+  offline: `${CACHE_VERSION}-offline`      // Offline fallback
+};
+
+const CACHE_LIMITS = {
+  [CACHE_NAMES.static]: 20,
+  [CACHE_NAMES.assets]: 100,
+  [CACHE_NAMES.api]: 50,
+  [CACHE_NAMES.images]: 200,
+  [CACHE_NAMES.fonts]: 50,
+  [CACHE_NAMES.offline]: 10
+};
+
+const TTL = {
+  [CACHE_NAMES.static]: 24 * 60 * 60 * 1000,        // 24 hours
+  [CACHE_NAMES.assets]: 7 * 24 * 60 * 60 * 1000,     // 7 days
+  [CACHE_NAMES.api]: 5 * 60 * 1000,                   // 5 minutes
+  [CACHE_NAMES.images]: 30 * 24 * 60 * 60 * 1000,    // 30 days
+  [CACHE_NAMES.fonts]: 365 * 24 * 60 * 60 * 1000     // 1 year
+};
+
+// Precache critical assets on install
+const PRECACHE_URLS = [
   '/',
-  '/dashboard',
-  '/login',
-  '/signup',
-  '/auth/callback',
   '/index.html',
+  '/offline.html',
   '/manifest.json'
 ];
 
-// Microsoft Graph API for Windows integration (placeholder)
-const isWindows = /windows/i.test(navigator.userAgent);
-
-// Install event - cache assets
+// Install event - precache critical assets
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing with cache:', CACHE_NAME);
+  console.log('[SW v6] Installing...');
   
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(CACHE_NAMES.static)
       .then((cache) => {
-        console.log('[SW] Caching app shell');
-        return cache.addAll(urlsToCache);
+        console.log('[SW v6] Precaching critical assets');
+        return cache.addAll(PRECACHE_URLS);
+      })
+      .then(() => {
+        console.log('[SW v6] Precache complete');
+        return self.skipWaiting();
       })
       .catch((err) => {
-        console.log('[SW] Cache failed:', err);
+        console.error('[SW v6] Precache failed:', err);
       })
-  );
-  
-  // Force activate for cache bust update
-  self.skipWaiting();
-});
-
-// Fetch event - network first strategy with fallback
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  
-  // Skip non-GET requests
-  if (request.method !== 'GET') return;
-  
-  // Skip Supabase requests - they need fresh data
-  if (request.url.includes('supabase.co') || request.url.includes('supabase')) {
-    return;
-  }
-  
-  // Skip analytics and tracking
-  if (request.url.includes('googletagmanager.com') || 
-      request.url.includes('google-analytics')) {
-    return;
-  }
-  
-  // Navigation requests - network first with offline fallback
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // Cache successful navigation responses
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseToCache);
-          });
-          return response;
-        })
-        .catch(() => {
-          // Return cached index.html if network fails
-          return caches.match('/index.html') || caches.match(request);
-        })
-    );
-    return;
-  }
-  
-  // For assets (js, css, images) - cache first with network fallback
-  if (request.destination === 'script' || 
-      request.destination === 'style' || 
-      request.destination === 'image' ||
-      request.destination === 'font') {
-    event.respondWith(
-      caches.match(request)
-        .then((cachedResponse) => {
-          if (cachedResponse) {
-            // Update cache in background
-            fetch(request).then((response) => {
-              if (response && response.status === 200) {
-                const responseToCache = response.clone();
-                caches.open(CACHE_NAME).then((cache) => {
-                  cache.put(request, responseToCache);
-                });
-              }
-            }).catch(() => {}); // Ignore network errors for background update
-            return cachedResponse;
-          }
-          
-          // Not in cache, fetch from network
-          return fetch(request)
-            .then((response) => {
-              if (!response || response.status !== 200) return response;
-              const responseToCache = response.clone();
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(request, responseToCache);
-              });
-              return response;
-            });
-        })
-        .catch(() => {
-          // All failed, return nothing (will trigger onerror handlers)
-          return new Response('', { status: 404, statusText: 'Offline' });
-        })
-    );
-    return;
-  }
-  
-  // Default: network first then cache
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        if (!response || response.status !== 200) return response;
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(request, responseToCache);
-        });
-        return response;
-      })
-      .catch(() => caches.match(request))
   );
 });
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating version', CACHE_NAME);
+  console.log('[SW v6] Activating...');
   
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('[SW] Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
+    caches.keys()
+      .then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            if (!Object.values(CACHE_NAMES).includes(cacheName)) {
+              console.log('[SW v6] Deleting old cache:', cacheName);
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+      .then(() => {
+        console.log('[SW v6] Activation complete');
+        return self.clients.claim();
+      })
   );
+});
+
+// Fetch event - apply different strategies based on request type
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
   
-  // Keep sync registration for background sync (optional feature)
-  if ('sync' in self.registration) {
-    // Register for sync when available
-    self.registration.sync.register('sync-payments').catch(() => {
-      // Silent fail - sync not supported
-    });
+  // Skip non-GET requests for caching (but allow through)
+  if (request.method !== 'GET') {
+    return;
   }
+  
+  // Strategy: Network First for API calls (Supabase)
+  if (isAPIRequest(url)) {
+    event.respondWith(networkFirstStrategy(request, CACHE_NAMES.api));
+    return;
+  }
+  
+  // Strategy: Cache First for fonts
+  if (isFontRequest(url)) {
+    event.respondWith(cacheFirstStrategy(request, CACHE_NAMES.fonts));
+    return;
+  }
+  
+  // Strategy: Stale While Revalidate for static assets
+  if (isStaticAsset(url)) {
+    event.respondWith(staleWhileRevalidateStrategy(request, CACHE_NAMES.assets));
+    return;
+  }
+  
+  // Strategy: Stale While Revalidate for images
+  if (isImageRequest(url)) {
+    event.respondWith(staleWhileRevalidateStrategy(request, CACHE_NAMES.images));
+    return;
+  }
+  
+  // Default: Network First with cache fallback
+  event.respondWith(networkFirstStrategy(request, CACHE_NAMES.static));
 });
 
-// Message handling from main app
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
-
-// Handle push notifications (placeholder for future implementation)
-self.addEventListener('push', (event) => {
-  if (event.data) {
-    const data = event.data.json();
-    const options = {
-      body: data.body || 'New notification',
-      icon: '/icon-192x192.png',
-      badge: '/icon-72x72.png',
-      tag: data.tag || 'landlordbot-notification',
-      requireInteraction: false,
-      actions: [
-        { action: 'open', title: 'Open' },
-        { action: 'close', title: 'Close' }
-      ]
-    };
+// Network First Strategy - Try network first, fall back to cache
+async function networkFirstStrategy(request, cacheName) {
+  try {
+    const networkResponse = await fetch(request);
     
-    event.waitUntil(
-      self.registration.showNotification(
-        data.title || 'LandlordBot',
-        options
-      )
-    );
-  }
-});
-
-// Handle notification clicks
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  
-  if (event.action === 'open' || !event.action) {
-    event.waitUntil(
-      self.clients.openWindow('/dashboard')
-    );
-  }
-});
-
-// Background sync for offline actions
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-payments') {
-    // Placeholder for handling offline payment recording
-    console.log('[SW] Background sync triggered for payments');
-  }
-});
-
-// Windows-specific: Handle share target (if implemented)
-if ('shareTarget' in navigator) {
-  self.addEventListener('fetch', (event) => {
-    const url = new URL(event.request.url);
-    if (url.pathname === '/share-target') {
-      // Handle incoming shared content
-      event.respondWith(
-        (async () => {
-          const formData = await event.request.formData();
-          const title = formData.get('title') || 'Shared content';
-          const text = formData.get('text') || '';
-          
-          // Send message to all clients
-          const clients = await self.clients.matchAll({ type: 'window' });
-          clients.forEach((client) => {
-            client.postMessage({
-              type: 'SHARE_RECEIVED',
-              title,
-              text
-            });
-          });
-          
-          return Response.redirect('/dashboard', 303);
-        })()
-      );
+    if (networkResponse.ok) {
+      const cache = await caches.open(cacheName);
+      cache.put(request, networkResponse.clone());
+      await enforceCacheLimit(cacheName);
+      return networkResponse;
     }
+    
+    throw new Error('Network response not ok');
+  } catch (error) {
+    const cachedResponse = await caches.match(request);
+    
+    if (cachedResponse) {
+      console.log('[SW v6] Serving from cache:', request.url);
+      return cachedResponse;
+    }
+    
+    // If offline and it's a navigation request, show offline page
+    if (request.mode === 'navigate') {
+      return caches.match('/offline.html');
+    }
+    
+    throw error;
+  }
+}
+
+// Cache First Strategy - Use cache, fetch only if missing
+async function cacheFirstStrategy(request, cacheName) {
+  const cachedResponse = await caches.match(request);
+  
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+  
+  try {
+    const networkResponse = await fetch(request);
+    
+    if (networkResponse.ok) {
+      const cache = await caches.open(cacheName);
+      cache.put(request, networkResponse.clone());
+      await enforceCacheLimit(cacheName);
+    }
+    
+    return networkResponse;
+  } catch (error) {
+    console.error('[SW v6] Cache first failed:', error);
+    throw error;
+  }
+}
+
+// Stale While Revalidate Strategy - Serve cache, update in background
+async function staleWhileRevalidateStrategy(request, cacheName) {
+  const cachedResponse = await caches.match(request);
+  
+  const fetchPromise = fetch(request)
+    .then((networkResponse) => {
+      if (networkResponse.ok) {
+        const cache = caches.open(cacheName)
+          .then((cache) => {
+            cache.put(request, networkResponse.clone());
+            return enforceCacheLimit(cacheName);
+          });
+      }
+      return networkResponse;
+    })
+    .catch((error) => {
+      console.log('[SW v6] Background fetch failed:', error);
+    });
+  
+  // Always wait for fetch to complete
+  event.waitUntil(fetchPromise);
+  
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+  
+  // If no cache, wait for network
+  return fetchPromise;
+}
+
+// LRU Cache Eviction
+async function enforceCacheLimit(cacheName) {
+  const cache = await caches.open(cacheName);
+  const requests = await cache.keys();
+  const limit = CACHE_LIMITS[cacheName] || 100;
+  
+  if (requests.length > limit) {
+    const toDelete = requests.slice(0, requests.length - limit);
+    await Promise.all(toDelete.map((request) => cache.delete(request)));
+    console.log('[SW v6] Evicted', toDelete.length, 'entries from', cacheName);
+  }
+}
+
+// Request type helpers
+function isAPIRequest(url) {
+  return url.hostname.includes('supabase.co') ||
+         url.pathname.startsWith('/api/') ||
+         url.hostname.includes('workers.dev');
+}
+
+function isFontRequest(url) {
+  return url.hostname === 'fonts.gstatic.com' ||
+         url.pathname.match(/\.(woff2?|ttf|otf|eot)$/);
+}
+
+function isStaticAsset(url) {
+  return url.pathname.match(/\.(js|css|json)$/);
+}
+
+function isImageRequest(url) {
+  return url.pathname.match(/\.(png|jpe?g|gif|svg|webp|ico)$/);
+}
+
+// Background Sync for offline mutations
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-mutations') {
+    console.log('[SW v6] Background sync triggered');
+    event.waitUntil(syncOfflineMutations());
+  }
+});
+
+async function syncOfflineMutations() {
+  // Notify all clients to process their offline queues
+  const clients = await self.clients.matchAll();
+  clients.forEach((client) => {
+    client.postMessage({ type: 'SYNC_OFFLINE_QUEUE' });
   });
 }
+
+// Message handling from main thread
+self.addEventListener('message', (event) => {
+  const { data } = event;
+  
+  if (data.type === 'GET_QUEUE_STATUS') {
+    event.ports[0].postMessage({ status: 'ready' });
+  }
+  
+  if (data.type === 'CLEAR_CACHE') {
+    caches.keys()
+      .then((names) => Promise.all(names.map((name) => caches.delete(name))))
+      .then(() => event.ports[0].postMessage({ cleared: true }));
+  }
+});
+
+console.log('[SW v6] Service Worker registered');

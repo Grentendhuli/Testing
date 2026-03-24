@@ -23,18 +23,27 @@ export default defineConfig({
     },
   },
   build: {
-  target: ['es2020', 'safari14'],
+    target: ['es2020', 'safari14'],
     outDir: 'dist',
     emptyOutDir: true,
+    minify: 'esbuild',
+    sourcemap: false,
     rollupOptions: {
       output: {
-        entryFileNames: `assets/entry-${TIMESTAMP}-[hash].js`,
-        chunkFileNames: `assets/chunk-${TIMESTAMP}-[hash].js`,
-      assetFileNames: (assetInfo) => {
+        manualChunks: {
+          'vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui-vendor': ['lucide-react', 'framer-motion'],
+          'pdf': ['jspdf'],
+          'sentry': ['@sentry/react', '@sentry/browser'],
+          'supabase': ['@supabase/supabase-js'],
+        },
+        entryFileNames: `assets/entry-[name]-${TIMESTAMP}-[hash].js`,
+        chunkFileNames: `assets/chunk-[name]-${TIMESTAMP}-[hash].js`,
+        assetFileNames: (assetInfo) => {
           const info = assetInfo.name.split('.')
           const ext = info[info.length - 1]
-        return `assets/asset-${TIMESTAMP}-[hash][extname]`
-      },
+          return `assets/asset-${TIMESTAMP}-[hash][extname]`
+        },
       },
     },
   },

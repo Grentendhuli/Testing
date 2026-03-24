@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { FileText, Download, Wrench, FileSignature, Loader2, CheckCircle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
-import jsPDF from 'jspdf';
+// jsPDF is lazy loaded in handleGenerate
 import { sanitizeText } from '@/lib/sanitize';
 
 export type DocumentType = 'lease' | 'work-order';
@@ -59,8 +59,8 @@ export function DocumentGenerator({ defaultType = 'lease', unitId, maintenanceId
     dateSubmitted: new Date().toISOString().split('T')[0],
   });
 
-  const generateLeasePDF = () => {
-    const doc = new jsPDF();
+  const generateLeasePDF = (jsPDFClass: typeof jsPDF) => {
+    const doc = new jsPDFClass();
     // Sanitize all user inputs before using in PDF
     const data = {
       landlordName: sanitizeText(leaseData.landlordName),
@@ -138,8 +138,8 @@ export function DocumentGenerator({ defaultType = 'lease', unitId, maintenanceId
     return doc;
   };
 
-  const generateWorkOrderPDF = () => {
-    const doc = new jsPDF();
+  const generateWorkOrderPDF = (jsPDFClass: typeof jsPDF) => {
+    const doc = new jsPDFClass();
     // Sanitize all user inputs before using in PDF
     const data = {
       requestId: sanitizeText(workOrderData.requestId),
@@ -244,6 +244,9 @@ export function DocumentGenerator({ defaultType = 'lease', unitId, maintenanceId
   const handleGenerate = async () => {
     setIsGenerating(true);
     
+    // Lazy load jsPDF only when needed (~300KB)
+    const { default: jsPDF } = await import('jspdf');
+    
     // Simulate generation delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     
@@ -251,10 +254,10 @@ export function DocumentGenerator({ defaultType = 'lease', unitId, maintenanceId
     let filename;
     
     if (documentType === 'lease') {
-      doc = generateLeasePDF();
+      doc = generateLeasePDF(jsPDF);
       filename = `lease-agreement-${leaseData.tenantName?.replace(/\s+/g, '-').toLowerCase() || 'template'}.pdf`;
     } else {
-      doc = generateWorkOrderPDF();
+      doc = generateWorkOrderPDF(jsPDF);
       filename = `work-order-${workOrderData.requestId || 'new'}.pdf`;
     }
     
