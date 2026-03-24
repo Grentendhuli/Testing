@@ -42,6 +42,9 @@ interface UnitCardProps {
   botUsername?: string;
   expandedQR?: boolean;
   onToggleQR?: () => void;
+  isSelected?: boolean;
+  onSelectToggle?: (unitId: string, selected: boolean) => void;
+  selectionMode?: boolean;
 }
 
 export function UnitCard({ 
@@ -55,7 +58,10 @@ export function UnitCard({
   onTenantConnect,
   botUsername,
   expandedQR,
-  onToggleQR
+  onToggleQR,
+  isSelected = false,
+  onSelectToggle,
+  selectionMode = false,
 }: UnitCardProps) {
   const navigate = useNavigate();
   const status = statusConfig[unit.status];
@@ -71,11 +77,35 @@ export function UnitCard({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ delay: index * 0.05 }}
-      onClick={() => onSelect(unit)}
-      className="group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-amber-500/50 dark:hover:border-amber-400/50 rounded-xl p-5 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 relative"
+      onClick={() => {
+        if (selectionMode && onSelectToggle) {
+          onSelectToggle(unit.id, !isSelected);
+        } else {
+          onSelect(unit);
+        }
+      }}
+      className={`group bg-white dark:bg-slate-800 border rounded-xl p-5 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 relative ${
+        isSelected 
+          ? 'border-amber-500 ring-2 ring-amber-500/20' 
+          : 'border-slate-200 dark:border-slate-700 hover:border-amber-500/50 dark:hover:border-amber-400/50'
+      }`}
     >
+      {selectionMode && (
+        <div className="absolute top-3 left-3 z-10">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={(e) => {
+              e.stopPropagation();
+              onSelectToggle?.(unit.id, e.target.checked);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
+          />
+        </div>
+      )}
       {/* Header with Health Ring */}
-      <div className="flex justify-between items-start mb-4">
+      <div className={`flex justify-between items-start mb-4 ${selectionMode ? 'pl-8' : ''}`}>
         <div className="flex items-center gap-3">
           <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${status.bg}`}>
             <StatusIcon className={`w-6 h-6 ${status.color}`} />

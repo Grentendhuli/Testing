@@ -4,12 +4,18 @@ import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 interface ToastProps {
   message: string;
   type: ToastType;
   isVisible: boolean;
   onClose: () => void;
   duration?: number;
+  action?: ToastAction;
 }
 
 export function Toast({
@@ -18,6 +24,7 @@ export function Toast({
   isVisible,
   onClose,
   duration = 5000,
+  action,
 }: ToastProps) {
   useEffect(() => {
     if (isVisible && duration > 0) {
@@ -69,6 +76,22 @@ export function Toast({
         >
           <Icon className={`w-5 h-5 ${text}`} />
           <p className={`flex-1 text-sm font-medium ${text}`}>{message}</p>
+          {action && (
+            <button
+              onClick={() => {
+                action.onClick();
+                onClose();
+              }}
+              className={`px-3 py-1 text-sm font-semibold rounded-md ${
+                type === 'success' ? 'bg-emerald-600 hover:bg-emerald-700' : 
+                type === 'error' ? 'bg-red-600 hover:bg-red-700' :
+                type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' :
+                'bg-blue-600 hover:bg-blue-700'
+              } text-white transition-colors`}
+            >
+              {action.label}
+            </button>
+          )}
           <button
             onClick={onClose}
             className={`${text} opacity-80 hover:opacity-100 transition-opacity`}
@@ -88,6 +111,7 @@ interface ToastState {
   message: string;
   type: ToastType;
   isVisible: boolean;
+  action?: ToastAction;
 }
 
 export function useToast() {
@@ -97,16 +121,16 @@ export function useToast() {
     isVisible: false,
   });
 
-  const showToast = useCallback((message: string, type: ToastType = 'info') => {
-    setToast({ message, type, isVisible: true });
+  const showToast = useCallback((message: string, type: ToastType = 'info', action?: ToastAction) => {
+    setToast({ message, type, isVisible: true, action });
   }, []);
 
   const hideToast = useCallback(() => {
     setToast((prev) => ({ ...prev, isVisible: false }));
   }, []);
 
-  const showSuccess = useCallback((message: string) => {
-    showToast(message, 'success');
+  const showSuccess = useCallback((message: string, action?: ToastAction) => {
+    showToast(message, 'success', action);
   }, [showToast]);
 
   const showError = useCallback((message: string) => {
@@ -121,9 +145,9 @@ export function useToast() {
     showToast(message, 'info');
   }, [showToast]);
 
-  const success = useCallback((title: string, message?: string) => {
+  const success = useCallback((title: string, message?: string, action?: ToastAction) => {
     const combined = message ? `${title}: ${message}` : title;
-    showSuccess(combined);
+    showSuccess(combined, action);
   }, [showSuccess]);
 
   const error = useCallback((title: string, message?: string) => {

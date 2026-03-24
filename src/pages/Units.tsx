@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Plus, Building2, Users, Home, Wrench, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ComplianceFooter } from '@/components/ComplianceFooter';
@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/Breadcrumb';
 import { TenantConnectCard } from '@/components/TenantConnectCard';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Toast, useToast } from '@/components/Toast';
+import { ProductTour, useProductTour } from '@/components/ProductTour';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/features/auth';
 import { useNavigate } from 'react-router-dom';
@@ -29,7 +30,10 @@ export function Units() {
   const { userData } = useAuth();
   const navigate = useNavigate();
   const botUsername = userData?.bot_phone_number || '';
-  const { toast, showSuccess, showError, hideToast } = useToast();
+  const { toast, showSuccess, showError, hideToast, showToast } = useToast();
+
+  // Product tour
+  const { isOpen: tourIsOpen, closeTour, resetTour } = useProductTour('units-page');
   
   // Local state for modals
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
@@ -43,6 +47,10 @@ export function Units() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [unitToDelete, setUnitToDelete] = useState<Unit | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Undo delete state
+  const [pendingDelete, setPendingDelete] = useState<Unit | null>(null);
+  const [deletedUnitTemp, setDeletedUnitTemp] = useState<Unit | null>(null);
 
   // Use the units feature hook
   const {
@@ -200,28 +208,120 @@ export function Units() {
     setFormErrors({});
   }, [initialUnitForm]);
 
-  // Delete handlers
+  // Delete handlers with undo support
   const openDeleteConfirm = useCallback((unit: Unit) => {
     setUnitToDelete(unit);
     setShowDeleteConfirm(true);
   }, []);
 
-  const handleDeleteConfirmed = useCallback(async () => {
-    if (!unitToDelete) return;
-
-    setIsDeleting(true);
+  const executeDelete = useCallback(async (unit: Unit) => {
     try {
-      await deleteUnit(unitToDelete.id);
-      showSuccess(`Unit ${unitToDelete.unitNumber} deleted successfully`);
-      setShowDeleteConfirm(false);
-      setUnitToDelete(null);
+      await deleteUnit(unit.id);
+      showSuccess(`Unit ${unit.unitNumber} deleted successfully`);
+      setDeletedUnitTemp(null);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to delete unit';
       showError(errorMsg);
-    } finally {
-      setIsDeleting(false);
+      // Restore unit on error
+      setDeletedUnitTemp(null);
     }
-  }, [unitToDelete, deleteUnit]);
+  }, [deleteUnit, showSuccess, showError]);
+
+  const handleDeleteWithUndo = useCallback((unit: Unit) => {
+    // Clear any existing timeout - access from window for simplicity
+    const existingTimeout = (window as unknown as Record<string, ReturnType<typeof setTimeout> | undefined>).__deleteTimeout;
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+
+    // Store unit temporarily
+    setDeletedUnitTemp(unit);
+    setPendingDelete(unit);
+
+    // Show toast with undo action
+    showSuccess(
+      `Unit ${unit.unitNumber} will be deleted`,
+      {
+        label: 'Undo',
+        onClick: () => {
+          // Cancel the deletion
+          const currentTimeout = (window as unknown as Record<string, ReturnType<typeof setTimeout> | undefined>).__deleteTimeout;
+          if (currentTimeout) {
+            clearTimeout(currentTimeout);
+          }
+          setPendingDelete(null);
+          setDeletedUnitTemp(null);
+          showToast(`Unit ${unit.unitNumber} restored`, 'info');
+        }
+      }
+    );
+
+    // Actually delete after 5 seconds
+    const timeout = setTimeout(() => {
+      executeDelete(unit);
+      setPendingDelete(null);
+    }, 5000);
+
+    (window as unknown as Record<string, ReturnType<typeof setTimeout>>).__deleteTimeout = timeout;
+  }, [showSuccess, executeDelete, showToast]);
+
+  const handleDeleteConfirmed = useCallback(() => {
+    if (!unitToDelete) return;
+
+    // Close the confirmation dialog first
+    setShowDeleteConfirm(false);
+
+    // Use the undo flow for the actual deletion
+    handleDeleteWithUndo(unitToDelete);
+    setUnitToDelete(null);
+  }, [unitToDelete, handleDeleteWithUndo]);
+
+  // Bulk delete handler
+  const handleBulkDelete = useCallback((unitIds: string[]) => {
+    // Clear any existing timeout
+    const existingTimeout = (window as unknown as Record<string, ReturnType<typeof setTimeout> | undefined>).__deleteTimeout;
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+
+    // Store first unit temporarily (for tracking)
+    const unitsToDelete = units.filter(u => unitIds.includes(u.id));
+    setDeletedUnitTemp(unitsToDelete[0] || null);
+    setPendingDelete(unitsToDelete[0] || null);
+
+    // Show toast with undo action
+    showSuccess(
+      `${unitIds.length} units will be deleted`,
+      {
+        label: 'Undo',
+        onClick: () => {
+          const currentTimeout = (window as unknown as Record<string, ReturnType<typeof setTimeout> | undefined>).__deleteTimeout;
+          if (currentTimeout) {
+            clearTimeout(currentTimeout);
+          }
+          setPendingDelete(null);
+          setDeletedUnitTemp(null);
+          showToast(`${unitIds.length} units restored`, 'info');
+        }
+      }
+    );
+
+    // Actually delete after 5 seconds
+    const timeout = setTimeout(async () => {
+      for (const id of unitIds) {
+        try {
+          await deleteUnit(id);
+        } catch (err) {
+          console.error('Failed to delete unit:', id, err);
+        }
+      }
+      showToast(`${unitIds.length} units deleted successfully`, 'success');
+      setPendingDelete(null);
+      setDeletedUnitTemp(null);
+    }, 5000);
+
+    (window as unknown as Record<string, ReturnType<typeof setTimeout>>).__deleteTimeout = timeout;
+  }, [units, deleteUnit, showSuccess, showToast]);
 
   const formatDate = useCallback((dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -229,6 +329,16 @@ export function Units() {
       day: 'numeric',
       year: 'numeric',
     });
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      const timeout = (window as unknown as Record<string, ReturnType<typeof setTimeout> | undefined>).__deleteTimeout;
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
   }, []);
 
   // Selected unit health data
@@ -258,6 +368,7 @@ export function Units() {
         type={toast.type}
         isVisible={toast.isVisible}
         onClose={hideToast}
+        action={toast.action}
       />
 
       {/* Header */}
@@ -265,12 +376,22 @@ export function Units() {
         title="Units Management"
         description="Manage all your units — unlimited and completely free"
       >
-        <Button 
-          onClick={handleOpenCreate}
-          icon={<Plus className="w-4 h-4" />}
-        >
-          Add Unit
-        </Button>
+        <div className="flex items-center gap-2" data-tour="units">
+          <button
+            onClick={resetTour}
+            className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+            title="Show tour again"
+          >
+            ?
+          </button>
+          <Button 
+            onClick={handleOpenCreate}
+            icon={<Plus className="w-4 h-4" />}
+            data-tour="add-unit"
+          >
+            Add Unit
+          </Button>
+        </div>
       </PageHeader>
 
       {/* Stats Overview */}
@@ -378,11 +499,20 @@ export function Units() {
         onSelectUnit={setSelectedUnit}
         onEditUnit={handleEdit}
         onDeleteUnit={openDeleteConfirm}
+        onBulkDelete={handleBulkDelete}
         formatDate={formatDate}
         onTenantConnect={setInviteUnit}
         botUsername={botUsername}
         expandedQR={expandedQR}
         onToggleQR={(unitId) => setExpandedQR(prev => ({ ...prev, [unitId]: !prev[unitId] }))}
+      />
+
+      {/* Product Tour */}
+      <ProductTour
+        isOpen={tourIsOpen}
+        onClose={closeTour}
+        onComplete={() => console.log('Tour completed')}
+        tourId="units-page"
       />
 
       {/* Create Unit Modal */}

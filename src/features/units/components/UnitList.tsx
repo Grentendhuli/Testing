@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Search, Building2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Building2, ChevronDown, ChevronUp, Trash2, CheckSquare, Square } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { UnitCard } from './UnitCard';
 import type { Unit, HealthBreakdown } from '../types/unit.types';
@@ -11,6 +11,7 @@ interface UnitListProps {
   onSelectUnit: (unit: Unit) => void;
   onEditUnit: (unit: Unit) => void;
   onDeleteUnit?: (unit: Unit) => void;
+  onBulkDelete?: (unitIds: string[]) => void;
   formatDate: (dateString: string) => string;
   onTenantConnect?: (unit: Unit) => void;
   botUsername?: string;
@@ -32,6 +33,7 @@ export function UnitList({
   onSelectUnit,
   onEditUnit,
   onDeleteUnit,
+  onBulkDelete,
   formatDate,
   onTenantConnect,
   botUsername,
@@ -40,6 +42,10 @@ export function UnitList({
 }: UnitListProps) {
   // State for collapsed property groups
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+
+  // Bulk selection state
+  const [selectedUnits, setSelectedUnits] = useState<Set<string>>(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
 
   // Normalize address for consistent grouping
   const normalizeAddress = (addr: string | undefined): string => {
@@ -92,6 +98,57 @@ export function UnitList({
     }));
   };
 
+  // Bulk selection handlers
+  const toggleSelectionMode = () => {
+    setSelectionMode(!selectionMode);
+    if (selectionMode) {
+      setSelectedUnits(new Set()); // Clear selection when exiting mode
+    }
+  };
+
+  const handleSelectUnit = (unitId: string, selected: boolean) => {
+    setSelectedUnits(prev => {
+      const newSet = new Set(prev);
+      if (selected) {
+        newSet.add(unitId);
+      } else {
+        newSet.delete(unitId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    const allUnitIds = units.map(u => u.id);
+    const allSelected = allUnitIds.every(id => selectedUnits.has(id));
+    
+    if (allSelected) {
+      // Deselect all visible units
+      setSelectedUnits(prev => {
+        const newSet = new Set(prev);
+        allUnitIds.forEach(id => newSet.delete(id));
+        return newSet;
+      });
+    } else {
+      // Select all visible units
+      setSelectedUnits(prev => {
+        const newSet = new Set(prev);
+        allUnitIds.forEach(id => newSet.add(id));
+        return newSet;
+      });
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (onBulkDelete && selectedUnits.size > 0) {
+      onBulkDelete(Array.from(selectedUnits));
+      setSelectedUnits(new Set());
+      setSelectionMode(false);
+    }
+  };
+
+  const selectedCount = selectedUnits.size;
+
   // No Search Results
   if (allUnits.length > 0 && units.length === 0) {
     return (
@@ -113,7 +170,53 @@ export function UnitList({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Bulk Actions Toolbar */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3"
+      >
+        <div className="flex items-center gap-3">
+          <button
+            onClick={toggleSelectionMode}
+            className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+              selectionMode
+                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
+            }`}
+          >
+            {selectionMode ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+            {selectionMode ? 'Exit Selection' : 'Select Multiple'}
+          </button>
+          
+          {selectionMode && (
+            <>
+              <button
+                onClick={handleSelectAll}
+                className="text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+              >
+                Select All ({units.length})
+              </button>
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                {selectedCount} selected
+              </span>
+            </>
+          )}
+        </div>
+
+        {selectionMode && selectedCount > 0 && (
+          <button
+            onClick={handleBulkDelete}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete Selected ({selectedCount})
+          </button>
+        )}
+      </motion.div>
+
+      <div className="space-y-6">
       {groupedUnits.map((group) => {
         const isCollapsed = collapsedGroups[group.address];
         const unitCount = group.units.length;
@@ -182,6 +285,9 @@ export function UnitList({
                             botUsername={botUsername}
                             expandedQR={expandedQR?.[unit.id]}
                             onToggleQR={onToggleQR ? () => onToggleQR(unit.id) : undefined}
+                            isSelected={selectedUnits.has(unit.id)}
+                            onSelectToggle={handleSelectUnit}
+                            selectionMode={selectionMode}
                           />
                         ))}
                       </AnimatePresence>
@@ -193,6 +299,7 @@ export function UnitList({
           </motion.div>
         );
       })}
+      </div>
     </div>
   );
 }
