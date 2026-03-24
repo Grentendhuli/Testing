@@ -211,7 +211,16 @@ export function Config() {
   const isFreeTier = !userData || userData.subscription_tier === 'free';
   const lateFeeConfig = getLateFeeConfig() || { enabled: false, gracePeriodDays: 5 };
 
-  if (!botConfig) return null;
+  if (!botConfig) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mx-auto mb-4"></div>
+          <p className="text-slate-500">Loading configuration...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSave = () => {
     // Trigger persistence
