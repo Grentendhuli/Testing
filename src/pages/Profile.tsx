@@ -7,9 +7,9 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Button } from '../components/Button';
-import { Card, MetricCard } from '../components/Card';
+import { Card, MetricCard } from '@/components/ui/Card';
 import { PageHeader } from '../components/Breadcrumb';
-import { useToast } from '../components/Toast';
+import { useToast } from '@/components/ui/Toast';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '@/features/auth';
 import { debounce } from '../lib/utils';

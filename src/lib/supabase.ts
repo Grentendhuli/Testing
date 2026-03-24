@@ -71,15 +71,21 @@ if (!isValidUrl || !isValidKey) {
     }
   }) as SupabaseClient<Database>;
 } else {
-  // Create real client (implicit flow; Supabase handles magic links)
+  // SECURE: Memory-only token storage to prevent XSS attacks
+  // Tokens are NOT stored in localStorage, preventing malicious scripts from stealing them
+  // Trade-offs:
+  //   - User must re-login after closing tab/refreshing page (session is memory-only)
+  //   - autoRefreshToken keeps session alive while tab is open
+  //   - OAuth flows still work via URL hash detection (detectSessionInUrl)
+  //   - 1-hour default session TTL from Supabase (configured in Supabase Dashboard > Auth > Sessions)
   supabase = createClient<Database>(supabaseUrl, supabaseKey, {
     auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true,
+      autoRefreshToken: true,      // Auto-refresh token while tab is open
+      persistSession: false,       // SECURITY: Don't store tokens in localStorage (XSS protection)
+      detectSessionInUrl: true,    // Handle OAuth redirects (Google/Apple sign-in)
     },
   });
-  console.log('[Supabase] Client initialized successfully');
+  console.log('[Supabase] Client initialized securely (memory-only tokens)');
 }
 
 export { supabase };

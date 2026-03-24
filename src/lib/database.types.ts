@@ -705,6 +705,38 @@ export interface Database {
           updated_at?: string;
         };
       };
+      bot_settings: {
+        Row: {
+          id: string;
+          user_id: string;
+          bot_token: string | null;
+          webhook_url: string | null;
+          is_active: boolean;
+          config: Record<string, any>;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          bot_token?: string | null;
+          webhook_url?: string | null;
+          is_active?: boolean;
+          config?: Record<string, any>;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          bot_token?: string | null;
+          webhook_url?: string | null;
+          is_active?: boolean;
+          config?: Record<string, any>;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
     Enums: {
       // Define enums here if needed

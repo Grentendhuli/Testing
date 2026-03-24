@@ -13,8 +13,8 @@ import {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Storage keys
-const AUTH_STORAGE_KEY = 'lb_auth_state';
+// SECURITY: Auth tokens are NOT stored in localStorage (XSS protection)
+// Only non-sensitive user data is cached; tokens are memory-only
 const USER_DATA_CACHE_KEY = 'lb_user_data_cache_v3';
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -345,29 +345,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [authState, user?.id, fetchUserData]);
 
-  // Cross-tab sync
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === AUTH_STORAGE_KEY) {
-        supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-          if (currentSession?.user) {
-            setUser(currentSession.user);
-            setSession(currentSession);
-            setAuthState('authenticated');
-            fetchUserData(currentSession.user.id);
-          } else {
-            setUser(null);
-            setSession(null);
-            setUserData(null);
-            setAuthState('unauthenticated');
-          }
-        });
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [fetchUserData]);
+  // Note: Cross-tab sync removed - tokens are memory-only for XSS protection
+  // OAuth flows and session detection work via detectSessionInUrl in supabase.ts
 
   const refreshSession = useCallback(async () => {
     try {
