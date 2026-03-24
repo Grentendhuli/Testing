@@ -42,6 +42,11 @@ export function UnitForm({
     };
   }, []);
 
+  // Clear validation errors when mode changes between create/edit
+  useEffect(() => {
+    setFormErrors({});
+  }, [mode, setFormErrors]);
+
   // Prevent body scroll when modal is open
   useEffect(() => {
     if (isOpen) {

@@ -135,3 +135,77 @@ a:focus-visible {
 .home-indicator-height {
   height: env(safe-area-inset-bottom, 34px);
 }
+
+/* ============================================
+   TOUCH TARGET SIZES - Mobile UX Fix
+   Ensures minimum 44px touch targets
+   ============================================ */
+
+/* Minimum touch target size for buttons and links */
+button,
+a {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Exception for inline text links */
+a.inline-link,
+.text-link,
+a:not(.touch-target) {
+  min-width: auto;
+  min-height: auto;
+}
+
+/* Ensure icon-only buttons maintain proper size */
+button:has(> svg:only-child),
+button.icon-only {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Form inputs need adequate touch targets */
+input,
+textarea,
+select {
+  min-height: 44px;
+}
+
+/* Checkbox and radio inputs */
+input[type="checkbox"],
+input[type="radio"] {
+  min-width: 20px;
+  min-height: 20px;
+}
+
+/* Touch target utility classes */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.touch-target-lg {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+/* Navigation items */
+nav button,
+nav a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Mobile menu items */
+.mobile-menu-item {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+}

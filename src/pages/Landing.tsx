@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { LogoMark } from '@/components/LogoMark';
 import { 
   Bot, Mail, CheckCircle, Building2, ArrowRight, ShieldAlert, AlertTriangle,
@@ -143,28 +144,78 @@ export function Landing() {
 
             {/* Mobile Menu Button */}
             <button 
-              className="md:hidden p-2 text-gray-600"
+              className="md:hidden p-2 text-gray-600 touch-target"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+              aria-expanded={mobileMenuOpen}
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
 
-          {/* Mobile Menu */}
-          {mobileMenuOpen && (
-            <div className="md:hidden py-4 border-t border-gray-200">
-              <div className="flex flex-col gap-4">
-                <button onClick={() => scrollToSection('compliance')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium text-left">Risks</button>
-                <button onClick={() => scrollToSection('features')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium text-left">Features</button>
-                <button 
-                  onClick={handleTryFree}
-                  className="px-5 py-2 bg-[#1E3A5F] hover:bg-[#152942] text-white font-semibold rounded-lg text-sm transition-colors w-full"
+          {/* Mobile Menu - Slide Out Drawer */}
+          <AnimatePresence>
+            {mobileMenuOpen && (
+              <>
+                {/* Backdrop */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="fixed inset-0 bg-black/40 backdrop-blur-sm md:hidden z-40"
+                  onClick={() => setMobileMenuOpen(false)}
+                />
+                
+                {/* Drawer */}
+                <motion.div
+                  initial={{ x: '100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '100%' }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                  className="fixed top-0 right-0 bottom-0 w-[280px] bg-white shadow-2xl md:hidden z-50 flex flex-col"
                 >
-                  Try Free
-                </button>
-              </div>
-            </div>
-          )}
+                  {/* Drawer Header */}
+                  <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                    <span className="font-semibold text-[#1E3A5F]">Menu</span>
+                    <button 
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="p-2 text-gray-600 touch-target"
+                      aria-label="Close menu"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                  
+                  {/* Drawer Content */}
+                  <nav className="flex-1 py-4">
+                    <button 
+                      onClick={() => scrollToSection('compliance')} 
+                      className="w-full mobile-menu-item text-gray-600 hover:text-[#1E3A5F] hover:bg-gray-50 transition-colors text-left font-medium"
+                    >
+                      Risks
+                    </button>
+                    <button 
+                      onClick={() => scrollToSection('features')} 
+                      className="w-full mobile-menu-item text-gray-600 hover:text-[#1E3A5F] hover:bg-gray-50 transition-colors text-left font-medium"
+                    >
+                      Features
+                    </button>
+                  </nav>
+                  
+                  {/* Drawer Footer */}
+                  <div className="p-4 border-t border-gray-200 safe-area-bottom">
+                    <button 
+                      onClick={handleTryFree}
+                      className="w-full px-5 py-3 bg-[#1E3A5F] hover:bg-[#152942] text-white font-semibold rounded-lg transition-colors"
+                    >
+                      Try Free
+                    </button>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
       </nav>
 

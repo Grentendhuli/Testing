@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { LogoMark } from '@/components/LogoMark';
 import { 
   Bot, Mail, CheckCircle, Building2, ArrowRight, ShieldAlert, Menu, X,
   Sparkles, Brain, Clock, TrendingUp, MessageSquare, Wrench, DollarSign,
   Users, BarChart3, BrainCircuit, Target, Hammer, UserCheck, Layout,
-  Calendar, Bell, Moon, Sun, Zap, Home, ClipboardList, CreditCard,
-  Check, XCircle, AlertTriangle, Scale, FileText, Thermometer, Paintbrush
+  Calendar, Bell, Moon, Sun, Zap as ZapIcon, Home as HomeIcon, ClipboardList, CreditCard,
+  Check, XCircle, AlertTriangle as AlertTriangleIcon, Scale as ScaleIcon, FileText as FileTextIcon, Thermometer as ThermometerIcon, Paintbrush as PaintbrushIcon
 } from 'lucide-react';
 import { ConfidenceBadge } from '../components/ConfidenceBadge';
 
@@ -25,11 +26,11 @@ const painPoints = [
     text: 'Maintenance requests buried in email threads'
   },
   {
-    icon: Home,
+    icon: HomeIcon,
     text: 'Vacancies lasting weeks because you can\'t respond fast enough'
   },
   {
-    icon: AlertTriangle,
+    icon: AlertTriangleIcon,
     text: 'Missing compliance deadlines and risking fines'
   },
   {
@@ -81,7 +82,7 @@ const complianceRisks = [
     color: 'red'
   },
   {
-    icon: Home,
+    icon: HomeIcon,
     title: 'HPD Registration',
     status: 'Never Miss It',
     description: 'Annual registration for all NYC rentals. Automated reminders save you from $500/unit fines.',
@@ -89,7 +90,7 @@ const complianceRisks = [
     color: 'amber'
   },
   {
-    icon: Scale,
+    icon: ScaleIcon,
     title: 'Rent Stabilization',
     status: 'Accurate Tracking',
     description: 'Rent-stabilized units have strict increase caps. We calculate allowable increases automatically.',
@@ -97,7 +98,7 @@ const complianceRisks = [
     color: 'amber'
   },
   {
-    icon: FileText,
+    icon: FileTextIcon,
     title: 'Local Law 97',
     status: '2025 Ready',
     description: 'Carbon emissions monitoring for buildings. We track your status and alert you to requirements.',
@@ -105,7 +106,7 @@ const complianceRisks = [
     color: 'amber'
   },
   {
-    icon: Thermometer,
+    icon: ThermometerIcon,
     title: 'Heat Season Compliance',
     status: 'Oct-May',
     description: 'Minimum temps: 68°F (6am-10pm), 62°F (10pm-6am). We track violations proactively.',
@@ -113,7 +114,7 @@ const complianceRisks = [
     color: 'blue'
   },
   {
-    icon: Paintbrush,
+    icon: PaintbrushIcon,
     title: 'Lead Paint Records',
     status: 'Organized',
     description: 'Pre-1960 buildings: disclosure tracking and remediation records, all in one place.',
@@ -306,35 +307,91 @@ export function LandingSmart() {
 
             {/* Mobile Menu Button */}
             <button 
-              className="md:hidden p-2 text-gray-600"
+              className="md:hidden p-2 text-gray-600 touch-target"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+              aria-expanded={mobileMenuOpen}
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
 
-          {/* Mobile Menu */}
-          {mobileMenuOpen && (
-            <div className="md:hidden py-4 border-t border-gray-200">
-              <div className="flex flex-col gap-4">
-                <button onClick={() => scrollToSection('pain-points')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium text-left">Pain Points</button>
-                <button onClick={() => scrollToSection('how-it-works')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium text-left">How It Works</button>
-                <button onClick={() => scrollToSection('compliance')} className="text-gray-600 hover:text-[#1E3A5F] transition-colors text-sm font-medium text-left">Compliance</button>
-                <button 
-                  onClick={handleSignIn}
-                  className="w-full py-2 text-gray-700 font-medium text-left"
+          {/* Mobile Menu - Slide Out Drawer */}
+          <AnimatePresence>
+            {mobileMenuOpen && (
+              <>
+                {/* Backdrop */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="fixed inset-0 bg-black/40 backdrop-blur-sm md:hidden z-40"
+                  onClick={() => setMobileMenuOpen(false)}
+                />
+                
+                {/* Drawer */}
+                <motion.div
+                  initial={{ x: '100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '100%' }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                  className="fixed top-0 right-0 bottom-0 w-[280px] bg-white shadow-2xl md:hidden z-50 flex flex-col"
                 >
-                  Sign In
-                </button>
-                <button 
-                  onClick={() => setMobileMenuOpen(false)} 
-                  className="px-5 py-2 bg-[#1E3A5F] hover:bg-[#152942] text-white font-semibold rounded-lg text-sm transition-colors w-full"
-                >
-                  Get Started Free
-                </button>
-              </div>
-            </div>
-          )}
+                  {/* Drawer Header */}
+                  <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                    <span className="font-semibold text-[#1E3A5F]">Menu</span>
+                    <button 
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="p-2 text-gray-600 touch-target"
+                      aria-label="Close menu"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                  
+                  {/* Drawer Content */}
+                  <nav className="flex-1 py-4">
+                    <button 
+                      onClick={() => scrollToSection('pain-points')} 
+                      className="w-full mobile-menu-item text-gray-600 hover:text-[#1E3A5F] hover:bg-gray-50 transition-colors text-left font-medium"
+                    >
+                      Pain Points
+                    </button>
+                    <button 
+                      onClick={() => scrollToSection('how-it-works')} 
+                      className="w-full mobile-menu-item text-gray-600 hover:text-[#1E3A5F] hover:bg-gray-50 transition-colors text-left font-medium"
+                    >
+                      How It Works
+                    </button>
+                    <button 
+                      onClick={() => scrollToSection('compliance')} 
+                      className="w-full mobile-menu-item text-gray-600 hover:text-[#1E3A5F] hover:bg-gray-50 transition-colors text-left font-medium"
+                    >
+                      Compliance
+                    </button>
+                    <div className="border-t border-gray-200 my-2"></div>
+                    <button 
+                      onClick={handleSignIn}
+                      className="w-full mobile-menu-item text-gray-600 hover:text-[#1E3A5F] hover:bg-gray-50 transition-colors text-left font-medium"
+                    >
+                      Sign In
+                    </button>
+                  </nav>
+                  
+                  {/* Drawer Footer */}
+                  <div className="p-4 border-t border-gray-200 safe-area-bottom">
+                    <button 
+                      onClick={handleTryFree}
+                      className="w-full px-5 py-3 bg-[#1E3A5F] hover:bg-[#152942] text-white font-semibold rounded-lg transition-colors"
+                    >
+                      Get Started Free
+                    </button>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
       </nav>
 
