@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useAuthRateLimiter } from '@/hooks';
 import { analytics } from '@/utils/analytics';
 import { Mail, User, Phone, Home, CheckCircle, AlertCircle, Lock, Eye, EyeOff, MapPin, Shield, Sparkles } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -155,6 +156,7 @@ const GreenCheckBadge = ({ text }: { text: string }) => (
 export function SignupForm() {
   const navigate = useNavigate();
   const { signInWithGoogle, isAuthenticated, isLoading } = useAuth();
+  const authRateLimiter = useAuthRateLimiter();
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -314,6 +316,14 @@ export function SignupForm() {
       return;
     }
 
+    // Check rate limit before attempting signup
+    if (!authRateLimiter.canAttempt('signup', formData.email)) {
+      const errorMsg = authRateLimiter.getErrorMessage('signup', formData.email);
+      setError(errorMsg || 'Too many signup attempts. Please try again later.');
+      analytics.trackEvent('signup_rate_limited', { email_domain: formData.email.split('@')[1] });
+      return;
+    }
+
     setError('');
     setMessage('');
     setIsSubmitting(true);
@@ -403,6 +413,8 @@ export function SignupForm() {
         }, 1500);
       }
     } catch (err: any) {
+      // Record failed signup attempt for rate limiting
+      authRateLimiter.recordAttempt('signup', formData.email);
       setError(err.message || 'Signup failed. Please try again.');
       setIsSubmitting(false);
     }
