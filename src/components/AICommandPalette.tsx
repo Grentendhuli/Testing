@@ -54,6 +54,15 @@ export function AICommandPalette({ isOpen, onClose, onCommand }: AICommandPalett
   
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isMountedRef = useRef(true);
+
+  // Track mounted state for async cleanup
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Mock recent commands (would come from localStorage/context)
   const [recentCommands, setRecentCommands] = useState<AICommand[]>([
@@ -167,6 +176,9 @@ export function AICommandPalette({ isOpen, onClose, onCommand }: AICommandPalett
     // Simulate AI thinking
     await new Promise(resolve => setTimeout(resolve, 600));
 
+    // Check if component is still mounted before updating state
+    if (!isMountedRef.current) return;
+
     // Mock AI interpretation
     const interpretations: Record<string, { interpreted: string; confidence: number; action: () => void }> = {
       'text': {
@@ -225,7 +237,9 @@ export function AICommandPalette({ isOpen, onClose, onCommand }: AICommandPalett
       });
     }
 
-    setIsProcessing(false);
+    if (isMountedRef.current) {
+      setIsProcessing(false);
+    }
   }, [onCommand]);
 
   // Handle input changes
@@ -238,14 +252,16 @@ export function AICommandPalette({ isOpen, onClose, onCommand }: AICommandPalett
 
   // Focus input on open
   useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout>;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     if (isOpen) {
       timeoutId = setTimeout(() => inputRef.current?.focus(), 100);
     } else {
       setInput('');
       setAiInterpretation(null);
     }
-    return () => clearTimeout(timeoutId);
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [isOpen]);
 
   // Keyboard navigation

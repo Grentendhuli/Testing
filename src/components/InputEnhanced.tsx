@@ -151,6 +151,15 @@ export const InputEnhanced = forwardRef<HTMLInputElement, InputEnhancedProps>(
     const [isFocused, setIsFocused] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const validationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isMountedRef = useRef(true);
+
+    // Track mounted state
+    useEffect(() => {
+      isMountedRef.current = true;
+      return () => {
+        isMountedRef.current = false;
+      };
+    }, []);
 
     const isPassword = type === 'password';
     const inputType = isPassword ? (showPassword ? 'text' : 'password') : type;
@@ -234,7 +243,9 @@ export const InputEnhanced = forwardRef<HTMLInputElement, InputEnhancedProps>(
           clearTimeout(validationTimer.current);
         }
         validationTimer.current = setTimeout(() => {
-          validate(val, true);
+          if (isMountedRef.current) {
+            validate(val, true);
+          }
         }, validationDelay);
       },
       [validate, validationDelay]
@@ -278,14 +289,15 @@ export const InputEnhanced = forwardRef<HTMLInputElement, InputEnhancedProps>(
       setInternalError(null);
     };
 
-    // Cleanup timer on unmount
+    // Cleanup timer on unmount or when validationDelay changes
     useEffect(() => {
       return () => {
         if (validationTimer.current) {
           clearTimeout(validationTimer.current);
+          validationTimer.current = null;
         }
       };
-    }, []);
+    }, [validationDelay]);
 
     const error = externalError || internalError;
     const isInvalid = !!error || state === 'invalid';
@@ -550,6 +562,15 @@ export const TextareaEnhanced = forwardRef<HTMLTextAreaElement, TextareaEnhanced
     const [internalError, setInternalError] = useState<string | null>(null);
     const [isFocused, setIsFocused] = useState(false);
     const validationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isMountedRef = useRef(true);
+
+    // Track mounted state
+    useEffect(() => {
+      isMountedRef.current = true;
+      return () => {
+        isMountedRef.current = false;
+      };
+    }, []);
 
     const validate = useCallback(
       (val: string, showErrors = true): boolean => {
@@ -592,7 +613,9 @@ export const TextareaEnhanced = forwardRef<HTMLTextAreaElement, TextareaEnhanced
           clearTimeout(validationTimer.current);
         }
         validationTimer.current = setTimeout(() => {
-          validate(val, true);
+          if (isMountedRef.current) {
+            validate(val, true);
+          }
         }, validationDelay);
       },
       [validate, validationDelay]
@@ -629,9 +652,10 @@ export const TextareaEnhanced = forwardRef<HTMLTextAreaElement, TextareaEnhanced
       return () => {
         if (validationTimer.current) {
           clearTimeout(validationTimer.current);
+          validationTimer.current = null;
         }
       };
-    }, []);
+    }, [validationDelay]);
 
     const error = externalError || internalError;
     const isInvalid = !!error || state === 'invalid';
