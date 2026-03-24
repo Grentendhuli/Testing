@@ -141,7 +141,7 @@ const howItWorks = [
     step: '03',
     title: 'Let it run',
     description: 'AI handles the day-to-day while you monitor from your dashboard. Review with one click, approve with another.',
-    icon: Zap
+    icon: ZapIcon
   }
 ];
 
