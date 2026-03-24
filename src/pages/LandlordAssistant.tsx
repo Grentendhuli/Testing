@@ -557,3 +557,5 @@ export function LandlordAssistant() {
     </div>
   );
 }
+
+export default LandlordAssistant;

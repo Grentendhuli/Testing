@@ -536,3 +536,5 @@ export function NYCCompliance() {
     </div>
   );
 }
+
+export default NYCCompliance;
