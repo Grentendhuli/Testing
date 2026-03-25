@@ -188,8 +188,7 @@ Please describe what you were doing when this error occurred:
                   <p className="text-sm font-semibold text-lb-text-secondary mb-2 mt-4">
                     Component Stack:
                   </p>
-                  <pre className="text-xs font-mono text-lb-text-muted whitespace-pre-wrap break-words max-h-48 overflow-auto"
-003e
+                  <pre className="text-xs font-mono text-lb-text-muted whitespace-pre-wrap break-words max-h-48 overflow-auto">
                     {errorInfo.componentStack}
                   </pre>
                 </>
