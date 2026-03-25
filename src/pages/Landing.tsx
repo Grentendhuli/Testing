@@ -234,17 +234,17 @@ export function Landing() {
       <section id="hero" className="pt-16 pb-20 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-[#1E3A5F] leading-tight mb-4 tracking-tight">
-            NYC Property Management Software<br className="hidden sm:block" />
-            <span className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-blue-600">Built for NYC Landlords</span>
+            By NYC Landlords.<br className="hidden sm:block" />
+            <span className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-blue-600">For NYC Landlords.</span>
           </h1>
           
           <p className="text-xl text-gray-600 mb-4 max-w-2xl mx-auto leading-relaxed">
-            The only <strong>NYC property management software</strong> built specifically for city compliance. 
-            Track Good Cause Eviction, HPD registration, DHCR requirements — or face fines, lawsuits, and lost rent.
+            The only <strong>NYC property management software</strong> built by a team of property managers who actually deal with Good Cause Eviction, HPD, and DHCR every day. 
+            Stop paying $600/year for apps built in Texas that don't even know what Local Law 97 is.
           </p>
           
           <p className="text-lg text-gray-500 mb-10 max-w-2xl mx-auto">
-            LandlordBot is the <strong className="text-[#1E3A5F]">free</strong> compliance co-pilot built exclusively for NYC landlords.
+            LandlordBot is the <strong className="text-[#1E3A5F]">free</strong> compliance co-pilot built exclusively for New York City.
           </p>
 
           {/* Email Capture Form */}
@@ -279,7 +279,7 @@ export function Landing() {
             )}
           </form>
           
-          <p className="text-sm text-gray-500">No credit card. Takes 2 minutes. Built by an NYC asset manager, for NYC landlords.</p>
+          <p className="text-sm text-gray-500">No credit card. Takes 2 minutes. Built by NYC property managers, for NYC landlords.</p>
         </div>
       </section>
 
@@ -386,7 +386,7 @@ export function Landing() {
             Get Started Free
             <ArrowRight className="w-5 h-5" />
           </button>
-          <p className="text-sm text-gray-500 mt-4">Built by an NYC asset manager, for NYC landlords. Free forever.</p>        
+          <p className="text-sm text-gray-500 mt-4">Built by a team of NYC property managers, for NYC landlords. Free forever.</p>        
         </div>
       </section>
 
@@ -405,7 +405,7 @@ export function Landing() {
               <a href="/terms" className="hover:text-[#1E3A5F]">Terms</a>
               <a href="mailto:concierge@landlordbot.app" className="hover:text-[#1E3A5F]">Contact</a>
             </div>
-            <p className="text-sm text-gray-400">© 2026 LandlordBot. Built in NYC.</p>
+            <p className="text-sm text-gray-400">© 2026 LandlordBot. Built by NYC property managers.</p>
           </div>        
         </div>
       </footer>
