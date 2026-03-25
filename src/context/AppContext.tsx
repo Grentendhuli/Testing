@@ -175,18 +175,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     
-    // Check localStorage cache first for instant load
+    // Load from comprehensive cache first for instant display and offline support
+    const cachedData = localStorage.getItem(`lb_data_${userId}`);
+    if (cachedData) {
+      try {
+        const parsed = JSON.parse(cachedData);
+        if (parsed.units) setUnits(parsed.units);
+        if (parsed.leads) setLeads(parsed.leads);
+        if (parsed.leases) setLeases(parsed.leases);
+        if (parsed.payments) setPayments(parsed.payments);
+        if (parsed.maintenanceRequests) setMaintenanceRequests(parsed.maintenanceRequests);
+        if (parsed.messages) setMessages(parsed.messages);
+        console.log('[AppContext] Loaded from cache:', new Date(parsed.timestamp).toLocaleString());
+      } catch (e) {
+        console.warn('[AppContext] Failed to parse cached data:', e);
+      }
+    }
+    // Fallback to old individual caches
     const cachedUnits = localStorage.getItem(`lb_units_${userId}`);
     const cachedLeads = localStorage.getItem(`lb_leads_${userId}`);
-    if (cachedUnits) {
-      try {
-        setUnits(JSON.parse(cachedUnits));
-      } catch {}
+    if (cachedUnits && !units.length) {
+      try { setUnits(JSON.parse(cachedUnits)); } catch {}
     }
-    if (cachedLeads) {
-      try {
-        setLeads(JSON.parse(cachedLeads));
-      } catch {}
+    if (cachedLeads && !leads.length) {
+      try { setLeads(JSON.parse(cachedLeads)); } catch {}
     }
     
     // Add timeout to prevent infinite loading
@@ -241,8 +253,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setMaintenanceRequests((maintRes.data || []) as MaintenanceRequest[]);
       setMessages(((msgsRes.data || []) as Message[]) || []);
       
-      // Cache units and leads in localStorage for persistence across deployments
+      // Cache ALL data in localStorage for bulletproof persistence across deployments
       try {
+        const cacheData = {
+          units: loadedUnits,
+          leads: loadedLeads,
+          leases: (leasesRes.data || []) as Lease[],
+          payments: (paymentsRes.data || []) as Payment[],
+          maintenanceRequests: (maintRes.data || []) as MaintenanceRequest[],
+          messages: (msgsRes.data || []) as Message[],
+          timestamp: Date.now(),
+        };
+        localStorage.setItem(`lb_data_${userId}`, JSON.stringify(cacheData));
+        // Also keep individual caches for backward compatibility
         localStorage.setItem(`lb_units_${userId}`, JSON.stringify(loadedUnits));
         localStorage.setItem(`lb_leads_${userId}`, JSON.stringify(loadedLeads));
       } catch (e) {
@@ -264,19 +287,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
       markOnboardingProgress('property', !!userRes.data?.property_address);
     } catch (err) {
       console.error('[AppContext] loadUserData error:', err);
-      setError('Failed to load your data. Please refresh.');
-      // Clear data on error
-      setUnits([]);
-      setLeads([]);
-      setLeases([]);
-      setPayments([]);
-      setMaintenanceRequests([]);
-      setMessages([]);
+      setError('Using cached data. Some updates may not be reflected.');
+      // DO NOT clear data on error - keep cached data intact
+      // This ensures data persistence even if Supabase is temporarily unavailable
     } finally {
       clearTimeout(timeoutId);
       setIsLoading(false);
     }
   };
+
+  // Helper: Persist current state to localStorage cache
+  const persistCache = useCallback(() => {
+    if (!authUser?.id) return;
+    try {
+      const cacheData = {
+        units,
+        leads,
+        leases,
+        payments,
+        maintenanceRequests,
+        messages,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(`lb_data_${authUser.id}`, JSON.stringify(cacheData));
+    } catch (e) {
+      console.warn('[AppContext] Failed to persist cache:', e);
+    }
+  }, [authUser?.id, units, leads, leases, payments, maintenanceRequests, messages]);
 
   // Real-time subscriptions
   useEffect(() => {
@@ -407,6 +444,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (userId) {
       localStorage.removeItem(`lb_units_${userId}`);
       localStorage.removeItem(`lb_leads_${userId}`);
+      localStorage.removeItem(`lb_data_${userId}`);
     }
   };
 
@@ -559,6 +597,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : unit
       )
     );
+    // Persist cache
+    setTimeout(persistCache, 0);
   };
 
   const addUnit = async (unit: Omit<Unit, 'id'>) => {
@@ -617,6 +657,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
 
     setUnits(prev => [...prev, newUnit]);
+    // Persist to cache immediately for bulletproof data persistence
+    setTimeout(persistCache, 0);
     // Mark onboarding progress for PWA
     markOnboardingProgress('units', true);
     return newUnit;
@@ -660,6 +702,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       // Optimistic update
       setUnits(prev => prev.filter(unit => unit.id !== unitId));
+      // Persist cache
+      setTimeout(persistCache, 0);
     } catch (err: any) {
       console.error('[deleteUnit] Exception:', err);
       throw new Error(err?.message || 'Failed to delete unit. Please try again.');
