@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="167x167" href="/icons/apple-touch-icon-167x167.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://js.stripe.com https://*.stripe.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.vapi.ai https://api.sendgrid.com https://api.twilio.com https://*.workers.dev https://data.cityofnewyork.us https://fonts.googleapis.com https://api.stripe.com; img-src 'self' data: https: blob:; frame-src 'self' https://js.stripe.com https://*.stripe.com; base-uri 'self'; form-action 'self';" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://*.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.vapi.ai https://api.sendgrid.com https://api.twilio.com https://*.workers.dev https://data.cityofnewyork.us https://fonts.googleapis.com https://api.stripe.com; img-src 'self' data: https: blob:; frame-src 'self' https://js.stripe.com https://*.stripe.com; base-uri 'self'; form-action 'self';" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="-1" />
@@ -172,28 +172,6 @@
     <noscript>
       <style>.safari-fallback { display: block !important; }</style>
     </noscript>
-    
-    <!-- Google Analytics 4 - Only load if GA_ID is configured -->
-    <script>
-      // Check if GA is configured before loading script
-      window.GA_MEASUREMENT_ID = localStorage.getItem('GA_MEASUREMENT_ID') || '';
-      if (window.GA_MEASUREMENT_ID && window.GA_MEASUREMENT_ID !== 'GA_MEASUREMENT_ID') {
-        const gaScript = document.createElement('script');
-        gaScript.async = true;
-        gaScript.src = 'https://www.googletagmanager.com/gtag/js?id=' + window.GA_MEASUREMENT_ID;
-        document.head.appendChild(gaScript);
-        
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        window.gtag = gtag;
-        gtag('js', new Date());
-        gtag('config', window.GA_MEASUREMENT_ID, {
-          'anonymize_ip': true,
-          'send_page_view': false,
-          'transport_type': 'beacon'
-        });
-      }
-    </script>
     
     <script>
       // Detect Safari and log to console
