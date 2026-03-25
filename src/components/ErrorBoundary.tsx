@@ -1,218 +1,213 @@
-import React, { Component, ReactNode, ErrorInfo } from 'react';
-
-// Safe error reporting - don't crash if error reporting fails
-function safeReport(error: Error, errorInfo: ErrorInfo, errorId: string) {
-  try {
-    console.error('[ErrorBoundary]', error, errorInfo);
-    // Report to console only - avoid circular dependencies
-  } catch (e) {
-    // Silently fail
-  }
-}
+import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { AlertTriangle, RefreshCw, MessageSquare, Terminal } from 'lucide-react';
+import { Button } from './Button';
+import * as Sentry from '@sentry/react';
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
-  onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
-  errorId: string;
+  errorInfo: ErrorInfo | null;
+  showDetails: boolean;
+  errorId: string | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = {
-    hasError: false,
-    error: null,
-    errorId: '',
-  };
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      showDetails: false,
+      errorId: null,
+    };
+  }
 
   static getDerivedStateFromError(error: Error): Partial<State> {
-    const errorId = `ERR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    return { hasError: true, error, errorId };
+    return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    safeReport(error, errorInfo, this.state.errorId);
-    this.props.onError?.(error, errorInfo);
+    console.error('ErrorBoundary caught error:', error, errorInfo);
+    
+    // Generate unique error ID
+    const errorId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    this.setState({ errorInfo, errorId });
+
+    // Send to Sentry
+    Sentry.withScope((scope) => {
+      scope.setExtras({
+        errorId,
+        componentStack: errorInfo.componentStack,
+      });
+      Sentry.captureException(error);
+    });
+
+    // Log error to console for debugging
+    console.error(`Error ID: ${errorId}`);
+    console.error('Component Stack:', errorInfo.componentStack);
   }
 
-  private handleReload = () => {
+  handleReload = () => {
     window.location.reload();
   };
 
-  private handleGoHome = () => {
+  handleGoHome = () => {
     window.location.href = '/';
   };
 
-  render() {
-    if (this.state.hasError) {
-      if (this.props.fallback) {
-        return <>{this.props.fallback}</>;
-      }
+  handleReportError = () => {
+    const { error, errorId } = this.state;
+    const subject = `Bug Report: Error ${errorId || 'Unknown'}`;
+    const body = `Error ID: ${errorId || 'Unknown'}
 
-      return (
-        <div style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '16px',
-          backgroundColor: '#f8fafc'
-        }}>
-          <div style={{
-            maxWidth: '500px',
-            width: '100%',
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            padding: '32px',
-            textAlign: 'center'
-          }}>
-            <div style={{
-              width: '80px',
-              height: '80px',
-              backgroundColor: '#fee2e2',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 24px'
-            }}>
-              <span style={{ fontSize: '40px' }}>⚠️</span>
-            </div>
-            
-            <h1 style={{
-              fontSize: '24px',
-              fontWeight: 'bold',
-              color: '#0f172a',
-              marginBottom: '8px'
-            }}>
-              Something went wrong
-            </h1>
-            
-            <p style={{
-              color: '#64748b',
-              marginBottom: '24px'
-            }}>
-              We apologize for the inconvenience. Please try reloading the page.
-            </p>
-            
-            <div style={{
-              backgroundColor: '#f1f5f9',
-              borderRadius: '8px',
-              padding: '16px',
-              marginBottom: '24px'
-            }}>
-              <p style={{
-                fontSize: '14px',
-                color: '#64748b',
-                marginBottom: '4px'
-              }}>Error Reference ID</p>
-              <code style={{
-                fontSize: '14px',
-                fontFamily: 'monospace',
-                color: '#334155',
-                backgroundColor: 'white',
-                padding: '4px 8px',
-                borderRadius: '4px'
-              }}>
-                {this.state.errorId}
-              </code>
-            </div>
-            
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              justifyContent: 'center'
-            }}>
-              <button
-                onClick={this.handleReload}
-                style={{
-                  padding: '12px 24px',
-                  backgroundColor: '#f59e0b',
-                  color: '#0f172a',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  fontSize: '16px'
-                }}
-              >
-                🔄 Reload Page
-              </button>
-              
-              <button
-                onClick={this.handleGoHome}
-                style={{
-                  padding: '12px 24px',
-                  backgroundColor: 'transparent',
-                  color: '#64748b',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  fontSize: '16px'
-                }}
-              >
-                🏠 Go Home
-              </button>
-            </div>
-            
-            {(import.meta as any).env?.DEV && this.state.error && (
-              <div style={{
-                marginTop: '24px',
-                textAlign: 'left'
-              }}>
-                <p style={{
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#334155',
-                  marginBottom: '8px'
-                }}>Development Details:</p>
-                <pre style={{
-                  backgroundColor: '#0f172a',
-                  color: '#f87171',
-                  padding: '16px',
-                  borderRadius: '8px',
-                  overflow: 'auto',
-                  fontSize: '12px',
-                  fontFamily: 'monospace'
-                }}>
-                  {this.state.error.toString()}
-                </pre>
-              </div>
-            )}
-          </div>
-        </div>
-      );
+Message: ${error?.message || 'No message'}
+
+Stack Trace:
+\`\`\`
+${error?.stack || 'No stack trace'}
+\`\`\`
+
+Please describe what you were doing when this error occurred:
+
+[Your description here]`;
+
+    window.location.href = `mailto:support@landlordbot.app?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  toggleDetails = () => {
+    this.setState((prev) => ({ showDetails: !prev.showDetails }));
+  };
+
+  render() {
+    const { hasError, error, errorInfo, showDetails, errorId } = this.state;
+    const { children, fallback } = this.props;
+
+    if (!hasError) {
+      return children;
     }
 
-    return <>{this.props.children}</>;
+    // Custom fallback if provided
+    if (fallback) {
+      return fallback;
+    }
+
+    return (
+      <div className="min-h-screen bg-lb-background flex items-center justify-center p-4">
+        <div className="max-w-lg w-full bg-lb-surface border border-lb-border rounded-2xl p-8 shadow-2xl">
+          {/* Error Icon */}
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center">
+              <AlertTriangle className="w-10 h-10 text-red-500" />
+            </div>
+          </div>
+
+          {/* Title */}
+          <h1 className="text-2xl font-bold text-lb-text-primary text-center mb-2">
+            Something went wrong
+          </h1>
+          <p className="text-lb-text-secondary text-center mb-6">
+            We apologize for the inconvenience. Our team has been notified.
+          </p>
+
+          {/* Error ID */}
+          {errorId && (
+            <div className="bg-lb-muted rounded-lg p-3 mb-6 text-center">
+              <p className="text-xs text-lb-text-muted uppercase tracking-wider mb-1">
+                Error Reference
+              </p>
+              <p className="font-mono text-sm text-lb-text-primary select-all">
+                {errorId}
+              </p>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="space-y-3">
+            <Button
+              onClick={this.handleReload}
+              className="w-full gap-2"
+              size="lg"
+            >
+              <RefreshCw className="w-5 h-5" />
+              Reload Application
+            </Button>
+
+            <div className="flex gap-3">
+              <Button
+                onClick={this.handleGoHome}
+                variant="outline"
+                className="flex-1"
+              >
+                Go Home
+              </Button>
+              <Button
+                onClick={this.handleReportError}
+                variant="outline"
+                className="flex-1 gap-2"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Report Bug
+              </Button>
+            </div>
+          </div>
+
+          {/* Technical Details Toggle */}
+          <button
+            onClick={this.toggleDetails}
+            className="mt-6 flex items-center justify-center gap-2 text-sm text-lb-text-muted hover:text-lb-text-secondary transition-colors w-full"
+          >
+            <Terminal className="w-4 h-4" />
+            {showDetails ? 'Hide' : 'Show'} Technical Details
+          </button>
+
+          {/* Technical Details */}
+          {showDetails && (
+            <div className="mt-4 bg-lb-muted rounded-lg p-4 overflow-auto">
+              <p className="text-sm font-semibold text-lb-text-secondary mb-2">
+                Error Message:
+              </p>
+              <pre className="text-xs font-mono text-red-400 whitespace-pre-wrap break-words mb-4">
+                {error?.message || 'No message available'}
+              </pre>
+
+              <p className="text-sm font-semibold text-lb-text-secondary mb-2">
+                Stack Trace:
+              </p>
+              <pre className="text-xs font-mono text-lb-text-muted whitespace-pre-wrap break-words max-h-48 overflow-auto">
+                {error?.stack || 'No stack trace available'}
+              </pre>
+
+              {errorInfo?.componentStack && (
+                <>
+                  <p className="text-sm font-semibold text-lb-text-secondary mb-2 mt-4">
+                    Component Stack:
+                  </p>
+                  <pre className="text-xs font-mono text-lb-text-muted whitespace-pre-wrap break-words max-h-48 overflow-auto"
+003e
+                    {errorInfo.componentStack}
+                  </pre>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Footer */}
+          <p className="mt-6 text-xs text-lb-text-muted text-center">
+            If this problem persists, please contact{' '}
+            <a href="mailto:support@landlordbot.app" className="text-emerald-400 hover:underline">
+              support@landlordbot.app
+            </a>
+          </p>
+        </div>
+      </div>
+    );
   }
 }
 
-// Hook for functional components to catch async errors
-export function useErrorHandler() {
-  return (error: Error) => {
-    console.error('[useErrorHandler]', error);
-    throw error;
-  };
-}
-
-// Wrapper component for async error handling
-export function withErrorBoundary<P extends object>(
-  WrappedComponent: React.ComponentType<P>,
-  fallback?: ReactNode
-) {
-  return function WithErrorBoundary(props: P) {
-    return (
-      <ErrorBoundary fallback={fallback}>
-        <WrappedComponent {...props} />
-      </ErrorBoundary>
-    );
-  };
-}
+export default ErrorBoundary;

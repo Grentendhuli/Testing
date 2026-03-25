@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './App.css';
 import { initSentry } from './lib/sentry';
+import { initPostHog } from './services/analytics';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import App from './App.tsx';
 
@@ -19,6 +20,9 @@ window.addEventListener('unhandledrejection', (e) => {
 
 // Initialize Sentry before app renders
 initSentry();
+
+// Initialize PostHog analytics
+initPostHog();
 
 // Build info - only log in development
 if (import.meta.env.DEV) {

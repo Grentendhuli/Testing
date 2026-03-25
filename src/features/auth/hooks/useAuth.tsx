@@ -16,6 +16,7 @@ import {
   clearFailedAttempts,
   getRemainingAttempts 
 } from '@/utils/validation';
+import { identifyUser, resetUser } from '@/services/analytics';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -143,6 +144,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userData = data as UserData;
         setUserData(userData);
         saveUserDataToCache(userData);
+        
+        // Track user in analytics
+        identifyUser({
+          id: userData.id,
+          email: userData.email,
+          firstName: userData.first_name,
+          lastName: userData.last_name,
+          subscriptionTier: userData.subscription_tier,
+          createdAt: userData.created_at,
+        });
+        
         return userData;
       }
 
@@ -195,6 +207,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('[AuthContext] User record created successfully');
           setUserData(createdUser as UserData);
           saveUserDataToCache(createdUser as UserData);
+          
+          // Track new user in analytics
+          identifyUser({
+            id: createdUser.id,
+            email: createdUser.email,
+            firstName: createdUser.first_name,
+            lastName: createdUser.last_name,
+            subscriptionTier: createdUser.subscription_tier,
+            createdAt: createdUser.created_at,
+          });
+          
           return createdUser as UserData;
         }
       }
@@ -306,6 +329,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setUserData(null);
               saveUserDataToCache(null);
               updateAuthState('unauthenticated', null, null);
+              resetUser(); // Clear analytics session
               break;
             case 'TOKEN_REFRESHED':
               if (newSession) {
