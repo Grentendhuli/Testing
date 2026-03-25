@@ -1,6 +1,6 @@
 // Billing Feature Types
 
-export type SubscriptionTier = 'free' | 'concierge';
+export type SubscriptionTier = 'free' | 'pro' | 'concierge';
 export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled';
 
 export interface BillingInfo {

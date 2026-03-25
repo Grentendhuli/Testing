@@ -3,7 +3,7 @@ import { Plus, Building2, Users, Home, Wrench, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ComplianceFooter } from '@/components/ComplianceFooter';
 import { Button } from '@/components/Button';
-import { EmptyStateCard, MetricCard } from '@/components/Card';
+import { EmptyStateCard, MetricCard } from '@/components/ui/Card';
 import { SkeletonUnits } from '@/components/ui/Skeleton';
 import { PageHeader } from '@/components/Breadcrumb';
 import { TenantConnectCard } from '@/components/TenantConnectCard';

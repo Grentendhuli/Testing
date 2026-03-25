@@ -13,6 +13,12 @@ import { AIUsageBar } from '../components/AIUsageBar';
 import { AIUsageWarningModal } from '../components/AIUsageWarningModal';
 import { AIUsageExceededModal } from '../components/AIUsageExceededModal';
 import { useNavigate } from 'react-router-dom';
+import { 
+  checkAIQuota, 
+  incrementAIUsage, 
+  getAIUsageStatus,
+  type AIQuotaStatus 
+} from '../services/aiUsage';
 
 // Action log entry type
 interface ActionLogEntry {
@@ -67,11 +73,6 @@ function generateActionLogs(
   return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
 
-// AI Usage constants - Unlimited on free tier
-const FREE_LIMIT = Infinity;
-const BONUS_LIMIT = 0;
-const TOTAL_LIMIT = Infinity;
-
 export function LandlordAssistant() {
   const navigate = useNavigate();
   const { botStatus, messages, leads, user } = useApp();
@@ -81,36 +82,51 @@ export function LandlordAssistant() {
     generateActionLogs(messages, leads)
   );
 
-  // AI Usage state (in production, this would come from user profile/API)
-  const [aiUsageCount, setAiUsageCount] = useState(() => {
-    // Try to get from localStorage for persistence across sessions
-    const saved = localStorage.getItem('landlordbot_ai_usage');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed.count === 'number' && typeof parsed.timestamp === 'number') {
-          // Check if it's been 24 hours
-          const hoursSince = (Date.now() - parsed.timestamp) / (1000 * 60 * 60);
-          if (hoursSince >= 24) {
-            localStorage.removeItem('landlordbot_ai_usage');
-            return 0;
-          }
-          return parsed.count;
-        }
-      } catch (e) {
-        console.error('Error parsing AI usage:', e);
-        localStorage.removeItem('landlordbot_ai_usage');
-      }
-    }
-    return 0;
-  });
-  
+  // AI Usage state from database
+  const [quota, setQuota] = useState<AIQuotaStatus | null>(null);
+  const [isLoadingQuota, setIsLoadingQuota] = useState(true);
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [showExceededModal, setShowExceededModal] = useState(false);
   const [warningShown, setWarningShown] = useState(false);
 
-  // Check if user is on free tier (not premium/pro/elite)
-  const isFreeTier = !user || (user.subscriptionTier === 'free');
+  // Fetch quota on mount and periodically
+  useEffect(() => {
+    const fetchQuota = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const result = await checkAIQuota(user.id);
+        if (result.success) {
+          setQuota(result.data);
+          
+          // Show warning modal if at 80% threshold and not yet shown
+          if (result.data.showWarning && !warningShown) {
+            setShowWarningModal(true);
+            setWarningShown(true);
+          }
+          
+          // Show exceeded modal if at limit
+          if (result.data.showExceeded) {
+            setShowExceededModal(true);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching AI quota:', error);
+      } finally {
+        setIsLoadingQuota(false);
+      }
+    };
+
+    fetchQuota();
+    
+    // Refresh quota every minute
+    const interval = setInterval(fetchQuota, 60000);
+    return () => clearInterval(interval);
+  }, [user?.id, warningShown]);
+
+  // Check if user can use AI
+  const canUseAI = quota?.canProceed ?? true;
+  const isUnlimited = quota?.isUnlimited ?? false;
 
   // Chat state
   interface ChatMsg {
@@ -134,29 +150,31 @@ export function LandlordAssistant() {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory]);
 
-  // Save usage to localStorage
-  const saveUsage = (count: number) => {
-    localStorage.setItem('landlordbot_ai_usage', JSON.stringify({
-      count,
-      timestamp: Date.now()
-    }));
-  };
-
-  // Increment AI usage
-  const incrementUsage = () => {
-    const newCount = aiUsageCount + 1;
-    setAiUsageCount(newCount);
-    saveUsage(newCount);
+  // Increment AI usage and refresh quota
+  const trackAIUsage = async () => {
+    if (!user?.id) return;
     
-    // Show warning at free limit
-    if (newCount === FREE_LIMIT && !warningShown) {
-      setShowWarningModal(true);
-      setWarningShown(true);
-    }
-    
-    // Show exceeded modal at total limit
-    if (newCount >= TOTAL_LIMIT) {
-      setShowExceededModal(true);
+    try {
+      await incrementAIUsage(user.id);
+      
+      // Refresh quota after increment
+      const result = await checkAIQuota(user.id);
+      if (result.success) {
+        setQuota(result.data);
+        
+        // Show warning at 80% threshold
+        if (result.data.showWarning && !warningShown) {
+          setShowWarningModal(true);
+          setWarningShown(true);
+        }
+        
+        // Show exceeded modal at limit
+        if (result.data.showExceeded) {
+          setShowExceededModal(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error tracking AI usage:', error);
     }
   };
 
@@ -176,7 +194,11 @@ export function LandlordAssistant() {
     const text = chatInput.trim();
     if (!text || chatLoading) return;
     
-    // AI is unlimited on free tier - no limit check needed
+    // Check if user can proceed
+    if (!canUseAI) {
+      setShowExceededModal(true);
+      return;
+    }
     
     setChatInput('');
     const userMsg: ChatMsg = { role: 'user', text, ts: new Date().toISOString() };
@@ -193,8 +215,8 @@ export function LandlordAssistant() {
         : (reply.error?.message || reply.data?.error || 'AI unavailable. Please try again.');
       setChatHistory(prev => [...prev, { role: 'assistant', text: replyText, ts: new Date().toISOString() }]);
       
-      // Track usage for analytics (not for limiting)
-      incrementUsage();
+      // Track usage
+      await trackAIUsage();
     } catch (e) {
       setChatHistory(prev => [...prev, { role: 'assistant', text: 'AI is temporarily unavailable. Please try again shortly.', ts: new Date().toISOString() }]);
     }
@@ -236,8 +258,8 @@ export function LandlordAssistant() {
     }
   };
 
-  // Chat is never disabled - unlimited AI on free tier
-  const isChatDisabled = false;
+  // Chat is disabled when limit is reached
+  const isChatDisabled = !canUseAI;
 
   return (
     <div className="space-y-6">
@@ -246,9 +268,7 @@ export function LandlordAssistant() {
         isOpen={showWarningModal}
         onClose={() => setShowWarningModal(false)}
         onContinue={() => setShowWarningModal(false)}
-        used={aiUsageCount}
-        freeLimit={FREE_LIMIT}
-        bonusLimit={BONUS_LIMIT}
+        quota={quota}
       />
       
       {/* AI Usage Exceeded Modal */}
@@ -257,14 +277,8 @@ export function LandlordAssistant() {
         onClose={() => setShowExceededModal(false)}
         onRemindTomorrow={() => {
           setShowExceededModal(false);
-          // Set a reminder in localStorage
-          const tomorrow = new Date();
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          localStorage.setItem('landlordbot_ai_reminder', tomorrow.toISOString());
         }}
-        used={aiUsageCount}
-        freeLimit={FREE_LIMIT}
-        bonusLimit={BONUS_LIMIT}
+        quota={quota}
       />
 
       {/* Header */}
@@ -328,22 +342,18 @@ export function LandlordAssistant() {
             <p className="text-4xl font-bold text-amber-400">{botStatus?.timeSavedHours || 0}h</p>
             <p className="text-sm text-slate-500">~${(botStatus?.timeSavedHours || 0) * 75} value</p>
           </div>
-        </div>      </div>
+        </div>
+      </div>
 
       {/* AI Chat Panel */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden mb-6">
-        {/* AI Usage Bar - only show for free tier */}
-        {isFreeTier && (
-          <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/50">
-            <AIUsageBar
-              used={aiUsageCount}
-              isUnlimited={true}
-              onClick={() => {
-                // Unlimited AI - no action needed
-              }}
-            />
-          </div>
-        )}
+        {/* AI Usage Bar */}
+        <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/50">
+          <AIUsageBar
+            quota={quota}
+            showUpgradePrompt={quota?.showWarning || quota?.showExceeded}
+          />
+        </div>
         
         <div className="flex items-center gap-3 p-4 border-b border-slate-800">
           <Sparkles className="w-5 h-5 text-amber-400" />
@@ -383,7 +393,7 @@ export function LandlordAssistant() {
                 </div>
                 <div>
                   <p className="text-slate-200 font-medium">AI Limit Reached</p>
-                  <p className="text-slate-400 text-sm">You've used all {TOTAL_LIMIT} requests for today</p>
+                  <p className="text-slate-400 text-sm">You've used all {quota?.limit} requests for today</p>
                 </div>
               </div>
               <button
@@ -391,7 +401,7 @@ export function LandlordAssistant() {
                 className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg font-medium transition-colors"
               >
                 <Sparkles className="w-4 h-4" />
-                Upgrade for Unlimited
+                Upgrade for More
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -416,7 +426,9 @@ export function LandlordAssistant() {
           </div>
         )}
         <p className="text-xs text-center text-slate-400 dark:text-slate-600 mt-2 pb-2">
-          AI assistant is free with fair-use limits · ~100 queries/day
+          {isUnlimited 
+            ? 'AI assistant is unlimited on your plan' 
+            : `AI assistant: ${quota?.remaining ?? 50} requests remaining today`}
         </p>
       </div>
 
@@ -523,7 +535,8 @@ export function LandlordAssistant() {
               );
             })
           )}
-        </div>      </div>
+        </div>
+      </div>
 
       {/* What the Assistant Can Do */}
       <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
@@ -551,7 +564,8 @@ export function LandlordAssistant() {
               </div>
             </div>
           ))}
-        </div>      </div>
+        </div>
+      </div>
 
       <ComplianceFooter />
     </div>

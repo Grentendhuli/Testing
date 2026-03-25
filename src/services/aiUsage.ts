@@ -1,27 +1,49 @@
 /**
  * AI Usage Tracking Service
  * 
- * Manages AI request quotas for users.
- * Free tier: Unlimited AI requests (generous free tier).
+ * Manages AI request quotas for users with tier-based limits:
+ * - Free: 50 requests/day
+ * - Pro: 500 requests/day
+ * - Concierge: Unlimited
  */
 
 import { supabase } from '../lib/supabase';
 import { Result, AsyncResult, AppError, createError } from '../types/result';
 
-// Constants - Unlimited on free tier
-const HARD_LIMIT = Infinity;
-const SOFT_LIMIT = Infinity;
+// Tier-based AI limits
+export const TIER_AI_LIMITS = {
+  free: 50,        // 50 requests/day
+  pro: 500,        // 500 requests/day
+  concierge: Infinity // Unlimited
+} as const;
+
+// Tier-based AI models
+export const TIER_AI_MODELS = {
+  free: 'gemini-1.5-flash',
+  pro: 'gemini-1.5-flash',
+  concierge: 'gemini-1.5-pro' // Better model for premium
+} as const;
+
+// Warning threshold (80% of limit)
+const WARNING_THRESHOLD = 0.8;
+
+export type SubscriptionTier = 'free' | 'pro' | 'concierge';
 
 export interface AIQuotaStatus {
   used: number;
   limit: number;
   remaining: number;
-  isSoftLimit: boolean;
+  tier: SubscriptionTier;
+  isUnlimited: boolean;
   canProceed: boolean;
+  percentUsed: number;
   warning?: string;
+  showWarning: boolean; // At 80% threshold
+  showExceeded: boolean; // At 100% limit
 }
 
 export interface AIUsageRecord {
+  id: string;
   user_id: string;
   request_date: string;
   requests_used: number;
@@ -36,11 +58,59 @@ export interface AIUsageFullStatus {
     used: number;
     limit: number;
     remaining: number;
-    isSoftLimit: boolean;
+    tier: SubscriptionTier;
+    percentUsed: number;
   };
   canProceed: boolean;
   nextResetAt: string;
   warning?: string;
+  showWarning: boolean;
+  showExceeded: boolean;
+}
+
+/**
+ * Get the user's subscription tier
+ */
+export async function getUserSubscriptionTier(userId: string): AsyncResult<SubscriptionTier, AppError> {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('subscription_tier')
+      .eq('id', userId)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching user tier:', error);
+      return Result.err(createError('TIER_FETCH_FAILED', 'Failed to fetch subscription tier', { originalError: error.message }));
+    }
+    
+    const tier = (data?.subscription_tier as SubscriptionTier) || 'free';
+    return Result.ok(tier);
+  } catch (error) {
+    console.error('Error in getUserSubscriptionTier:', error);
+    return Result.ok('free'); // Default to free on error
+  }
+}
+
+/**
+ * Get AI limit for a tier
+ */
+export function getTierLimit(tier: SubscriptionTier): number {
+  return TIER_AI_LIMITS[tier] ?? TIER_AI_LIMITS.free;
+}
+
+/**
+ * Get AI model for a tier
+ */
+export function getTierModel(tier: SubscriptionTier): string {
+  return TIER_AI_MODELS[tier] ?? TIER_AI_MODELS.free;
+}
+
+/**
+ * Check if tier has unlimited AI
+ */
+export function isTierUnlimited(tier: SubscriptionTier): boolean {
+  return getTierLimit(tier) === Infinity;
 }
 
 /**
@@ -49,6 +119,12 @@ export interface AIUsageFullStatus {
  */
 export async function checkAIQuota(userId: string): AsyncResult<AIQuotaStatus, AppError> {
   try {
+    // Get user's subscription tier
+    const tierResult = await getUserSubscriptionTier(userId);
+    const tier = tierResult.success ? tierResult.data : 'free';
+    const limit = getTierLimit(tier);
+    const isUnlimited = limit === Infinity;
+    
     // Calculate the 24h window
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     
@@ -66,33 +142,48 @@ export async function checkAIQuota(userId: string): AsyncResult<AIQuotaStatus, A
     }
     
     const used = data?.reduce((sum, record) => sum + (record.requests_used || 0), 0) || 0;
+    const remaining = isUnlimited ? Infinity : Math.max(0, limit - used);
+    const canProceed = isUnlimited || used < limit;
+    const percentUsed = isUnlimited ? 0 : Math.min(100, (used / limit) * 100);
     
-    // Unlimited on free tier - always allow
-    const isSoftLimit = false;
-    const limit = Infinity;
-    const remaining = Infinity;
-    const canProceed = true;
+    // Determine warning states
+    const showWarning = !isUnlimited && percentUsed >= WARNING_THRESHOLD * 100 && percentUsed < 100;
+    const showExceeded = !isUnlimited && used >= limit;
     
-    // No warnings needed for unlimited tier
+    // Generate appropriate warning message
     let warning: string | undefined;
+    if (showExceeded) {
+      warning = `Daily limit reached (${used}/${limit}). Upgrade to Pro for 10x more requests.`;
+    } else if (showWarning) {
+      const remainingCount = limit - used;
+      warning = `You're approaching your daily limit (${remainingCount} remaining). Upgrade to Pro for 10x more requests.`;
+    }
     
     return Result.ok({
       used,
       limit,
       remaining,
-      isSoftLimit,
+      tier,
+      isUnlimited,
       canProceed,
-      warning
+      percentUsed,
+      warning,
+      showWarning,
+      showExceeded
     });
   } catch (error) {
     console.error('Error in checkAIQuota:', error);
-    // Return unlimited defaults - free tier is generous
+    // Return free tier defaults on error
     return Result.ok({
       used: 0,
-      limit: Infinity,
-      remaining: Infinity,
-      isSoftLimit: false,
-      canProceed: true
+      limit: TIER_AI_LIMITS.free,
+      remaining: TIER_AI_LIMITS.free,
+      tier: 'free',
+      isUnlimited: false,
+      canProceed: true,
+      percentUsed: 0,
+      showWarning: false,
+      showExceeded: false
     });
   }
 }
@@ -106,6 +197,11 @@ export async function incrementAIUsage(userId: string): AsyncResult<void, AppErr
     const now = new Date();
     const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
     const timestamp = now.toISOString();
+    
+    // Get user's tier for the limit
+    const tierResult = await getUserSubscriptionTier(userId);
+    const tier = tierResult.success ? tierResult.data : 'free';
+    const limit = getTierLimit(tier);
     
     // Try to update existing record for today
     const { data: existingData, error: fetchError } = await supabase
@@ -128,6 +224,7 @@ export async function incrementAIUsage(userId: string): AsyncResult<void, AppErr
         .from('ai_usage') as any)
         .update({
           requests_used: ((existingData as AIUsageRecord).requests_used || 0) + 1,
+          requests_limit: limit,
           last_request_at: timestamp,
           updated_at: timestamp
         })
@@ -146,7 +243,7 @@ export async function incrementAIUsage(userId: string): AsyncResult<void, AppErr
           user_id: userId,
           request_date: today,
           requests_used: 1,
-          requests_limit: HARD_LIMIT,
+          requests_limit: limit,
           last_request_at: timestamp,
           created_at: timestamp,
           updated_at: timestamp
@@ -210,26 +307,32 @@ export async function getAIUsageStatus(userId: string): AsyncResult<AIUsageFullS
     return Result.ok({
       currentWindow: {
         used: quota.used,
-        limit: Infinity,
-        remaining: Infinity,
-        isSoftLimit: false
+        limit: quota.limit,
+        remaining: quota.remaining,
+        tier: quota.tier,
+        percentUsed: quota.percentUsed
       },
-      canProceed: true,
+      canProceed: quota.canProceed,
       nextResetAt,
-      warning: undefined
+      warning: quota.warning,
+      showWarning: quota.showWarning,
+      showExceeded: quota.showExceeded
     });
   } catch (error) {
     console.error('Error in getAIUsageStatus:', error);
-    // Return unlimited defaults
+    // Return free tier defaults
     return Result.ok({
       currentWindow: {
         used: 0,
-        limit: Infinity,
-        remaining: Infinity,
-        isSoftLimit: false
+        limit: TIER_AI_LIMITS.free,
+        remaining: TIER_AI_LIMITS.free,
+        tier: 'free',
+        percentUsed: 0
       },
       canProceed: true,
-      nextResetAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      nextResetAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      showWarning: false,
+      showExceeded: false
     });
   }
 }
@@ -306,4 +409,26 @@ export async function getAIUsageHistory(userId: string, days: number = 30): Asyn
     console.error('Error in getAIUsageHistory:', error);
     return Result.ok([]);
   }
+}
+
+/**
+ * Format remaining requests for display
+ */
+export function formatRemainingRequests(remaining: number): string {
+  if (remaining === Infinity) {
+    return 'Unlimited';
+  }
+  return `${remaining} remaining`;
+}
+
+/**
+ * Format tier name for display
+ */
+export function formatTierName(tier: SubscriptionTier): string {
+  const names: Record<SubscriptionTier, string> = {
+    free: 'Free',
+    pro: 'Pro',
+    concierge: 'Concierge'
+  };
+  return names[tier] || 'Free';
 }

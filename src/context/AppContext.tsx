@@ -532,6 +532,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         unit_number: updates.unitNumber,
         rent_amount: updates.rentAmount,
         status: updates.status,
+        bedrooms: updates.bedrooms,
+        bathrooms: updates.bathrooms,
+        square_feet: updates.squareFeet,
+        notes: updates.notes,
         tenant_name: updates.tenantName,
         tenant_email: updates.tenantEmail,
         tenant_phone: updates.tenantPhone,
@@ -562,7 +566,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw new Error('You must be logged in to add a unit.');
     }
 
-    const { data, error } = await (supabase as any)
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Database request timed out. Please try again.')), 15000);
+    });
+
+    const insertPromise = (supabase as any)
       .from('units')
       .insert({
         user_id: authUser.id,
@@ -570,6 +579,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         unit_number: unit.unitNumber,
         rent_amount: unit.rentAmount,
         status: unit.status,
+        bedrooms: unit.bedrooms || 0,
+        bathrooms: unit.bathrooms || 0,
+        square_feet: unit.squareFeet || 0,
+        notes: unit.notes || null,
         tenant_name: unit.tenantName || null,
         tenant_email: unit.tenantEmail || null,
         tenant_phone: unit.tenantPhone || null,
@@ -577,7 +590,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         lease_end: unit.leaseEnd || null,
       })
       .select()
-      .single();
+      .maybeSingle();
+
+    const { data, error } = await Promise.race([insertPromise, timeoutPromise]) as any;
 
     if (error) {
       console.error('Error adding unit:', error);
@@ -590,10 +605,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       unitNumber: (data as any).unit_number || '',
       rentAmount: (data as any).rent_amount,
       status: (data as any).status as 'occupied' | 'vacant' | 'maintenance',
-      bedrooms: 0,
-      bathrooms: 0,
-      squareFeet: 0,
-      notes: '',
+      bedrooms: (data as any).bedrooms || 0,
+      bathrooms: (data as any).bathrooms || 0,
+      squareFeet: (data as any).square_feet || 0,
+      notes: (data as any).notes || '',
       tenantName: (data as any).tenant_name || undefined,
       tenantEmail: (data as any).tenant_email || undefined,
       tenantPhone: (data as any).tenant_phone || undefined,
