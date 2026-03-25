@@ -1,9 +1,9 @@
-import { loadStripe } from '@stripe/stripe-js';
+import { loadStripe, Stripe } from '@stripe/stripe-js';
 
-// Initialize Stripe
-let stripePromise = null;
+// Initialize Stripe with proper typing
+let stripePromise: Promise<Stripe | null> | null = null;
 
-export const getStripe = () => {
+export const getStripe = (): Promise<Stripe | null> => {
   if (!stripePromise) {
     stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
   }
@@ -11,10 +11,14 @@ export const getStripe = () => {
 };
 
 // Create checkout session
-export const createCheckoutSession = async (priceId, userId) => {
+export const createCheckoutSession = async (priceId: string, userId: string) => {
   try {
     const stripe = await getStripe();
     
+    if (!stripe) {
+      throw new Error('Stripe failed to initialize');
+    }
+
     // Call your backend to create the session
     const response = await fetch('/api/create-checkout-session', {
       method: 'POST',
@@ -41,7 +45,7 @@ export const createCheckoutSession = async (priceId, userId) => {
 };
 
 // Get or create Stripe customer
-export const getOrCreateCustomer = async (userId, email, name) => {
+export const getOrCreateCustomer = async (userId: string, email: string, name: string) => {
   try {
     const response = await fetch('/api/create-customer', {
       method: 'POST',
@@ -62,7 +66,7 @@ export const getOrCreateCustomer = async (userId, email, name) => {
 };
 
 // Cancel subscription
-export const cancelSubscription = async (subscriptionId) => {
+export const cancelSubscription = async (subscriptionId: string) => {
   try {
     const response = await fetch('/api/cancel-subscription', {
       method: 'POST',
@@ -82,7 +86,7 @@ export const cancelSubscription = async (subscriptionId) => {
 };
 
 // Update subscription
-export const updateSubscription = async (subscriptionId, newPriceId) => {
+export const updateSubscription = async (subscriptionId: string, newPriceId: string) => {
   try {
     const response = await fetch('/api/update-subscription', {
       method: 'POST',
@@ -102,7 +106,7 @@ export const updateSubscription = async (subscriptionId, newPriceId) => {
 };
 
 // Get subscription status
-export const getSubscriptionStatus = async (userId) => {
+export const getSubscriptionStatus = async (userId: string) => {
   try {
     const response = await fetch(`/api/subscription-status?userId=${userId}`);
     
@@ -118,7 +122,7 @@ export const getSubscriptionStatus = async (userId) => {
 };
 
 // Get invoices
-export const getInvoices = async (customerId) => {
+export const getInvoices = async (customerId: string) => {
   try {
     const response = await fetch(`/api/invoices?customerId=${customerId}`);
     

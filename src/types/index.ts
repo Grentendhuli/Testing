@@ -2,8 +2,8 @@
 
 export type MessageType = 'inquiry' | 'lead' | 'emergency' | 'maintenance';
 export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled';
-// Simplified: only 'free' and 'concierge' tiers
-export type SubscriptionTier = 'free' | 'concierge';
+// Simplified: 'free', 'pro', and 'scale' tiers
+export type SubscriptionTier = 'free' | 'pro' | 'scale';
 export type ResponseTone = 'professional' | 'friendly' | 'warm';
 export type UnitStatus = 'occupied' | 'vacant' | 'maintenance';
 export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'showing' | 'scheduled' | 'closed' | 'converted';
