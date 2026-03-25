@@ -173,28 +173,26 @@
       <style>.safari-fallback { display: block !important; }</style>
     </noscript>
     
-    <!-- Google Analytics 4 - Placeholder for GA_ID -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+    <!-- Google Analytics 4 - Only load if GA_ID is configured -->
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      
-      // Configure with placeholder - will be updated when VITE_GA_MEASUREMENT_ID is set
-      const gaId = localStorage.getItem('GA_MEASUREMENT_ID') || 'GA_MEASUREMENT_ID';
-      gtag('config', gaId, {
-        'anonymize_ip': true,
-        'send_page_view': false,  // We'll track page views manually for SPA
-        'transport_type': 'beacon',
-        'custom_map': {
-          'dimension1': 'user_tier',
-          'dimension2': 'signup_method',
-          'dimension3': 'unit_count'
-        }
-      });
-      
-      // Make gtag available globally
-      window.gtag = gtag;
+      // Check if GA is configured before loading script
+      window.GA_MEASUREMENT_ID = localStorage.getItem('GA_MEASUREMENT_ID') || '';
+      if (window.GA_MEASUREMENT_ID && window.GA_MEASUREMENT_ID !== 'GA_MEASUREMENT_ID') {
+        const gaScript = document.createElement('script');
+        gaScript.async = true;
+        gaScript.src = 'https://www.googletagmanager.com/gtag/js?id=' + window.GA_MEASUREMENT_ID;
+        document.head.appendChild(gaScript);
+        
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        window.gtag = gtag;
+        gtag('js', new Date());
+        gtag('config', window.GA_MEASUREMENT_ID, {
+          'anonymize_ip': true,
+          'send_page_view': false,
+          'transport_type': 'beacon'
+        });
+      }
     </script>
     
     <script>
@@ -208,6 +206,12 @@
       // CRITICAL: Global error handler to show errors before React loads
       window.__CRASH_ERRORS__ = [];
       window.addEventListener('error', function(e) {
+        // Ignore CORS script errors (can't get details anyway)
+        if (e.message === 'Script error.' || e.filename === '') {
+          console.warn('[Global Error] CORS/script error from external source (ignored)');
+          return;
+        }
+        
         console.error('[Global Error]', e.message, 'at', e.filename, ':', e.lineno);
         window.__CRASH_ERRORS__.push({
           message: e.message,
@@ -217,12 +221,14 @@
           error: e.error?.toString?.() || 'N/A'
         });
         
-        // Show error on screen for mobile debugging
-        const errorDiv = document.getElementById('global-error-display');
-        if (errorDiv) {
-          errorDiv.style.display = 'block';
-          errorDiv.innerHTML += '<p style="margin:5px 0;font-size:12px;word-break:break-word;"><strong>Error:</strong> ' + 
-            e.message + ' (at ' + (e.filename || 'unknown') + ':' + e.lineno + ')</p>';
+        // Don't show generic script errors on screen
+        if (e.message !== 'Script error.') {
+          const errorDiv = document.getElementById('global-error-display');
+          if (errorDiv) {
+            errorDiv.style.display = 'block';
+            errorDiv.innerHTML += '<p style="margin:5px 0;font-size:12px;word-break:break-word;"><strong>Error:</strong> ' + 
+              e.message + ' (at ' + (e.filename || 'unknown') + ':' + e.lineno + ')</p>';
+          }
         }
       });
       
@@ -258,58 +264,36 @@
       <h2 style="color: #f59e0b;">🔄 Loading...</h2>
       <p>If this page doesn't load, please try:</p>
       <ol style="text-align: left; display: inline-block;">
-        <li>Clear Safari cache: Settings → Safari → Clear History and Website Data</li>
-        <li>Refresh with Cmd+Shift+R (or Ctrl+Shift+R on Windows)</li>
-        <li>Try Chrome or Firefox instead</li>
+        <li>Refreshing the page</li>
+        <li>Clearing your browser cache</li>
+        <li>Using Chrome or Firefox instead of Safari</li>
+        <li>Disabling browser extensions</li>
       </ol>
+      <p style="margin-top: 20px;">
+        <button onclick="window.location.reload()" style="padding: 10px 20px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer;">
+          Reload Page
+        </button>
+      </p>
     </div>
-    
-    <script>
-      // Mark that JS loaded
-      document.documentElement.classList.add('js-loaded');
-    </script>
     
     <!-- Service Worker Registration -->
     <script>
-      (function() {
-        if ('serviceWorker' in navigator) {
-          window.addEventListener('load', function() {
-            navigator.serviceWorker.register('/sw.js')
-              .then(function(registration) {
-                console.log('[SW] Registered:', registration.scope);
-                
-                // Listen for updates
-                registration.addEventListener('updatefound', function() {
-                  const newWorker = registration.installing;
-                  if (newWorker) {
-                    newWorker.addEventListener('statechange', function() {
-                      if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        console.log('[SW] New version available');
-                        // Show update notification
-                        if (window.confirm('A new version is available! Reload to update?')) {
-                          newWorker.postMessage({ type: 'SKIP_WAITING' });
-                          window.location.reload();
-                        }
-                      }
-                    });
-                  }
-                });
-              })
-              .catch(function(error) {
-                console.log('[SW] Registration failed:', error);
-              });
-          });
-          
-          // Listen for messages from service worker
-          navigator.serviceWorker.addEventListener('message', function(event) {
-            if (event.data.type === 'SW_ACTIVATED') {
-              console.log('[SW] Activated version:', event.data.version);
-            }
-          });
-        }
-      })();
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => {
+              console.log('[SW] Service Worker registered:', reg.scope);
+            })
+            .catch(err => {
+              console.warn('[SW] Service Worker registration failed:', err);
+            });
+        });
+      }
     </script>
     
-    <script type="module" src="/src/main.tsx"></script>
+    <!-- Mark JS as loaded -->
+    <script>
+      document.documentElement.classList.add('js-loaded');
+    </script>
   </body>
 </html>
