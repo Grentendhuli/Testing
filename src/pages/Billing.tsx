@@ -17,48 +17,72 @@ import { analytics } from '../utils/analytics';
 const stripeKey = (import.meta as any).env?.VITE_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
 
+// Get pricing IDs from env
+const proPriceId = (import.meta as any).env?.VITE_STRIPE_PRO_PRICE_ID;
+const scalePriceId = (import.meta as any).env?.VITE_STRIPE_SCALE_PRICE_ID;
+
 interface Plan {
   id: string;
   name: string;
   description: string;
   price: number;
+  yearlyPrice?: number;
   features: string[];
+  stripePriceId?: string;
 }
 
-// Simplified plans - only Free and Concierge
+// Launch pricing - Free, Pro, Scale
 const plans: Record<string, Plan> = {
   free: {
     id: 'free',
     name: 'Free',
-    description: 'Unlimited everything — completely free',
+    description: 'Perfect for DIY landlords getting started',
     price: 0,
     features: [
-      'Unlimited properties',
-      'Unlimited AI requests',
-      'All core features',
-      'All API integrations',
-      'Email support',
-      'AI assistant — up to ~100 queries/day (fair-use)',
-      'AI listing generator — up to ~50 listings/day (fair-use)',
+      '3 units maximum',
+      'Basic maintenance tracking',
+      'Lead management',
+      'Rent collection tracking',
+      'Email reminders',
+      'NYC compliance built-in',
     ],
   },
-  concierge: {
-    id: 'concierge',
-    name: 'Concierge',
+  pro: {
+    id: 'pro',
+    name: 'Pro',
+    description: 'AI-powered property management for serious landlords',
+    price: 49,
+    yearlyPrice: 490, // 2 months free
+    features: [
+      '25 units included',
+      'AI maintenance triage',
+      'Smart rent reminders',
+      'Lead scoring',
+      'Document parsing',
+      'Priority email support',
+      'NYC compliance built-in',
+      '$2/unit over 25',
+    ],
+    stripePriceId: proPriceId,
+  },
+  scale: {
+    id: 'scale',
+    name: 'Scale',
     description: 'White-glove service for portfolio landlords',
     price: 149,
+    yearlyPrice: 1490, // 2 months free
     features: [
-      'Everything in Free',
-      'Dedicated account manager',
-      'Priority phone support',
+      '100 units included',
+      'Everything in Pro',
+      'AI voice calls (late payments)',
+      'Predictive analytics',
       'Custom integrations',
-      'Advanced analytics',
-      'White-label options',
-      'Full API access',
       'Bulk operations',
+      'Priority phone support',
+      'Dedicated account manager',
       'Custom reports',
-      'Training sessions',
     ],
+    stripePriceId: scalePriceId,
   },
 };
 
@@ -75,7 +99,7 @@ const mockInvoices: Invoice[] = [
     date: '2024-03-01',
     amount: 149.00,
     status: 'paid',
-    description: 'Concierge Plan - Monthly',
+    description: 'scale Plan - Monthly',
     pdfUrl: '#',
   },
   {
@@ -83,7 +107,7 @@ const mockInvoices: Invoice[] = [
     date: '2024-02-01',
     amount: 149.00,
     status: 'paid',
-    description: 'Concierge Plan - Monthly',
+    description: 'scale Plan - Monthly',
     pdfUrl: '#',
   },
 ];
@@ -111,7 +135,7 @@ export function Billing() {
 
   const currentPlanId = userData?.subscription_tier || 'free';
   const currentPlan = plans[currentPlanId] || plans.free;
-  const isConcierge = currentPlanId === 'concierge';
+  const isScale = currentPlanId === 'scale';
 
   // Track page view
   useEffect(() => {
@@ -141,14 +165,61 @@ export function Billing() {
       to_tier: planId
     });
 
-    if (planId === 'concierge') {
-      setShowContactModal(true);
+    if (planId === 'free') {
+      // Downgrade to free - handle via API
       setIsLoading(false);
       return;
     }
 
-    // Free plan selected - no payment needed
-    setIsLoading(false);
+    // Check if Stripe is configured
+    if (!stripePromise || !plans[planId]?.stripePriceId) {
+      setError('Payment system not configured. Please contact support.');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const stripe = await stripePromise;
+      if (!stripe) {
+        throw new Error('Stripe failed to load');
+      }
+
+      // Get user ID from auth
+      const userId = user?.id;
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      // Create checkout session
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          priceId: plans[planId].stripePriceId,
+          userId,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Failed to create checkout session');
+      }
+
+      const { sessionId } = await response.json();
+
+      // Redirect to Stripe Checkout
+      const { error: stripeError } = await stripe.redirectToCheckout({ sessionId });
+      
+      if (stripeError) {
+        throw new Error(stripeError.message);
+      }
+    } catch (err: any) {
+      console.error('Checkout error:', err);
+      setError(err.message || 'Failed to start checkout. Please try again.');
+      analytics.trackEvent('checkout_error', { error: err.message });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -195,7 +266,7 @@ export function Billing() {
           </div>
           
           <div className="flex flex-col items-end">
-            {isConcierge && (
+            {isScale && (
               <button
                 onClick={handleCancel}
                 className="text-sm text-lb-text-muted hover:text-red-400 transition-colors mb-2"
@@ -228,13 +299,13 @@ export function Billing() {
         </div>
 
         {/* Upgrade Prompt - Only show for free users */}
-        {!isConcierge && (
+        {!isScale && (
           <div className="mt-6 p-4 bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/30 rounded-lg">
             <div className="flex items-start gap-3">
               <Sparkles className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <p className="text-sm text-lb-text-primary">
-                  <strong>Want white-glove service?</strong> — Upgrade to Concierge for dedicated 
+                  <strong>Want white-glove service?</strong> — Upgrade to scale for dedicated 
                   account management, priority support, and custom integrations.
                 </p>
                 <Button
@@ -242,7 +313,7 @@ export function Billing() {
                   className="mt-3 gap-1"
                   size="sm"
                 >
-                  View Concierge
+                  View scale
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
@@ -300,8 +371,8 @@ export function Billing() {
         </div>
       </div>
 
-      {/* Upcoming Invoice Preview - Only for Concierge */}
-      {isConcierge && (
+      {/* Upcoming Invoice Preview - Only for scale */}
+      {isscale && (
         <div className="bg-lb-surface border border-lb-border rounded-xl p-6">
           <div className="flex items-center gap-2 mb-4">
             <Receipt className="w-5 h-5 text-amber-400" />
@@ -342,7 +413,7 @@ export function Billing() {
               className={`relative rounded-xl p-6 border transition-all ${
                 isCurrent
                   ? 'bg-emerald-50/5 border-emerald-500/50'
-                  : plan.id === 'concierge'
+                  : plan.id === 'scale'
                   ? 'bg-amber-50/5 border-amber-500/30'
                   : 'bg-lb-surface border-lb-border hover:border-amber-500/30'
               }`}
@@ -355,7 +426,7 @@ export function Billing() {
                 </div>
               )}
               
-              {plan.id === 'concierge' && !isCurrent && (
+              {plan.id === 'scale' && !isCurrent && (
                 <div className="absolute -top-2 left-1/2 -translate-x-1/2">
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500 text-slate-950 text-xs rounded-full">
                     <Sparkles className="w-3 h-3" />
@@ -383,11 +454,11 @@ export function Billing() {
 
               <Button
                 onClick={() => handleUpgrade(plan.id)}
-                variant={isCurrent ? 'secondary' : plan.id === 'concierge' ? 'primary' : 'outline'}
+                variant={isCurrent ? 'secondary' : plan.id === 'scale' ? 'primary' : 'outline'}
                 className="w-full"
                 disabled={isCurrent || isLoading}
               >
-                {isCurrent ? 'Current Plan' : plan.id === 'concierge' ? 'Contact Sales' : 'Select Free'}
+                {isCurrent ? 'Current Plan' : plan.id === 'scale' ? 'Contact Sales' : 'Select Free'}
               </Button>
             </div>
           );
@@ -406,7 +477,7 @@ export function Billing() {
           <Receipt className="w-5 h-5 text-amber-400" />
           <h3 className="font-semibold text-lb-text-primary">Billing History</h3>
         </div>
-        {isConcierge && (
+        {isscale && (
           <Button
             variant="outline"
             size="sm"
@@ -419,7 +490,7 @@ export function Billing() {
         )}
       </div>
 
-      {isConcierge ? (
+      {isscale ? (
         <BillingHistory 
           invoices={mockInvoices}
           onDownload={handleDownloadInvoice}
@@ -441,7 +512,7 @@ export function Billing() {
             <CreditCard className="w-5 h-5 text-amber-400" />
             <h3 className="font-semibold text-lb-text-primary">Payment Methods</h3>
           </div>
-          {isConcierge && (
+          {isscale && (
             <Button
               variant="outline"
               size="sm"
@@ -452,7 +523,7 @@ export function Billing() {
           )}
         </div>
 
-        {isConcierge ? (
+        {isscale ? (
           <div className="space-y-3">
             {mockPaymentMethods.map((method) => (
               <PaymentMethodCard
@@ -570,7 +641,7 @@ export function Billing() {
 
       <ComplianceFooter />
 
-      {/* Contact Modal for Concierge */}
+      {/* Contact Modal for scale */}
       {showContactModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-lb-surface border border-amber-500/30 rounded-xl p-6 max-w-md w-full">
@@ -579,7 +650,7 @@ export function Billing() {
                 <div className="p-2 bg-amber-500/20 rounded-lg">
                   <Sparkles className="w-6 h-6 text-amber-400" />
                 </div>
-                <h3 className="text-xl font-semibold text-lb-text-primary">Concierge Services</h3>
+                <h3 className="text-xl font-semibold text-lb-text-primary">scale Services</h3>
               </div>
               <button
                 onClick={() => setShowContactModal(false)}
@@ -589,16 +660,16 @@ export function Billing() {
               </button>
             </div>
             <p className="text-lb-text-secondary mb-6">
-              Our Concierge service includes personalized support from licensed NYC property 
+              Our scale service includes personalized support from licensed NYC property 
               professionals. We'd love to learn more about your needs.
             </p>
             
             <div className="space-y-3">
               <a
-                href="mailto:concierge@landlordbot.app?subject=Concierge%20Services%20Inquiry"
+                href="mailto:scale@landlordbot.app?subject=scale%20Services%20Inquiry"
                 className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-lg text-center transition-colors block"
               >
-                Email concierge@landlordbot.app
+                Email scale@landlordbot.app
               </a>
               <button
                 onClick={() => setShowContactModal(false)}
@@ -628,7 +699,7 @@ export function Billing() {
             <ul className="space-y-2 mb-6 text-sm text-lb-text-secondary">
               <li>• You'll keep unlimited properties and AI on the free plan</li>
               <li>• You'll lose the dedicated account manager and priority support</li>
-              <li>• You can resubscribe to Concierge anytime</li>
+              <li>• You can resubscribe to scale anytime</li>
               <li>• Your data will not be deleted</li>
             </ul>
 
