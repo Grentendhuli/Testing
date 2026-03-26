@@ -167,6 +167,8 @@ export interface CardEnhancedProps extends React.HTMLAttributes<HTMLDivElement>,
     variant?: 'primary' | 'secondary' | 'outline';
     loading?: boolean;
   };
+  /** Maximum height of card content */
+  maxHeight?: string;
 }
 
 export function CardEnhanced({
@@ -186,6 +188,7 @@ export function CardEnhanced({
   onRetry,
   skeleton,
   cta,
+  maxHeight,
   children,
   ...props
 }: CardEnhancedProps) {
@@ -247,6 +250,7 @@ export function CardEnhanced({
   const cardContent = (
     <Component
       className={cn(cardVariants({ variant, size }), className)}
+      style={maxHeight ? { maxHeight, overflow: 'auto' } : undefined}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       {...props}
