@@ -1,4 +1,21 @@
 // API Services exports
+
+// AI Service (Gemini via Cloudflare Worker)
+export {
+  askLandlordAssistant,
+  triageMaintenanceRequest,
+  draftLandlordLetter,
+  generateText,
+  isGeminiConfigured,
+  checkQuota,
+  AIQuotaError,
+  type AIResponse,
+  type MaintenanceTriage,
+  type PortfolioContext,
+  type GeminiMessage,
+} from './gemini';
+
+// Rentometer Market Rent API
 export { 
   RentometerService, 
   rentometerService, 
@@ -7,6 +24,7 @@ export {
   type RentometerAddressSearchRequest,
 } from './rentometer';
 
+// Vapi AI Voice Calling
 export { 
   VapiService, 
   vapiService,
