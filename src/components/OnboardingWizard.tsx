@@ -62,13 +62,6 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
     squareFeet: 600,
     rentAmount: 2200,
   }]);
-  
-  // Fetch phone numbers on step 2
-  useEffect(() => {
-    if (currentStep === 2 && availableNumbers.length === 0) {
-      fetchAvailableNumbers();
-    }
-  }, [currentStep]);
 
   // Fetch property valuation when we reach step 4 (units)
   useEffect(() => {
