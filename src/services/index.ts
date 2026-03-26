@@ -15,12 +15,7 @@ export {
   type VapiCallResponse,
 } from './vapi';
 
-export { 
-  CalendlyService, 
-  calendlyService,
-  type CalendlyEventType,
-  type CalendlyScheduledEvent,
-} from './calendly';
+// Calendly removed - using free alternatives
 
 export { 
   ReportService, 
@@ -38,25 +33,11 @@ export {
   type PropertyAnalytics,
 } from './recommendations';
 
-export { 
-  QuickBooksService, 
-  quickBooksService,
-  type QuickBooksConfig,
-  type QuickBooksAccount,
-  type QuickBooksTransaction,
-} from './quickbooks';
+// QuickBooks removed - using free alternatives
 
 // NEW SERVICES
 
-export { 
-  TwilioService, 
-  twilioService,
-  formatPhoneNumber,
-  isValidPhoneNumber,
-  NYC_AREA_CODES,
-  type PhoneNumber,
-  type TwilioConfig,
-} from './twilio';
+// Twilio removed - using free alternatives
 
 export { 
   PropertyValuationService, 

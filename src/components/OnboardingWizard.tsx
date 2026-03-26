@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
-import { twilioService, isValidPhoneNumber, formatPhoneNumber, type PhoneNumber } from '../services/twilio';
+// Twilio removed - using plain text input for phone numbers
 import { propertyValuationService, type PropertyValuation } from '../services/propertyValuation';
 import { listingsAPIService } from '../services/listingsAPI';
 import { AddressAutocomplete } from './AddressAutocomplete';
@@ -40,11 +40,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   const [botPhone, setBotPhone] = useState('');
   const [ownerPhone, setOwnerPhone] = useState('');
   
-  // New: Phone selection from Twilio
-  const [availableNumbers, setAvailableNumbers] = useState<PhoneNumber[]>([]);
-  const [selectedPhoneId, setSelectedPhoneId] = useState<string>('');
-  const [phoneLoading, setPhoneLoading] = useState(false);
-  const [phoneError, setPhoneError] = useState<string | null>(null);
+  // Phone input (plain text, no verification)
   const [phoneCopied, setPhoneCopied] = useState(false);
   
   // New: Property valuation
@@ -81,23 +77,6 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
     }
   }, [currentStep, propertyAddress]);
   
-  const fetchAvailableNumbers = async () => {
-    setPhoneLoading(true);
-    setPhoneError(null);
-    try {
-      const numbers = await twilioService.getAvailableNumbers();
-      setAvailableNumbers(numbers);
-      if (numbers.length > 0) {
-        setSelectedPhoneId(numbers[0].id);
-        setBotPhone(numbers[0].phoneNumber);
-      }
-    } catch (err) {
-      setPhoneError('Failed to load available numbers. You can still enter a phone manually.');
-    } finally {
-      setPhoneLoading(false);
-    }
-  };
-  
   const fetchPropertyValuation = async () => {
     if (!propertyAddress) return;
     setValuationLoading(true);
@@ -113,13 +92,6 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
     } finally {
       setValuationLoading(false);
     }
-  };
-  
-  const handlePhoneSelection = (phone: PhoneNumber) => {
-    setSelectedPhoneId(phone.id);
-    setBotPhone(phone.phoneNumber);
-    // Save bot phone to listings service
-    listingsAPIService.setBotPhoneNumber(phone.phoneNumber);
   };
   
   const copyPhoneToClipboard = () => {
@@ -155,7 +127,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   const handleComplete = useCallback(() => {
     // Save bot phone number for listings use
     if (botPhone) {
-      listingsAPIService.setBotPhoneNumber(botPhone);
+      // Removed;
     }
     onClose();
   }, [botPhone, onClose]);
@@ -384,9 +356,9 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
             </div>
           )}
           
-          {/* STEP 2: Phone - ENHANCED WITH TWILIO NUMBER SELECTION */}
+          {/* STEP 2: Phone - Plain Text Input (No SMS/Verification) */}
           {currentStep === 2 && (
-            <div className="max-w-2xl mx-auto space-y-6">
+            <div className="max-w-lg mx-auto space-y-6">
               {/* Your Phone */}
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Your Phone Number</label>
@@ -396,92 +368,25 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                     type="tel"
                     placeholder="(555) 123-4567"
                     value={ownerPhone}
-                    onChange={(e) => setOwnerPhone(formatPhoneNumber(e.target.value))}
+                    onChange={(e) => setOwnerPhone(e.target.value)}
                     className="w-full pl-12 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:border-amber-500 outline-none"
                   />
                 </div>
-                <p className="text-xs text-slate-500 mt-2">We'll send you notifications about urgent tenant issues</p>
+                <p className="text-xs text-slate-500 mt-2">Used for notifications about tenant issues</p>
               </div>
               
-              {/* Bot Phone Selection */}
+              {/* Bot Phone Number */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-3">
-                  Select a Bot Phone Number
-                </label>
-                
-                {phoneLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 text-amber-400 animate-spin" />
-                    <span className="ml-2 text-slate-400">Loading available numbers...</span>
-                  </div>
-                ) : phoneError ? (
-                  <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-                    <p className="text-sm text-red-400">{phoneError}</p>
-                    <button 
-                      onClick={fetchAvailableNumbers}
-                      className="mt-2 text-sm text-amber-400 hover:text-amber-300"
-                    >
-                      Try Again
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {availableNumbers.slice(0, 3).map((phone) => (
-                      <div
-                        key={phone.id}
-                        onClick={() => handlePhoneSelection(phone)}
-                        className={`flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all ${
-                          selectedPhoneId === phone.id
-                            ? 'bg-amber-500/20 border-2 border-amber-500/50'
-                            : 'bg-slate-800/50 border-2 border-transparent hover:bg-slate-800'
-                        }`}
-                      >
-                        <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${
-                          selectedPhoneId === phone.id ? 'bg-amber-500' : 'bg-slate-700'
-                        }`}>
-                          {selectedPhoneId === phone.id ? (
-                            <CheckCircle className="w-6 h-6 text-slate-950" />
-                          ) : (
-                            <Phone className="w-5 h-5 text-slate-400" />
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-slate-200 text-lg">{phone.phoneNumber}</p>
-                          <p className="text-sm text-slate-500">
-                            {phone.areaCode} • {phone.locality} • ${phone.monthlyCost}/mo
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          {phone.capabilities.sms && (
-                            <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded">SMS</span>
-                          )}
-                          {phone.capabilities.voice && (
-                            <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded">Voice</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
-                {/* Manual Entry Option */}
-                <div className="mt-4 pt-4 border-t border-slate-800">
-                  <p className="text-xs text-slate-500 mb-2">Or enter your existing Twilio number:</p>
-                  <div className="relative">
-                    <MessageSquare className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                    <input
-                      type="tel"
-                      placeholder="(555) 987-6543"
-                      value={botPhone}
-                      onChange={(e) => {
-                        const formatted = formatPhoneNumber(e.target.value);
-                        setBotPhone(formatted);
-                        setSelectedPhoneId('');
-                        listingsAPIService.setBotPhoneNumber(formatted);
-                      }}
-                      className="w-full pl-12 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:border-amber-500 outline-none"
-                    />
-                  </div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Bot Phone Number</label>
+                <div className="relative">
+                  <MessageSquare className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                  <input
+                    type="tel"
+                    placeholder="(555) 987-6543"
+                    value={botPhone}
+                    onChange={(e) => setBotPhone(e.target.value)}
+                    className="w-full pl-12 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:border-amber-500 outline-none"
+                  />
                 </div>
               </div>
               

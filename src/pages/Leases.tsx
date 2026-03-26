@@ -34,6 +34,7 @@ import { useFormatDate } from '../hooks';
 import { useLeaseRenewalCalendar, useGoogleCalendarStatus } from '../hooks/useGoogleCalendar';
 import type { LeaseStatus, LeaseType } from '../types';
 import { useSearchParams } from 'react-router-dom';
+import { exportLeaseCalendar } from '../services/calendarExport';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Toast, useToast } from '@/components/ui/Toast';
 
@@ -747,9 +748,12 @@ export function Leases() {
           <p className="text-lb-text-secondary mt-1">Track lease terms, expirations, and renewals</p>
         </div>
         <div className="flex gap-2">
-          <button className="inline-flex items-center gap-2 px-4 py-2 bg-lb-muted hover:bg-slate-200 text-lb-text-secondary rounded-lg text-sm font-medium transition-colors">
+          <button 
+            onClick={() => exportLeaseCalendar(leases)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-lb-muted hover:bg-slate-200 text-lb-text-secondary rounded-lg text-sm font-medium transition-colors"
+          >
             <Download className="w-4 h-4" />
-            Export Leases
+            Export Calendar
           </button>
           <button
             onClick={() => {

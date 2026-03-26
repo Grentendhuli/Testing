@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Scale, Building, DollarSign, Shield, AlertTriangle, 
   FileText, CheckCircle, XCircle, Info, Download,
@@ -13,12 +13,41 @@ import {
   FARE_ACT_REQUIRED_LANGUAGE,
   GOOD_CAUSE_PROTECTED_MESSAGE 
 } from '../types';
-import type { ComplianceCheckResult } from '../services/nycOpenData';
+import { checkRentStabilization, type ComplianceCheckResult } from '../services/nycOpenData';
+import { useAuth } from '@/features/auth';
 
 export function NYCCompliance() {
   const { leases, units } = useApp();
+  const { userData } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'auto-check' | 'fare' | 'good-cause' | 'late-fees' | 'deposits' | 'lead-paint'>('overview');
   const [lastComplianceCheck, setLastComplianceCheck] = useState<ComplianceCheckResult | null>(null);
+  
+  // NYC Open Data: Rent Stabilization Check
+  const [rentStabStatus, setRentStabStatus] = useState<'loading' | 'stabilized' | 'not-stabilized' | 'error' | null>(null);
+  
+  useEffect(() => {
+    const checkStabilization = async () => {
+      if (!userData?.property_address) return;
+      
+      setRentStabStatus('loading');
+      try {
+        // Extract address components - simplified for demo
+        // In production, you'd parse the address properly
+        const result = await checkRentStabilization(userData.property_address);
+        
+        if (result.success && result.data) {
+          // checkRentStabilization returns the record if stabilized, null if not
+          setRentStabStatus(result.data ? 'stabilized' : 'not-stabilized');
+        } else {
+          setRentStabStatus('not-stabilized'); // Default to not stabilized if check fails
+        }
+      } catch {
+        setRentStabStatus('error'); // Silent fail
+      }
+    };
+    
+    checkStabilization();
+  }, [userData?.property_address]);
 
   // Calculate compliance metrics
   const totalUnits = units.length;
@@ -63,6 +92,25 @@ export function NYCCompliance() {
           <span className="px-3 py-1 bg-amber-500/20 text-amber-400 text-sm font-medium rounded-full">
             NYC Edition
           </span>
+          
+          {/* Rent Stabilization Badge */}
+          {rentStabStatus === 'loading' && (
+            <span className="px-3 py-1 bg-slate-500/20 text-slate-400 text-sm rounded-full flex items-center gap-1">
+              <RefreshCw className="w-3 h-3 animate-spin" />
+              Checking Registry...
+            </span>
+          )}
+          {rentStabStatus === 'stabilized' && (
+            <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-sm font-medium rounded-full flex items-center gap-1">
+              <CheckCircle className="w-3 h-3" />
+              Rent Stabilized
+            </span>
+          )}
+          {rentStabStatus === 'not-stabilized' && (
+            <span className="px-3 py-1 bg-slate-500/20 text-slate-400 text-sm rounded-full">
+              Not Stabilized
+            </span>
+          )}
           <a 
             href="https://data.cityofnewyork.us" 
             target="_blank" 

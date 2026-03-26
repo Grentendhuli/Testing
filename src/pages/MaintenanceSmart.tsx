@@ -16,6 +16,8 @@ import { AIUsageBar } from '../components/AIUsageBar';
 import { AIUsageWarningModal } from '../components/AIUsageWarningModal';
 import { AIUsageExceededModal } from '../components/AIUsageExceededModal';
 import { useMaintenanceCalendar, useGoogleCalendarStatus } from '../hooks/useGoogleCalendar';
+import { openVendorSearch, type VendorCategory } from '../services/vendorSearch';
+import { useAuth } from '@/features/auth';
 import type { MaintenanceRequest, MaintenanceStatus, MaintenancePriority } from '../types';
 import { useNavigate } from 'react-router-dom';
 
@@ -99,6 +101,16 @@ const detectCategory = (description: string): { category: string; confidence: nu
   return { category: 'general', confidence: 45 };
 };
 
+// Map AI categories to VendorCategory
+const categoryToVendor: Record<string, VendorCategory> = {
+  plumbing: 'plumber',
+  electrical: 'electrician',
+  hvac: 'hvac',
+  appliance: 'contractor',
+  structural: 'contractor',
+  general: 'contractor',
+};
+
 // Mock vendor matching
 const suggestVendor = (category: string): { name: string; confidence: number; specialty: string } | null => {
   const vendors: Record<string, { name: string; specialty: string }> = {
@@ -120,6 +132,7 @@ const TOTAL_LIMIT = FREE_LIMIT + BONUS_LIMIT;
 export function MaintenanceSmart() {
   const navigate = useNavigate();
   const { units, maintenanceRequests, addMaintenanceRequest, updateMaintenanceRequest, user } = useApp();
+  const { userData } = useAuth();
   const { isConnected: isCalendarConnected } = useGoogleCalendarStatus();
   const { isScheduling, scheduleMaintenance } = useMaintenanceCalendar();
   const [showAddModal, setShowAddModal] = useState(false);
@@ -607,6 +620,28 @@ export function MaintenanceSmart() {
                       </div>
                       
                       <p className="text-sm text-lb-text-secondary mt-1">{request.description}</p>
+                      
+                      {/* Find Vendors Link */}
+                      {request.status === 'open' && (
+                        <button
+                          onClick={() => {
+                            const category = detectCategory(request.description).category;
+                            const vendorCat = categoryToVendor[category] || 'contractor';
+                            openVendorSearch(vendorCat, userData?.property_address || 'New York, NY');
+                          }}
+                          className="mt-2 text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                        >
+                          <Wrench className="w-3 h-3" />
+                          Find {(() => {
+                            const cat = detectCategory(request.description).category;
+                            return cat === 'plumbing' ? 'Plumbers' :
+                                   cat === 'electrical' ? 'Electricians' :
+                                   cat === 'hvac' ? 'HVAC Contractors' :
+                                   cat === 'appliance' ? 'Appliance Repair' :
+                                   'Local Vendors';
+                          })()} near you →
+                        </button>
+                      )}
                       
                       <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-lb-text-muted">
                         <span className="flex items-center gap-1">
