@@ -1,24 +1,33 @@
-name = "landlordbot-ai"
-main = "landlordbot-ai.js"
-compatibility_date = "2024-03-01"
+name = "landlordbot-worker"
+main = "src/index.js"
+compatibility_date = "2024-03-25"
 
-# Cloudflare Workers AI is available on the free tier
-[ai]
-binding = "AI"
-
-# Optional: KV namespace for distributed rate limiting
-# Uncomment and configure after creating KV namespace in Cloudflare dashboard
-# [[kv_namespaces]]
-# binding = "RATE_LIMIT_KV"
-# id = "your-kv-namespace-id"
-
-# CORS headers are handled in the worker code
-# The worker will respond to requests from your Vercel domain
+# Free tier limits:
+# - 100,000 requests/day
+# - 10ms CPU time/request (plenty for AI calls)
+# - 128MB RAM
 
 [env.production]
-# Production environment
-# Add KV namespace binding here for production
+name = "landlordbot-worker"
 
 [env.staging]
-# Staging environment
-# Add separate KV namespace binding here for staging
+name = "landlordbot-worker-staging"
+
+# Environment variables (set via `wrangler secret put` or dashboard)
+# GEMINI_API_KEY = ""
+# SENDGRID_API_KEY = ""
+# FROM_EMAIL = ""
+# VAPI_API_KEY = ""
+# VAPI_ASSISTANT_ID = ""
+# VAPI_PHONE_NUMBER_ID = ""
+# ENVIRONMENT = "production"
+
+# Optional: Add custom domains
+# routes = [
+#   { pattern = "api.landlordbot.live", custom_domain = true }
+# ]
+
+# KV storage (if needed for caching)
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = "your-kv-namespace-id"

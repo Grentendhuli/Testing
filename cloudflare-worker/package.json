@@ -1,0 +1,20 @@
+{
+  "name": "landlordbot-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for LandlordBot AI, Email, and Voice",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "keywords": ["cloudflare", "worker", "ai", "gemini", "sendgrid"],
+  "author": "LandlordBot",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  },
+  "dependencies": {
+    "itty-router": "^4.0.0"
+  }
+}
