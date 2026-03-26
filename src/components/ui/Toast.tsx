@@ -10,6 +10,7 @@ interface ToastProps {
   isVisible: boolean;
   onClose: () => void;
   duration?: number;
+  action?: { label: string; onClick: () => void };
 }
 
 export function Toast({
@@ -18,6 +19,7 @@ export function Toast({
   isVisible,
   onClose,
   duration = 5000,
+  action,
 }: ToastProps) {
   useEffect(() => {
     if (isVisible && duration > 0) {
@@ -69,6 +71,14 @@ export function Toast({
         >
           <Icon className={`w-5 h-5 ${text}`} />
           <p className={`flex-1 text-sm font-medium ${text}`}>{message}</p>
+          {action && (
+            <button
+              onClick={action.onClick}
+              className={`${text} text-xs font-semibold underline opacity-90 hover:opacity-100 transition-opacity mr-2`}
+            >
+              {action.label}
+            </button>
+          )}
           <button
             onClick={onClose}
             className={`${text} opacity-80 hover:opacity-100 transition-opacity`}

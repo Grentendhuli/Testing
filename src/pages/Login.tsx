@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Navigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useNavigate, Navigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { analytics } from '../utils/analytics';
 import { Building2, Mail, Lock, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
@@ -296,9 +296,9 @@ export function Login() {
                   </button>
                 </div>
                 <div className="mt-2 text-right">
-                  <a href="/forgot-password" className="text-sm text-amber-600 dark:text-amber-400 hover:underline">
+                  <Link to="/forgot-password" className="text-sm text-amber-600 dark:text-amber-400 hover:underline">
                     Forgot password?
-                  </a>
+                  </Link>
                 </div>
               </div>
             )}

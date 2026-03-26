@@ -34,16 +34,22 @@ export const initPostHog = () => {
   }
 };
 
-export const identifyUser = (user: User) => {
-  if (!posthogInitialized || !user?.id) return;
+export const identifyUser = (id: string, properties: {
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  subscriptionTier?: string;
+  createdAt?: string;
+}) => {
+  if (!posthogInitialized || !id) return;
 
   try {
-    posthog.identify(user.id, {
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      subscriptionTier: user.subscriptionTier,
-      createdAt: user.createdAt,
+    posthog.identify(id, {
+      email: properties.email,
+      firstName: properties.firstName,
+      lastName: properties.lastName,
+      subscriptionTier: properties.subscriptionTier,
+      createdAt: properties.createdAt,
     });
   } catch (err) {
     console.error('Failed to identify user:', err);

@@ -146,8 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         saveUserDataToCache(userData);
         
         // Track user in analytics
-        identifyUser({
-          id: userData.id,
+        identifyUser(userData.id, {
           email: userData.email,
           firstName: userData.first_name,
           lastName: userData.last_name,
@@ -209,13 +208,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           saveUserDataToCache(createdUser as UserData);
           
           // Track new user in analytics
-          identifyUser({
-            id: createdUser.id,
-            email: createdUser.email,
-            firstName: createdUser.first_name,
-            lastName: createdUser.last_name,
-            subscriptionTier: createdUser.subscription_tier,
-            createdAt: createdUser.created_at,
+          identifyUser((createdUser as UserData).id, {
+            email: (createdUser as UserData).email,
+            firstName: (createdUser as UserData).first_name,
+            lastName: (createdUser as UserData).last_name,
+            subscriptionTier: (createdUser as UserData).subscription_tier,
+            createdAt: (createdUser as UserData).created_at,
           });
           
           return createdUser as UserData;

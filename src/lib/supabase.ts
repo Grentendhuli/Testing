@@ -9,8 +9,8 @@ export type TableInsert<T extends keyof Tables> = Tables[T]['Insert'];
 export type TableUpdate<T extends keyof Tables> = Tables[T]['Update'];
 
 // Environment variables for Supabase
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+const supabaseKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY;
 
 // Debug logging - only in development
 if (import.meta.env.DEV) {

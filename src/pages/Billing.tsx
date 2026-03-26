@@ -372,7 +372,7 @@ export function Billing() {
       </div>
 
       {/* Upcoming Invoice Preview - Only for scale */}
-      {isscale && (
+      {isScale && (
         <div className="bg-lb-surface border border-lb-border rounded-xl p-6">
           <div className="flex items-center gap-2 mb-4">
             <Receipt className="w-5 h-5 text-amber-400" />
@@ -477,7 +477,7 @@ export function Billing() {
           <Receipt className="w-5 h-5 text-amber-400" />
           <h3 className="font-semibold text-lb-text-primary">Billing History</h3>
         </div>
-        {isscale && (
+        {isScale && (
           <Button
             variant="outline"
             size="sm"
@@ -490,7 +490,7 @@ export function Billing() {
         )}
       </div>
 
-      {isscale ? (
+      {isScale ? (
         <BillingHistory 
           invoices={mockInvoices}
           onDownload={handleDownloadInvoice}
@@ -512,7 +512,7 @@ export function Billing() {
             <CreditCard className="w-5 h-5 text-amber-400" />
             <h3 className="font-semibold text-lb-text-primary">Payment Methods</h3>
           </div>
-          {isscale && (
+          {isScale && (
             <Button
               variant="outline"
               size="sm"
@@ -523,7 +523,7 @@ export function Billing() {
           )}
         </div>
 
-        {isscale ? (
+        {isScale ? (
           <div className="space-y-3">
             {mockPaymentMethods.map((method) => (
               <PaymentMethodCard

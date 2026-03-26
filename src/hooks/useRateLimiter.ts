@@ -112,7 +112,7 @@ export function useRateLimiter() {
     const cleaned: RateLimitStorage = {};
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    for (const [key, entry] of Object.entries(memoryCache.current)) {
+    for (const [key, entry] of Object.entries(memoryCache.current) as [string, RateLimitEntry][]) {
       const config = getConfig(key.split(':')[0]);
       const windowStart = now - config.windowSizeInSeconds * 1000;
 

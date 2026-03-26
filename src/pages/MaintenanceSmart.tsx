@@ -381,9 +381,7 @@ export function MaintenanceSmart() {
         isOpen={showWarningModal}
         onClose={() => setShowWarningModal(false)}
         onContinue={() => setShowWarningModal(false)}
-        used={aiUsageCount}
-        freeLimit={FREE_LIMIT}
-        bonusLimit={BONUS_LIMIT}
+        quota={{ used: aiUsageCount, limit: FREE_LIMIT + BONUS_LIMIT }}
       />
       
       <AIUsageExceededModal
@@ -395,9 +393,7 @@ export function MaintenanceSmart() {
           tomorrow.setDate(tomorrow.getDate() + 1);
           localStorage.setItem('landlordbot_ai_reminder', tomorrow.toISOString());
         }}
-        used={aiUsageCount}
-        freeLimit={FREE_LIMIT}
-        bonusLimit={BONUS_LIMIT}
+        quota={{ used: aiUsageCount, limit: FREE_LIMIT + BONUS_LIMIT }}
       />
 
       {/* Header with AI branding */}
@@ -429,9 +425,7 @@ export function MaintenanceSmart() {
       {isFreeTier && (
         <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
           <AIUsageBar
-            used={aiUsageCount}
-            freeLimit={FREE_LIMIT}
-            bonusLimit={BONUS_LIMIT}
+            quota={{ used: aiUsageCount, limit: FREE_LIMIT + BONUS_LIMIT }}
             onClick={() => {
               if (aiUsageCount >= FREE_LIMIT && aiUsageCount < TOTAL_LIMIT) {
                 setShowWarningModal(true);
