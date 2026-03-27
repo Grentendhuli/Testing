@@ -7,6 +7,7 @@ import { Mail, User, Phone, Home, CheckCircle, AlertCircle, Lock, Eye, EyeOff, M
 import { supabase } from '@/lib/supabase';
 import { LogoMark } from '@/components/LogoMark';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
+import { LegalModal } from '@/components/LegalModal';
 
 // Google Icon Component with official colors
 const GoogleIcon = () => (
@@ -177,6 +178,8 @@ export function SignupForm() {
   });
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalModalType, setLegalModalType] = useState<'terms' | 'privacy' | null>(null);
 
   const stepLabels = ['Property', 'Account', 'Profile'];
 
@@ -912,7 +915,32 @@ export function SignupForm() {
             <GreenCheckBadge text="Unlimited Units" />
             <GreenCheckBadge text="AI Assistant" />
           </div>
+
+          {/* Disclaimer */}
+          <p className="text-center mt-6 text-sm text-slate-500 dark:text-slate-400">
+            By signing up, you agree to our{' '}
+            <button
+              onClick={() => { setLegalModalType('terms'); setLegalModalOpen(true); }}
+              className="text-amber-600 dark:text-amber-400 hover:underline font-medium"
+            >
+              Terms of Service
+            </button>
+            {' '}and{' '}
+            <button
+              onClick={() => { setLegalModalType('privacy'); setLegalModalOpen(true); }}
+              className="text-amber-600 dark:text-amber-400 hover:underline font-medium"
+            >
+              Privacy Policy
+            </button>.
+          </p>
         </div>
+        
+        {/* Legal Modal */}
+        <LegalModal
+          isOpen={legalModalOpen}
+          onClose={() => setLegalModalOpen(false)}
+          type={legalModalType}
+        />
       </div>
     </div>
   );

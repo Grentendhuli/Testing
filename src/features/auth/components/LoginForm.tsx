@@ -5,6 +5,7 @@ import { useAuthRateLimiter } from '@/hooks';
 import { analytics } from '@/utils/analytics';
 import { Building2, Mail, AlertCircle, Loader2, Shield } from 'lucide-react';
 import { LogoMark } from '@/components/LogoMark';
+import { LegalModal } from '@/components/LegalModal';
 import { sendMagicLink } from '../services/authService';
 
 // Google Icon Component with official colors
@@ -40,6 +41,8 @@ export function LoginForm() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalModalType, setLegalModalType] = useState<'terms' | 'privacy' | null>(null);
   
   // Get return URL from query params (support both 'return' and 'return_to' for compatibility)
   const returnUrl = searchParams.get('return_to') || 
@@ -263,8 +266,28 @@ export function LoginForm() {
 
         {/* Disclaimer */}
         <p className="text-center mt-6 text-sm text-slate-500 dark:text-slate-400">
-          By signing in, you agree to our Terms of Service and Privacy Policy.
+          By signing in, you agree to our{' '}
+          <button
+            onClick={() => { setLegalModalType('terms'); setLegalModalOpen(true); }}
+            className="text-amber-600 dark:text-amber-400 hover:underline font-medium"
+          >
+            Terms of Service
+          </button>
+          {' '}and{' '}
+          <button
+            onClick={() => { setLegalModalType('privacy'); setLegalModalOpen(true); }}
+            className="text-amber-600 dark:text-amber-400 hover:underline font-medium"
+          >
+            Privacy Policy
+          </button>.
         </p>
+        
+        {/* Legal Modal */}
+        <LegalModal
+          isOpen={legalModalOpen}
+          onClose={() => setLegalModalOpen(false)}
+          type={legalModalType}
+        />
       </div>
     </div>
   );
