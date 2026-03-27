@@ -16,6 +16,8 @@ import {
   getRemainingAttempts 
 } from '@/utils/validation';
 import { identifyUser, resetUser } from '@/services/analytics';
+import { useMultiTabAuth } from '@/hooks/useMultiTabAuth';
+import { clearAllAutosaves } from '@/hooks/useAutosave';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -102,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [authState, setAuthState] = useState<AuthState>('initializing');
   const [isInitialized, setIsInitialized] = useState(false);
+  const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
   
   // ============================================================================
   // SECTION 2: ALL REFS (must be at top level, unconditionally called)
@@ -163,6 +166,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserData(null);
     saveUserDataToCache(null);
     updateAuthState('unauthenticated', null, null);
+    // Clear any form drafts on logout
+    clearAllAutosaves();
   }, [saveUserDataToCache, updateAuthState]);
 
   // Fetch user data with retry logic - creates record if it doesn't exist (for OAuth users)
@@ -299,6 +304,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // SECTION 5: ALL USEEFFECT HOOKS (defined AFTER all callbacks they reference)
   // ============================================================================
 
+  // Multi-tab auth synchronization
+  const { broadcastLogout } = useMultiTabAuth({
+    onLogout: () => {
+      // Other tab logged out - clear auth state without broadcasting (to avoid infinite loop)
+      clearAuthState();
+    },
+    onSessionExpired: () => {
+      // Other tab's session expired - show modal
+      setShowSessionExpiredModal(true);
+    },
+    onLogin: () => {
+      // Other tab logged in - refresh session
+      refreshSession();
+    },
+  });
+
   // Initialize auth state - runs once on mount
   useEffect(() => {
     if (initializationRef.current) return;
@@ -410,6 +431,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 await fetchUserData(newSession.user.id);
               }
               break;
+            case 'TOKEN_REFRESHED_FAILURE':
+            case 'SESSION_EXPIRED':
+              // Show session expired modal instead of immediate redirect
+              console.log('[AuthContext] Session expired, showing modal');
+              setShowSessionExpiredModal(true);
+              break;
           }
         }
       );
@@ -505,7 +532,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // SECTION 6: PUBLIC API FUNCTIONS (returned in context, not hooks)
   // ============================================================================
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<{ error: Error | null; remainingAttempts?: number; isLocked?: boolean }> => {
     // Check rate limit before attempting login
     const rateLimit = checkRateLimit(email);
     
@@ -535,7 +562,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return {
         error: result.error,
         remainingAttempts: remaining,
-        attemptsBeforeLockout: remaining,
+        isLocked: false,
       };
     }
 
@@ -550,6 +577,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    // Broadcast logout to other tabs BEFORE clearing local state
+    broadcastLogout();
     await clearAuthState();
   };
 
@@ -612,6 +641,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated,
         authState,
         isInitialized,
+        showSessionExpiredModal,
+        setShowSessionExpiredModal,
         login,
         signup,
         logout,

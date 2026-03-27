@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from '@/features/auth';
 import { AppProvider } from './context/AppContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { SessionExpiredModal } from './components/SessionExpiredModal';
 import { Sidebar } from './components/Sidebar';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { BetaFeedbackBanner } from './components/BetaFeedbackBanner';
@@ -155,7 +156,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 // Protected routes require auth
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isInitialized, isLoading } = useAuth();
+  const { isAuthenticated, isInitialized, isLoading, showSessionExpiredModal, setShowSessionExpiredModal } = useAuth();
   const location = useLocation();
   
   // CRITICAL: Wait for auth initialization before making ANY decisions
@@ -173,11 +174,19 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
   
   return (
-    <Layout>
-      <ErrorBoundary>
-        {children}
-      </ErrorBoundary>
-    </Layout>
+    <>
+      <Layout>
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
+      </Layout>
+      {/* Session Expired Modal - shown over current page */}
+      <SessionExpiredModal 
+        isOpen={showSessionExpiredModal}
+        onClose={() => setShowSessionExpiredModal(false)}
+        currentPath={location.pathname + location.search}
+      />
+    </>
   );
 }
 

@@ -41,10 +41,15 @@ export function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   
-  // Get return URL from query params or location state
-  const returnUrl = searchParams.get('return') || 
+  // Get return URL from query params (support both 'return' and 'return_to' for compatibility)
+  const returnUrl = searchParams.get('return_to') || 
+                    searchParams.get('return') || 
                     (location.state as any)?.from || 
                     '/dashboard';
+  
+  // Check for session expired reason
+  const reason = searchParams.get('reason');
+  const isSessionExpired = reason === 'session_expired';
 
   // Track page view
   useEffect(() => {
@@ -137,6 +142,23 @@ export function LoginForm() {
 
         {/* Auth Card */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm">
+          {/* Session Expired Notice */}
+          {isSessionExpired && (
+            <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Shield className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                    Your session has expired
+                  </p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    For security, we need you to sign in again. Your work was saved.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Security Notice */}
           <div className="mb-4 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
             <Shield className="w-4 h-4" />

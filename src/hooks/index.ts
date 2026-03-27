@@ -162,3 +162,16 @@ export {
   default as useAIRateLimiter,
   type AIRateLimitState,
 } from './useAIRateLimiter';
+
+// Multi-tab auth synchronization hook
+export {
+  default as useMultiTabAuth,
+  type AuthBroadcastEvent,
+} from './useMultiTabAuth';
+
+// Form autosave hook
+export {
+  default as useAutosave,
+  clearAllAutosaves,
+  type AutosaveState,
+} from './useAutosave';

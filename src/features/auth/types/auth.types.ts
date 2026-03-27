@@ -38,7 +38,9 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   authState: AuthState;
   isInitialized: boolean;
-  login: (email: string, password: string) => Promise<{ error: Error | null }>;
+  showSessionExpiredModal: boolean;
+  setShowSessionExpiredModal: (show: boolean) => void;
+  login: (email: string, password: string) => Promise<{ error: Error | null | undefined; remainingAttempts?: number; isLocked?: boolean }>;
   signup: (email: string, password: string, userData: Partial<UserData>) => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
   updateUserData: (data: Partial<UserData>) => Promise<{ error: Error | null }>;
