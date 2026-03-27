@@ -16,6 +16,7 @@ export function AuthCallback() {
   // Use refs to prevent duplicate processing and store mutable values
   const processedRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
 
   // Cleanup on unmount
@@ -23,6 +24,9 @@ export function AuthCallback() {
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
+      }
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
       }
       if (subscriptionRef.current) {
         subscriptionRef.current.unsubscribe();
@@ -32,9 +36,10 @@ export function AuthCallback() {
 
   // Main auth processing effect - runs once on mount
   useEffect(() => {
-    // Prevent duplicate processing (but allow re-runs if we're the first)
-    if (processedRef.current) {
-      console.log('[AuthCallback] Already processed, skipping');
+    // Prevent duplicate processing - but ONLY if we've already completed processing
+    // Don't block if we're just retrying after a failure
+    if (processedRef.current && callbackState !== 'error') {
+      console.log('[AuthCallback] Already processed successfully, skipping');
       return;
     }
     
@@ -46,6 +51,8 @@ export function AuthCallback() {
       console.error('[AuthCallback] Error:', message, details);
       setError(message);
       setCallbackState('error');
+      // Mark as processed on error to prevent infinite retries
+      processedRef.current = true;
       analytics.trackEvent('login_failed', { 
         error: message,
         details: details?.toString(),
@@ -53,8 +60,22 @@ export function AuthCallback() {
     };
 
     // Helper: handle success
-    const handleSuccess = (user: any, source: string) => {
+    const handleSuccess = async (user: any, source: string) => {
       console.log(`[AuthCallback] Success from ${source}:`, user?.email);
+      
+      // Clear all polling and timeouts immediately
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      
+      // Mark as processed BEFORE state changes to prevent race conditions
+      processedRef.current = true;
+      
       setCallbackState('success');
       
       const signupMethod: 'google' | 'microsoft' | 'magic_link' | 'email' = 
@@ -68,11 +89,13 @@ export function AuthCallback() {
         signup_method: signupMethod,
       });
       
-      // Delay redirect to ensure auth state propagates
-      timeoutRef.current = setTimeout(() => {
-        setCallbackState('redirecting');
-        navigate('/dashboard', { replace: true });
-      }, 500);
+      // Wait for auth state to propagate before navigating
+      // This ensures useAuth has updated its state
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Trigger navigation
+      setCallbackState('redirecting');
+      navigate('/dashboard', { replace: true });
     };
 
     // Helper: create user record
@@ -172,11 +195,15 @@ export function AuthCallback() {
     const urlError = queryParams.get('error');
     const errorDesc = queryParams.get('error_description');
     const code = queryParams.get('code') || hashParams.get('code');
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
 
     debug += `Found params:\n`;
     debug += `- error: ${urlError || 'NO'}\n`;
     debug += `- error_description: ${errorDesc || 'NO'}\n`;
     debug += `- code: ${code ? 'YES' : 'NO'}\n`;
+    debug += `- access_token: ${accessToken ? 'YES' : 'NO'}\n`;
+    debug += `- refresh_token: ${refreshToken ? 'YES' : 'NO'}\n`;
 
     setDebugInfo(debug);
 
@@ -186,23 +213,24 @@ export function AuthCallback() {
       return;
     }
 
-    // Process the auth callback with polling (handles race condition)
+    // Process the auth callback
     const processAuth = async () => {
-      // Mark as processing to prevent duplicate runs
-      processedRef.current = true;
-      
       try {
         let attempts = 0;
-        const maxAttempts = 10; // Try for up to 5 seconds
+        const maxAttempts = 20; // Try for up to 10 seconds
         
-        // Poll for session (detectSessionInUrl is async)
+        // Poll for session
         const pollForSession = async (): Promise<boolean> => {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            console.log('[AuthCallback] Session found on attempt', attempts);
-            await createUserIfNeeded(session.user);
-            handleSuccess(session.user, 'poll');
-            return true;
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+              console.log('[AuthCallback] Session found on attempt', attempts);
+              await createUserIfNeeded(session.user);
+              await handleSuccess(session.user, 'poll');
+              return true;
+            }
+          } catch (err) {
+            console.error('[AuthCallback] Error polling for session:', err);
           }
           return false;
         };
@@ -210,45 +238,80 @@ export function AuthCallback() {
         // Try immediate check first
         if (await pollForSession()) return;
 
-        // If no session, set up listener AND poll
+        // If no session yet, check if we have tokens in URL that need processing
+        // This happens with OAuth implicit flow
+        if (accessToken) {
+          console.log('[AuthCallback] Found access_token in URL, setting session...');
+          try {
+            const { data, error: setSessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || '',
+            });
+            
+            if (setSessionError) {
+              console.error('[AuthCallback] setSession error:', setSessionError);
+            } else if (data.session?.user) {
+              console.log('[AuthCallback] Session set from URL tokens');
+              await createUserIfNeeded(data.session.user);
+              await handleSuccess(data.session.user, 'url_token');
+              return;
+            }
+          } catch (err) {
+            console.error('[AuthCallback] Error setting session from tokens:', err);
+          }
+        }
+
+        // Set up auth state listener
         console.log('[AuthCallback] No session yet, starting listener + poll...');
         
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             console.log('[AuthCallback] Auth state change:', event, newSession?.user?.email);
             
+            // Clear interval immediately when we get a state change
+            if (pollIntervalRef.current) {
+              clearInterval(pollIntervalRef.current);
+              pollIntervalRef.current = null;
+            }
+            
             if (event === 'SIGNED_IN' && newSession?.user) {
               await createUserIfNeeded(newSession.user);
-              handleSuccess(newSession.user, 'auth_state_change');
+              await handleSuccess(newSession.user, 'auth_state_change');
             }
           }
         );
 
         subscriptionRef.current = subscription;
 
-        // Poll interval while waiting for state change
-        const pollInterval = setInterval(async () => {
+        // Poll interval while waiting for state change (backup mechanism)
+        pollIntervalRef.current = setInterval(async () => {
           attempts++;
+          console.log(`[AuthCallback] Poll attempt ${attempts}/${maxAttempts}`);
+          
           if (await pollForSession()) {
-            clearInterval(pollInterval);
+            // Session found - interval will be cleared by pollForSession
             return;
           }
           
           if (attempts >= maxAttempts) {
-            clearInterval(pollInterval);
+            if (pollIntervalRef.current) {
+              clearInterval(pollIntervalRef.current);
+              pollIntervalRef.current = null;
+            }
             handleError('Authentication timed out. Please try signing in again.');
           }
         }, 500);
 
-        // Cleanup interval on timeout
+        // Hard timeout - ensures we never get stuck
         timeoutRef.current = setTimeout(() => {
-          clearInterval(pollInterval);
-          setCallbackState(prev => {
-            if (prev === 'processing') {
-              handleError('Authentication timed out. Please try signing in again.');
-            }
-            return prev;
-          });
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+          // Only show error if still processing
+          if (callbackState === 'processing') {
+            handleError('Authentication took too long. Please try signing in again.');
+          }
         }, 15000);
         
       } catch (err: any) {
@@ -257,7 +320,10 @@ export function AuthCallback() {
     };
 
     processAuth();
-  }, [navigate]); // Only depend on navigate
+    
+    // NOTE: We intentionally don't set processedRef here - it's set 
+    // in handleSuccess or handleError to prevent race conditions
+  }, [navigate]); // Only depend on navigate - callbackState check happens inside
 
   // Render based on state
   if (callbackState === 'error') {
@@ -291,7 +357,7 @@ export function AuthCallback() {
     );
   }
 
-  if (callbackState === 'success') {
+  if (callbackState === 'success' || callbackState === 'redirecting') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">

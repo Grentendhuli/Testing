@@ -190,41 +190,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   );
 }
 
-// OAuth callback route - handles the OAuth redirect
-function CallbackRoute() {
-  const { isAuthenticated, isInitialized, isLoading } = useAuth();
-  const [hasProcessed, setHasProcessed] = useState(false);
-  
-  useEffect(() => {
-    // Give the callback time to process
-    const timer = setTimeout(() => {
-      setHasProcessed(true);
-    }, 2000);
-    
-    return () => clearTimeout(timer);
-  }, []);
-  
-  // Show loading while processing or initializing
-  if (!isInitialized || isLoading || !hasProcessed) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mx-auto"></div>
-          <p className="mt-4 text-slate-600 font-medium">Completing sign in...</p>
-          <p className="mt-2 text-sm text-slate-500">Please wait while we authenticate you</p>
-        </div>
-      </div>
-    );
-  }
-  
-  // After processing, redirect based on auth state
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  
-  // If not authenticated after processing, something went wrong
-  return <Navigate to="/login" replace />;
-}
+// Note: AuthCallback handles its own loading states and redirects
+// It navigates to /dashboard on success, so no wrapper is needed
 
 function App() {
   return (
@@ -269,7 +236,7 @@ function App() {
                     <Route path="/eula" element={<EULA />} />
                     <Route path="/pricing" element={<Pricing />} />
 
-                    {/* OAuth Callback Route - Special handling */}
+                    {/* OAuth Callback Route - Handles its own loading/success/error states */}
                     <Route path="/auth/callback" element={<AuthCallback />} />
 
                     {/* Protected Routes - AI Enhanced */}

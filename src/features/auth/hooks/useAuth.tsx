@@ -25,7 +25,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const USER_DATA_CACHE_KEY = 'lb_user_data_cache_v3';
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const SESSION_VERSION_KEY = 'lb_session_version';
-const CURRENT_SESSION_VERSION = '1';
+const CURRENT_SESSION_VERSION = '2'; // Bumped for auth flow fix
 
 // Retry config
 const MAX_RETRIES = 3;
@@ -112,14 +112,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const initializationRef = useRef(false);
   const authStateChangeRef = useRef(false);
   const previousUserDataRef = useRef<UserData | null>(null);
-  const visibilityRefreshRef = useRef(false);  // MOVED TO TOP - was inside useEffect!
-  const isRefreshingRef = useRef(false);       // MOVED TO TOP - was scattered
+  const visibilityRefreshRef = useRef(false);
+  const isRefreshingRef = useRef(false);
 
   // ============================================================================
   // SECTION 3: DERIVED STATE (computed values, not hooks)
   // ============================================================================
   const isLoading = authState === 'initializing';
-  const isAuthenticated = authState === 'authenticated' && !!user;
+  const isAuthenticated = authState === 'authenticated' && !!user && !!session;
 
   // ============================================================================
   // SECTION 4: ALL HELPER CALLBACKS (useCallback - defined BEFORE effects that use them)
@@ -322,39 +322,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Initialize auth state - runs once on mount
   useEffect(() => {
-    if (initializationRef.current) return;
+    if (initializationRef.current) {
+      console.log('[AuthContext] Initialization already in progress, skipping');
+      return;
+    }
     initializationRef.current = true;
 
     const initAuth = async () => {
-      if (!supabase || typeof supabase.auth?.getSession !== 'function') {
-        console.warn('[AuthContext] Supabase not initialized');
-        updateAuthState('unauthenticated', null, null);
-        setIsInitialized(true);
-        return;
-      }
+      // ALWAYS ensure we set isInitialized, even if something fails
+      let completed = false;
+      
+      const completeInitialization = () => {
+        if (!completed) {
+          completed = true;
+          setIsInitialized(true);
+          console.log('[AuthContext] Initialization complete, isInitialized set to true');
+        }
+      };
 
-      // Track deployment changes for debugging
-      const isNewDeployment = detectNewDeployment();
-      if (isNewDeployment) {
-        console.log('[AuthContext] New deployment detected, recovering session...');
-      }
-
-      const timeoutId = setTimeout(() => {
-        console.warn('[AuthContext] Auth initialization timed out');
-        updateAuthState('unauthenticated', null, null);
-        setIsInitialized(true);
-      }, 8000); // Increased timeout for session recovery
+      // Safety timeout - ensure initialization always completes
+      const safetyTimeout = setTimeout(() => {
+        console.warn('[AuthContext] Initialization safety timeout triggered');
+        completeInitialization();
+      }, 10000); // 10 second hard limit
 
       try {
-        // With persistSession: true, this recovers session from localStorage
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+        if (!supabase || typeof supabase.auth?.getSession !== 'function') {
+          console.warn('[AuthContext] Supabase not initialized');
+          updateAuthState('unauthenticated', null, null);
+          completeInitialization();
+          return;
+        }
+
+        // Track deployment changes for debugging
+        const isNewDeployment = detectNewDeployment();
+        if (isNewDeployment) {
+          console.log('[AuthContext] New deployment detected');
+        }
+
+        // Check URL for auth tokens (OAuth callback handling)
+        const hash = window.location.hash;
+        const hasAuthTokens = hash.includes('access_token=') || hash.includes('refresh_token=');
         
-        clearTimeout(timeoutId);
+        if (hasAuthTokens) {
+          console.log('[AuthContext] Auth tokens detected in URL, waiting for callback processing...');
+          // Don't complete initialization yet - let AuthCallback handle it
+          // We'll complete when auth state changes
+        }
+
+        // Get existing session
+        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
           console.error('[AuthContext] getSession error:', sessionError);
           updateAuthState('unauthenticated', null, null);
-          setIsInitialized(true);
+          completeInitialization();
           return;
         }
 
@@ -380,8 +402,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('[AuthContext] initAuth error:', error);
         updateAuthState('unauthenticated', null, null);
       } finally {
-        clearTimeout(timeoutId);
-        setIsInitialized(true);
+        clearTimeout(safetyTimeout);
+        completeInitialization();
       }
     };
 
@@ -400,6 +422,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         async (event, newSession) => {
           console.log('[AuthContext] Auth state change:', event, newSession?.user?.email);
           
+          // Debounce rapid state changes
           if (authStateChangeRef.current) return;
           authStateChangeRef.current = true;
           
@@ -410,7 +433,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           switch (event) {
             case 'SIGNED_IN':
               if (newSession?.user) {
-                await fetchUserData(newSession.user.id);
+                console.log('[AuthContext] User signed in, fetching data...');
+                await fetchUserData(newSession.user.id, newSession.user);
                 updateAuthState('authenticated', newSession.user, newSession);
               }
               break;
@@ -437,6 +461,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.log('[AuthContext] Session expired, showing modal');
               setShowSessionExpiredModal(true);
               break;
+            case 'INITIAL_SESSION':
+              // Initial session from OAuth callback
+              if (newSession?.user) {
+                console.log('[AuthContext] Initial session detected');
+                await fetchUserData(newSession.user.id, newSession.user);
+                updateAuthState('authenticated', newSession.user, newSession);
+              }
+              break;
+          }
+          
+          // Ensure initialization is complete after handling state change
+          if (!isInitialized) {
+            setIsInitialized(true);
           }
         }
       );
@@ -445,7 +482,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('[AuthContext] Failed to setup auth listener:', error);
     }
-  }, [fetchUserData, updateAuthState, saveUserDataToCache]);
+  }, [fetchUserData, updateAuthState, saveUserDataToCache, isInitialized]);
 
   // Refresh on window focus (handles deployment updates)
   useEffect(() => {
@@ -491,7 +528,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else {
             // User logged in in another tab - refresh session
             console.log('[AuthContext] Login detected in another tab');
-            await refreshSession();  // NOW SAFE - defined above!
+            await refreshSession();
           }
         } finally {
           // Release lock after a short delay to prevent immediate re-trigger
