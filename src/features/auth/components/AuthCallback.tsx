@@ -32,13 +32,12 @@ export function AuthCallback() {
 
   // Main auth processing effect - runs once on mount
   useEffect(() => {
-    // Prevent duplicate processing
+    // Prevent duplicate processing (but allow re-runs if we're the first)
     if (processedRef.current) {
       console.log('[AuthCallback] Already processed, skipping');
       return;
     }
-    processedRef.current = true;
-
+    
     // Track callback page view
     analytics.trackPageView('/auth/callback', 'Authentication Callback');
 
@@ -187,26 +186,32 @@ export function AuthCallback() {
       return;
     }
 
-    // Process the auth callback
+    // Process the auth callback with polling (handles race condition)
     const processAuth = async () => {
+      // Mark as processing to prevent duplicate runs
+      processedRef.current = true;
+      
       try {
-        // Supabase should have already processed the OAuth callback
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        let attempts = 0;
+        const maxAttempts = 10; // Try for up to 5 seconds
         
-        if (sessionError) {
-          handleError(`Session error: ${sessionError.message}`, sessionError);
-          return;
-        }
+        // Poll for session (detectSessionInUrl is async)
+        const pollForSession = async (): Promise<boolean> => {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            console.log('[AuthCallback] Session found on attempt', attempts);
+            await createUserIfNeeded(session.user);
+            handleSuccess(session.user, 'poll');
+            return true;
+          }
+          return false;
+        };
 
-        if (session?.user) {
-          console.log('[AuthCallback] Session found immediately:', session.user.email);
-          await createUserIfNeeded(session.user);
-          handleSuccess(session.user, 'immediate');
-          return;
-        }
+        // Try immediate check first
+        if (await pollForSession()) return;
 
-        // If no session yet, wait for auth state change
-        console.log('[AuthCallback] No session yet, setting up listener...');
+        // If no session, set up listener AND poll
+        console.log('[AuthCallback] No session yet, starting listener + poll...');
         
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
@@ -221,8 +226,23 @@ export function AuthCallback() {
 
         subscriptionRef.current = subscription;
 
-        // Set a timeout in case auth never completes
+        // Poll interval while waiting for state change
+        const pollInterval = setInterval(async () => {
+          attempts++;
+          if (await pollForSession()) {
+            clearInterval(pollInterval);
+            return;
+          }
+          
+          if (attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            handleError('Authentication timed out. Please try signing in again.');
+          }
+        }, 500);
+
+        // Cleanup interval on timeout
         timeoutRef.current = setTimeout(() => {
+          clearInterval(pollInterval);
           setCallbackState(prev => {
             if (prev === 'processing') {
               handleError('Authentication timed out. Please try signing in again.');
