@@ -8,7 +8,6 @@ import {
   signInWithGoogle,
   signInWithApple,
   signOut,
-  getCurrentSession,
 } from '../services/authService';
 import { 
   checkRateLimit, 
@@ -95,18 +94,40 @@ const detectNewDeployment = (): boolean => {
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // ============================================================================
+  // SECTION 1: ALL STATE HOOKS (must be first, unconditionally called)
+  // ============================================================================
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [authState, setAuthState] = useState<AuthState>('initializing');
   const [isInitialized, setIsInitialized] = useState(false);
   
+  // ============================================================================
+  // SECTION 2: ALL REFS (must be at top level, unconditionally called)
+  // ============================================================================
   const initializationRef = useRef(false);
   const authStateChangeRef = useRef(false);
   const previousUserDataRef = useRef<UserData | null>(null);
+  const visibilityRefreshRef = useRef(false);  // MOVED TO TOP - was inside useEffect!
+  const isRefreshingRef = useRef(false);       // MOVED TO TOP - was scattered
 
+  // ============================================================================
+  // SECTION 3: DERIVED STATE (computed values, not hooks)
+  // ============================================================================
   const isLoading = authState === 'initializing';
   const isAuthenticated = authState === 'authenticated' && !!user;
+
+  // ============================================================================
+  // SECTION 4: ALL HELPER CALLBACKS (useCallback - defined BEFORE effects that use them)
+  // ============================================================================
+  
+  // Update auth state - stable callback
+  const updateAuthState = useCallback((newState: AuthState, newUser: User | null, newSession: Session | null) => {
+    setAuthState(newState);
+    setUser(newUser);
+    setSession(newSession);
+  }, []);
 
   // Load userData from cache
   const loadUserDataFromCache = useCallback((): UserData | null => {
@@ -134,8 +155,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Clear all auth state - defined early for use in multiple effects
+  const clearAuthState = useCallback(async () => {
+    await signOut();
+    setUser(null);
+    setSession(null);
+    setUserData(null);
+    saveUserDataToCache(null);
+    updateAuthState('unauthenticated', null, null);
+  }, [saveUserDataToCache, updateAuthState]);
+
   // Fetch user data with retry logic - creates record if it doesn't exist (for OAuth users)
-  const fetchUserData = useCallback(async (userId: string, user?: User | null) => {
+  const fetchUserData = useCallback(async (userId: string, userObj?: User | null) => {
     // Show cached data immediately if available
     const cached = loadUserDataFromCache();
     if (cached && cached.id === userId) {
@@ -158,27 +189,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (!error && data) {
-        const userData = data as UserData;
-        setUserData(userData);
-        saveUserDataToCache(userData);
+        const userDataResult = data as UserData;
+        setUserData(userDataResult);
+        saveUserDataToCache(userDataResult);
         
         // Track user in analytics
-        identifyUser(userData.id, {
-          email: userData.email,
-          firstName: userData.first_name,
-          lastName: userData.last_name,
-          subscriptionTier: userData.subscription_tier,
-          createdAt: userData.created_at,
+        identifyUser(userDataResult.id, {
+          email: userDataResult.email,
+          firstName: userDataResult.first_name,
+          lastName: userDataResult.last_name,
+          subscriptionTier: userDataResult.subscription_tier,
+          createdAt: userDataResult.created_at,
         });
         
-        return userData;
+        return userDataResult;
       }
 
       // If no user data found, create it (for OAuth logins)
       if (error?.code === 'PGRST116' || !data) {
         console.log('[AuthContext] No user record found, creating one for OAuth user...');
         
-        const userMetadata = user?.user_metadata || {};
+        const userMetadata = userObj?.user_metadata || {};
         const fullName = userMetadata.full_name || userMetadata.name || '';
         const nameParts = fullName.split(' ');
         const firstName = userMetadata.first_name || nameParts[0] || '';
@@ -187,7 +218,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         const newUserData = {
           id: userId,
-          email: user?.email || '',
+          email: userObj?.email || '',
           first_name: firstName,
           last_name: lastName,
           phone_number: userMetadata.phone || '',
@@ -246,12 +277,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null;
   }, [loadUserDataFromCache, saveUserDataToCache]);
 
-  // Update auth state
-  const updateAuthState = useCallback((newState: AuthState, newUser: User | null, newSession: Session | null) => {
-    setAuthState(newState);
-    setUser(newUser);
-    setSession(newSession);
-  }, []);
+  // Refresh session - defined BEFORE cross-tab sync that uses it
+  const refreshSession = useCallback(async () => {
+    try {
+      const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      
+      if (currentSession?.user) {
+        await fetchUserData(currentSession.user.id, currentSession.user);
+        updateAuthState('authenticated', currentSession.user, currentSession);
+      } else {
+        updateAuthState('unauthenticated', null, null);
+      }
+    } catch (error) {
+      console.error('[AuthContext] refreshSession error:', error);
+      updateAuthState('unauthenticated', null, null);
+    }
+  }, [fetchUserData, updateAuthState]);
+
+  // ============================================================================
+  // SECTION 5: ALL USEEFFECT HOOKS (defined AFTER all callbacks they reference)
+  // ============================================================================
 
   // Initialize auth state - runs once on mount
   useEffect(() => {
@@ -319,7 +365,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     initAuth();
-  }, [fetchUserData, loadUserDataFromCache, updateAuthState]);
+  }, [fetchUserData, updateAuthState]);
 
   // Auth state change listener
   useEffect(() => {
@@ -376,7 +422,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Refresh on window focus (handles deployment updates)
   useEffect(() => {
-    const visibilityRefreshRef = useRef(false);
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible' && !visibilityRefreshRef.current) {
         visibilityRefreshRef.current = true;
@@ -386,13 +431,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (currentSession?.user) {
             await fetchUserData(currentSession.user.id);
           } else {
-            // Session expired - sign out directly to avoid reference issues
-            await supabase.auth.signOut();
-            setUser(null);
-            setSession(null);
-            setUserData(null);
-            saveUserDataToCache(null);
-            updateAuthState('unauthenticated', null, null);
+            // Session expired - sign out
+            await clearAuthState();
           }
         }
         
@@ -402,58 +442,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [authState, user?.id, fetchUserData, saveUserDataToCache, updateAuthState]);
-
-  // Define refreshSession before cross-tab sync to avoid reference issues
-  const refreshSession = useCallback(async () => {
-    try {
-      const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-      if (error) throw error;
-      
-      if (currentSession?.user) {
-        await fetchUserData(currentSession.user.id, currentSession.user);
-        updateAuthState('authenticated', currentSession.user, currentSession);
-      } else {
-        updateAuthState('unauthenticated', null, null);
-      }
-    } catch (error) {
-      console.error('[AuthContext] refreshSession error:', error);
-      updateAuthState('unauthenticated', null, null);
-    }
-  }, [fetchUserData, updateAuthState]);
-
-  // Session health monitoring - recovers from edge cases
-  useEffect(() => {
-    if (authState !== 'authenticated') return;
-
-    const healthCheck = setInterval(async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error || !session) {
-          console.warn('[AuthContext] Session health check failed');
-          const { error: refreshError } = await supabase.auth.refreshSession();
-          if (refreshError) {
-            console.error('[AuthContext] Session recovery failed, logging out');
-            // Direct sign out to avoid reference issues
-            await signOut();
-            setUser(null);
-            setSession(null);
-            setUserData(null);
-            saveUserDataToCache(null);
-            updateAuthState('unauthenticated', null, null);
-          }
-        }
-      } catch (err) {
-        console.error('[AuthContext] Health check error:', err);
-      }
-    }, 5 * 60 * 1000); // Check every 5 minutes
-
-    return () => clearInterval(healthCheck);
-  }, [authState, saveUserDataToCache, updateAuthState]);
+  }, [authState, user?.id, fetchUserData, clearAuthState]);
 
   // Cross-tab synchronization for auth state - using supabase's actual key
-  const isRefreshingRef = useRef(false);
   useEffect(() => {
     const handleStorageChange = async (event: StorageEvent) => {
       // Supabase uses 'sb-<project-ref>-auth-token' pattern - check for supabase auth token
@@ -473,7 +464,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else {
             // User logged in in another tab - refresh session
             console.log('[AuthContext] Login detected in another tab');
-            await refreshSession();
+            await refreshSession();  // NOW SAFE - defined above!
           }
         } finally {
           // Release lock after a short delay to prevent immediate re-trigger
@@ -485,6 +476,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [refreshSession, saveUserDataToCache, updateAuthState]);
+
+  // Session health monitoring - recovers from edge cases
+  useEffect(() => {
+    if (authState !== 'authenticated') return;
+
+    const healthCheck = setInterval(async () => {
+      try {
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        
+        if (error || !currentSession) {
+          console.warn('[AuthContext] Session health check failed');
+          const { error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError) {
+            console.error('[AuthContext] Session recovery failed, logging out');
+            await clearAuthState();
+          }
+        }
+      } catch (err) {
+        console.error('[AuthContext] Health check error:', err);
+      }
+    }, 5 * 60 * 1000); // Check every 5 minutes
+
+    return () => clearInterval(healthCheck);
+  }, [authState, clearAuthState]);
+
+  // ============================================================================
+  // SECTION 6: PUBLIC API FUNCTIONS (returned in context, not hooks)
+  // ============================================================================
 
   const login = async (email: string, password: string) => {
     // Check rate limit before attempting login
@@ -531,12 +550,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    await signOut();
-    setUser(null);
-    setSession(null);
-    setUserData(null);
-    saveUserDataToCache(null);
-    updateAuthState('unauthenticated', null, null);
+    await clearAuthState();
   };
 
   const updateUserData = async (data: Partial<UserData>) => {
@@ -583,6 +597,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: err as Error };
     }
   };
+
+  // ============================================================================
+  // SECTION 7: RENDER - Context Provider
+  // ============================================================================
 
   return (
     <AuthContext.Provider
