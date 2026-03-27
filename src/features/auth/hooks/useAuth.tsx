@@ -103,7 +103,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const initializationRef = useRef(false);
   const authStateChangeRef = useRef(false);
-  const visibilityRefreshRef = useRef(false);
   const previousUserDataRef = useRef<UserData | null>(null);
 
   const isLoading = authState === 'initializing';
@@ -377,6 +376,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Refresh on window focus (handles deployment updates)
   useEffect(() => {
+    const visibilityRefreshRef = useRef(false);
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible' && !visibilityRefreshRef.current) {
         visibilityRefreshRef.current = true;
@@ -386,7 +386,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (currentSession?.user) {
             await fetchUserData(currentSession.user.id);
           } else {
-            await logout();
+            // Session expired - sign out directly to avoid reference issues
+            await supabase.auth.signOut();
+            setUser(null);
+            setSession(null);
+            setUserData(null);
+            saveUserDataToCache(null);
+            updateAuthState('unauthenticated', null, null);
           }
         }
         
@@ -396,54 +402,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [authState, user?.id, fetchUserData]);
+  }, [authState, user?.id, fetchUserData, saveUserDataToCache, updateAuthState]);
 
-  // Cross-tab synchronization for auth state
-  useEffect(() => {
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === 'lb-auth-token') {
-        if (event.newValue === null) {
-          // User logged out in another tab
-          console.log('[AuthContext] Logout detected in another tab');
-          setUserData(null);
-          saveUserDataToCache(null);
-          updateAuthState('unauthenticated', null, null);
-        } else {
-          // User logged in in another tab - refresh session
-          console.log('[AuthContext] Login detected in another tab');
-          refreshSession();
-        }
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [refreshSession, saveUserDataToCache, updateAuthState]);
-
-  // Session health monitoring - recovers from edge cases
-  useEffect(() => {
-    if (authState !== 'authenticated') return;
-
-    const healthCheck = setInterval(async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error || !session) {
-          console.warn('[AuthContext] Session health check failed');
-          const { error: refreshError } = await supabase.auth.refreshSession();
-          if (refreshError) {
-            console.error('[AuthContext] Session recovery failed, logging out');
-            await logout();
-          }
-        }
-      } catch (err) {
-        console.error('[AuthContext] Health check error:', err);
-      }
-    }, 5 * 60 * 1000); // Check every 5 minutes
-
-    return () => clearInterval(healthCheck);
-  }, [authState, logout]);
-
+  // Define refreshSession before cross-tab sync to avoid reference issues
   const refreshSession = useCallback(async () => {
     try {
       const { data: { session: currentSession }, error } = await supabase.auth.getSession();
@@ -460,6 +421,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateAuthState('unauthenticated', null, null);
     }
   }, [fetchUserData, updateAuthState]);
+
+  // Session health monitoring - recovers from edge cases
+  useEffect(() => {
+    if (authState !== 'authenticated') return;
+
+    const healthCheck = setInterval(async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error || !session) {
+          console.warn('[AuthContext] Session health check failed');
+          const { error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError) {
+            console.error('[AuthContext] Session recovery failed, logging out');
+            // Direct sign out to avoid reference issues
+            await signOut();
+            setUser(null);
+            setSession(null);
+            setUserData(null);
+            saveUserDataToCache(null);
+            updateAuthState('unauthenticated', null, null);
+          }
+        }
+      } catch (err) {
+        console.error('[AuthContext] Health check error:', err);
+      }
+    }, 5 * 60 * 1000); // Check every 5 minutes
+
+    return () => clearInterval(healthCheck);
+  }, [authState, saveUserDataToCache, updateAuthState]);
+
+  // Cross-tab synchronization for auth state - using supabase's actual key
+  const isRefreshingRef = useRef(false);
+  useEffect(() => {
+    const handleStorageChange = async (event: StorageEvent) => {
+      // Supabase uses 'sb-<project-ref>-auth-token' pattern - check for supabase auth token
+      if (event.key?.includes('auth-token') || event.key?.includes('supabase.auth.token')) {
+        // Prevent race conditions - ignore if already refreshing
+        if (isRefreshingRef.current) return;
+        
+        isRefreshingRef.current = true;
+        
+        try {
+          if (event.newValue === null) {
+            // User logged out in another tab
+            console.log('[AuthContext] Logout detected in another tab');
+            setUserData(null);
+            saveUserDataToCache(null);
+            updateAuthState('unauthenticated', null, null);
+          } else {
+            // User logged in in another tab - refresh session
+            console.log('[AuthContext] Login detected in another tab');
+            await refreshSession();
+          }
+        } finally {
+          // Release lock after a short delay to prevent immediate re-trigger
+          setTimeout(() => { isRefreshingRef.current = false; }, 100);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [refreshSession, saveUserDataToCache, updateAuthState]);
 
   const login = async (email: string, password: string) => {
     // Check rate limit before attempting login
