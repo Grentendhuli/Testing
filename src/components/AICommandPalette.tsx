@@ -544,7 +544,7 @@ export function AICommandPaletteButton({ onClick }: { onClick: () => void }) {
     <button
       onClick={onClick}
       className="
-        fixed bottom-6 right-6 z-40
+        fixed top-6 right-6 z-40
         flex items-center gap-2 px-4 py-3
         bg-gradient-to-r from-amber-500 to-amber-400
         hover:from-amber-400 hover:to-amber-300

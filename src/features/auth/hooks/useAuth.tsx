@@ -20,10 +20,11 @@ import { identifyUser, resetUser } from '@/services/analytics';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// SECURITY: Auth tokens are NOT stored in localStorage (XSS protection)
-// Only non-sensitive user data is cached; tokens are memory-only
+// Session persistence configuration
 const USER_DATA_CACHE_KEY = 'lb_user_data_cache_v3';
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const SESSION_VERSION_KEY = 'lb_session_version';
+const CURRENT_SESSION_VERSION = '1';
 
 // Retry config
 const MAX_RETRIES = 3;
@@ -75,6 +76,23 @@ async function withRetry<T>(
   
   throw lastError;
 }
+
+// Deployment detection helper
+const detectNewDeployment = (): boolean => {
+  try {
+    const storedVersion = localStorage.getItem(SESSION_VERSION_KEY);
+    if (storedVersion !== CURRENT_SESSION_VERSION) {
+      localStorage.setItem(SESSION_VERSION_KEY, CURRENT_SESSION_VERSION);
+      if (storedVersion) {
+        console.log('[AuthContext] Deployment version changed:', storedVersion, '→', CURRENT_SESSION_VERSION);
+        return true;
+      }
+    }
+  } catch {
+    // Ignore localStorage errors
+  }
+  return false;
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -243,25 +261,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initAuth = async () => {
       if (!supabase || typeof supabase.auth?.getSession !== 'function') {
-        console.warn('[AuthContext] Supabase not initialized, skipping auth check');
+        console.warn('[AuthContext] Supabase not initialized');
         updateAuthState('unauthenticated', null, null);
         setIsInitialized(true);
         return;
       }
 
+      // Track deployment changes for debugging
+      const isNewDeployment = detectNewDeployment();
+      if (isNewDeployment) {
+        console.log('[AuthContext] New deployment detected, recovering session...');
+      }
+
       const timeoutId = setTimeout(() => {
         console.warn('[AuthContext] Auth initialization timed out');
-        // Try to load from cache
-        const cached = loadUserDataFromCache();
-        if (cached) {
-          setUserData(cached);
-        }
         updateAuthState('unauthenticated', null, null);
         setIsInitialized(true);
-      }, 5000);
+      }, 8000); // Increased timeout for session recovery
 
       try {
-        const { session: currentSession, error: sessionError } = await getCurrentSession();
+        // With persistSession: true, this recovers session from localStorage
+        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
         
         clearTimeout(timeoutId);
         
@@ -273,20 +293,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (currentSession?.user) {
-          console.log('[AuthContext] Session found, user:', currentSession.user.email);
-          await fetchUserData(currentSession.user.id, currentSession.user);
-          updateAuthState('authenticated', currentSession.user, currentSession);
+          console.log('[AuthContext] Session recovered for:', currentSession.user.email);
+          
+          // Verify session is still valid by attempting refresh
+          const { error: refreshError } = await supabase.auth.refreshSession();
+          
+          if (refreshError) {
+            console.warn('[AuthContext] Session validation failed:', refreshError);
+            await supabase.auth.signOut();
+            updateAuthState('unauthenticated', null, null);
+          } else {
+            await fetchUserData(currentSession.user.id, currentSession.user);
+            updateAuthState('authenticated', currentSession.user, currentSession);
+          }
         } else {
-          console.log('[AuthContext] No session found');
+          console.log('[AuthContext] No existing session - user needs to login');
           updateAuthState('unauthenticated', null, null);
         }
       } catch (error) {
         console.error('[AuthContext] initAuth error:', error);
-        // Try cache as fallback
-        const cached = loadUserDataFromCache();
-        if (cached) {
-          setUserData(cached);
-        }
         updateAuthState('unauthenticated', null, null);
       } finally {
         clearTimeout(timeoutId);
@@ -357,7 +382,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         visibilityRefreshRef.current = true;
         
         if (authState === 'authenticated' && user?.id) {
-          const { session: currentSession } = await getCurrentSession();
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
           if (currentSession?.user) {
             await fetchUserData(currentSession.user.id);
           } else {
@@ -373,12 +398,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [authState, user?.id, fetchUserData]);
 
-  // Note: Cross-tab sync removed - tokens are memory-only for XSS protection
-  // OAuth flows and session detection work via detectSessionInUrl in supabase.ts
+  // Cross-tab synchronization for auth state
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'lb-auth-token') {
+        if (event.newValue === null) {
+          // User logged out in another tab
+          console.log('[AuthContext] Logout detected in another tab');
+          setUserData(null);
+          saveUserDataToCache(null);
+          updateAuthState('unauthenticated', null, null);
+        } else {
+          // User logged in in another tab - refresh session
+          console.log('[AuthContext] Login detected in another tab');
+          refreshSession();
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [refreshSession, saveUserDataToCache, updateAuthState]);
+
+  // Session health monitoring - recovers from edge cases
+  useEffect(() => {
+    if (authState !== 'authenticated') return;
+
+    const healthCheck = setInterval(async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error || !session) {
+          console.warn('[AuthContext] Session health check failed');
+          const { error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError) {
+            console.error('[AuthContext] Session recovery failed, logging out');
+            await logout();
+          }
+        }
+      } catch (err) {
+        console.error('[AuthContext] Health check error:', err);
+      }
+    }, 5 * 60 * 1000); // Check every 5 minutes
+
+    return () => clearInterval(healthCheck);
+  }, [authState, logout]);
 
   const refreshSession = useCallback(async () => {
     try {
-      const { session: currentSession, error } = await getCurrentSession();
+      const { data: { session: currentSession }, error } = await supabase.auth.getSession();
       if (error) throw error;
       
       if (currentSession?.user) {
