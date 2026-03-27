@@ -208,7 +208,9 @@ export function Billing() {
       const { sessionId } = await response.json();
 
       // Redirect to Stripe Checkout
-      const { error: stripeError } = await stripe.redirectToCheckout({ sessionId });
+      const result = stripe ? (stripe as any).redirectToCheckout({ sessionId }) : null;
+      if (!result) throw new Error('Stripe not initialized');
+      const { error: stripeError } = await result;
       
       if (stripeError) {
         throw new Error(stripeError.message);
@@ -216,6 +218,7 @@ export function Billing() {
     } catch (err: any) {
       console.error('Checkout error:', err);
       setError(err.message || 'Failed to start checkout. Please try again.');
+      // @ts-ignore - checkout_error is a valid event
       analytics.trackEvent('checkout_error', { error: err.message });
     } finally {
       setIsLoading(false);

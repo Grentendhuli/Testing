@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { User, Message, BotStatus, BotConfig, Invoice, DailyStats, MonthlySummary, Unit, Lead, Lease, Payment, LateFeeConfig, MaintenanceRequest, UnitStatus, LeadStatus, LeaseStatus, MaintenanceStatus, MaintenancePriority, PaymentStatus, PaymentMethod, LeaseType, SubscriptionStatus, SubscriptionTier } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '@/features/auth';
@@ -24,7 +24,7 @@ export interface PersistedState {
 
 interface AppContextType extends PersistedState {
   // User state
-  login: (email: string, password: string) => Promise<{ error: Error | null }>;
+  login: (email: string, password: string) => Promise<{ error: Error | null | undefined; remainingAttempts?: number; isLocked?: boolean }>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
   
@@ -142,9 +142,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [persistenceEnabled, setPersistenceEnabled] = useState(false);
   const [showPersistenceBanner, setShowPersistenceBanner] = useState(false);
 
+  const hasLoadedRef = useRef(false);
+
   // Sync real auth user into app state
   useEffect(() => {
-    if (authUser && authUserData) {
+    if (authUser && authUserData && !hasLoadedRef.current) {
+      hasLoadedRef.current = true;
       setIsAuthenticated(true);
       setUser({
         id: authUser.id,
@@ -162,13 +165,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         createdAt: authUserData.created_at || new Date().toISOString(),
         trialDaysRemaining: 0,
       } as User);
-      // Load real data from Supabase
       loadUserData(authUser.id);
     } else if (authUser === null && !isLoading) {
+      hasLoadedRef.current = false;
       setIsAuthenticated(false);
       setUser(null);
+      setUnits([]);
+      setLeads([]);
+      setLeases([]);
+      setPayments([]);
+      setMaintenanceRequests([]);
     }
-  }, [authUser, authUserData]);
+  }, [authUser?.id, authUserData?.id]);
 
   // Load all real data from Supabase for the authenticated user
   const loadUserData = async (userId: string) => {
@@ -243,14 +251,93 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       }
       
-      const loadedUnits = (unitsRes.data || []) as Unit[];
-      const loadedLeads = (leadsRes.data || []) as Lead[];
-      
+      const loadedUnits: Unit[] = (unitsRes.data || []).map((u: any) => ({
+        id: u.id,
+        address: u.address || '',
+        unitNumber: u.unit_number || '',
+        rentAmount: u.rent_amount || 0,
+        status: u.status || 'vacant',
+        bedrooms: u.bedrooms || 0,
+        bathrooms: u.bathrooms || 0,
+        squareFeet: u.square_feet || 0,
+        notes: u.notes || '',
+        tenantName: u.tenant_name || undefined,
+        tenantEmail: u.tenant_email || undefined,
+        tenantPhone: u.tenant_phone || undefined,
+        leaseStart: u.lease_start || undefined,
+        leaseEnd: u.lease_end || undefined,
+        createdAt: u.created_at,
+      }));
       setUnits(loadedUnits);
+
+      const loadedLeads: Lead[] = (leadsRes.data || []).map((l: any) => ({
+        id: l.id,
+        name: l.name,
+        email: l.email || undefined,
+        phone: l.phone || undefined,
+        status: l.status as 'new' | 'contacted' | 'qualified' | 'converted' | 'closed',
+        notes: l.notes || undefined,
+        inquiryDate: l.created_at,
+        createdAt: l.created_at,
+      }));
       setLeads(loadedLeads);
-      setLeases(((leasesRes.data || []) as Lease[]) || []);
-      setPayments((paymentsRes.data || []) as Payment[]);
-      setMaintenanceRequests((maintRes.data || []) as MaintenanceRequest[]);
+
+      const loadedLeases: Lease[] = ((leasesRes.data || []) as any[]).map((l: any) => ({
+        id: l.id,
+        unitId: l.unit_id || '',
+        unitNumber: l.unit_number || '',
+        tenantName: l.tenant_name || '',
+        tenantPhone: l.tenant_phone || '',
+        tenantEmail: l.tenant_email || '',
+        startDate: l.start_date || '',
+        endDate: l.end_date || '',
+        rentAmount: l.rent_amount || 0,
+        securityDeposit: l.security_deposit || 0,
+        status: l.status || 'active',
+        leaseType: l.lease_type || 'annual',
+        notes: l.notes || '',
+        createdAt: l.created_at,
+        userId: l.user_id || '',
+      }));
+      setLeases(loadedLeases);
+
+      const loadedPayments: Payment[] = ((paymentsRes.data || []) as any[]).map((p: any) => ({
+        id: p.id,
+        unitId: p.unit_id || '',
+        amount: p.amount || 0,
+        dueDate: p.due_date || '',
+        paidDate: p.paid_date || undefined,
+        status: p.status || 'pending',
+        method: p.method || 'other',
+        notes: p.notes || undefined,
+        userId: p.user_id || '',
+        createdAt: p.created_at,
+        tenantName: p.tenant_name || undefined,
+        unitNumber: p.unit_number || undefined,
+      }));
+      setPayments(loadedPayments);
+
+      const loadedMaint: MaintenanceRequest[] = ((maintRes.data || []) as any[]).map((r: any) => ({
+        id: r.id,
+        unitId: r.unit_id || '',
+        title: r.title || '',
+        description: r.description || '',
+        status: r.status || 'open',
+        priority: r.priority || 'medium',
+        category: r.category || 'other',
+        notes: r.notes || undefined,
+        estimatedCost: r.estimated_cost || undefined,
+        actualCost: r.actual_cost || undefined,
+        assignedTo: r.assigned_to || undefined,
+        completedAt: r.completed_at || undefined,
+        userId: r.user_id || '',
+        createdAt: r.created_at,
+        updatedAt: r.updated_at || r.created_at,
+        unitNumber: r.unit_number || undefined,
+        tenantName: r.tenant_name || undefined,
+      }));
+      setMaintenanceRequests(loadedMaint);
+
       setMessages(((msgsRes.data || []) as Message[]) || []);
       
       // Cache ALL data in localStorage for bulletproof persistence across deployments
@@ -258,9 +345,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const cacheData = {
           units: loadedUnits,
           leads: loadedLeads,
-          leases: (leasesRes.data || []) as Lease[],
-          payments: (paymentsRes.data || []) as Payment[],
-          maintenanceRequests: (maintRes.data || []) as MaintenanceRequest[],
+          leases: loadedLeases,
+          payments: loadedPayments,
+          maintenanceRequests: loadedMaint,
           messages: (msgsRes.data || []) as Message[],
           timestamp: Date.now(),
         };
@@ -285,11 +372,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .eq('id', userId)
         .single();
       markOnboardingProgress('property', !!userRes.data?.property_address);
-    } catch (err) {
+    } catch (err: any) {
       console.error('[AppContext] loadUserData error:', err);
-      setError('Using cached data. Some updates may not be reflected.');
-      // DO NOT clear data on error - keep cached data intact
-      // This ensures data persistence even if Supabase is temporarily unavailable
+      if (err?.code === '42501' || err?.message?.includes('permission denied')) {
+        setError('Permission error loading data. Please log out and log in again.');
+      } else if (err?.code === 'PGRST301') {
+        setError('Session expired. Please refresh the page.');
+      } else {
+        setError(null);
+      }
     } finally {
       clearTimeout(timeoutId);
       setIsLoading(false);

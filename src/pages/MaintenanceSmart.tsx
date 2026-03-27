@@ -387,6 +387,19 @@ export function MaintenanceSmart() {
   // Check if AI analysis should be shown in modal
   const showAIAnalysis = canUseAI && newRequest.description.length >= 10;
 
+  // AI quota status for modals
+  const aiQuota = {
+    used: aiUsageCount,
+    limit: FREE_LIMIT + BONUS_LIMIT,
+    remaining: Math.max(0, (FREE_LIMIT + BONUS_LIMIT) - aiUsageCount),
+    tier: 'free' as const,
+    isUnlimited: false,
+    canProceed: aiUsageCount < FREE_LIMIT,
+    percentUsed: Math.min(100, (aiUsageCount / (FREE_LIMIT + BONUS_LIMIT)) * 100),
+    showWarning: aiUsageCount >= FREE_LIMIT && aiUsageCount < (FREE_LIMIT + BONUS_LIMIT),
+    showExceeded: aiUsageCount >= (FREE_LIMIT + BONUS_LIMIT),
+  };
+
   return (
     <div className="space-y-6">
       {/* AI Usage Modals */}
@@ -394,7 +407,7 @@ export function MaintenanceSmart() {
         isOpen={showWarningModal}
         onClose={() => setShowWarningModal(false)}
         onContinue={() => setShowWarningModal(false)}
-        quota={{ used: aiUsageCount, limit: FREE_LIMIT + BONUS_LIMIT }}
+        quota={aiQuota}
       />
       
       <AIUsageExceededModal
@@ -406,7 +419,7 @@ export function MaintenanceSmart() {
           tomorrow.setDate(tomorrow.getDate() + 1);
           localStorage.setItem('landlordbot_ai_reminder', tomorrow.toISOString());
         }}
-        quota={{ used: aiUsageCount, limit: FREE_LIMIT + BONUS_LIMIT }}
+        quota={aiQuota}
       />
 
       {/* Header with AI branding */}
@@ -438,7 +451,7 @@ export function MaintenanceSmart() {
       {isFreeTier && (
         <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
           <AIUsageBar
-            quota={{ used: aiUsageCount, limit: FREE_LIMIT + BONUS_LIMIT }}
+            quota={aiQuota}
             onClick={() => {
               if (aiUsageCount >= FREE_LIMIT && aiUsageCount < TOTAL_LIMIT) {
                 setShowWarningModal(true);

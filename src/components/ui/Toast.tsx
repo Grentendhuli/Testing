@@ -98,6 +98,7 @@ interface ToastState {
   message: string;
   type: ToastType;
   isVisible: boolean;
+  action?: { label: string; onClick: () => void };
 }
 
 export function useToast() {
@@ -107,16 +108,16 @@ export function useToast() {
     isVisible: false,
   });
 
-  const showToast = useCallback((message: string, type: ToastType = 'info') => {
-    setToast({ message, type, isVisible: true });
+  const showToast = useCallback((message: string, type: ToastType = 'info', action?: { label: string; onClick: () => void }) => {
+    setToast({ message, type, isVisible: true, action });
   }, []);
 
   const hideToast = useCallback(() => {
     setToast((prev) => ({ ...prev, isVisible: false }));
   }, []);
 
-  const showSuccess = useCallback((message: string) => {
-    showToast(message, 'success');
+  const showSuccess = useCallback((message: string, action?: { label: string; onClick: () => void }) => {
+    showToast(message, 'success', action);
   }, [showToast]);
 
   const showError = useCallback((message: string) => {

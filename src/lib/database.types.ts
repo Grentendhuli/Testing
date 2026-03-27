@@ -1,3 +1,40 @@
+/*
+ * REQUIRED SUPABASE MIGRATIONS — Run in SQL Editor before deploying
+ *
+ * ALTER TABLE public.units
+ * ADD COLUMN IF NOT EXISTS bedrooms integer DEFAULT 0,
+ * ADD COLUMN IF NOT EXISTS bathrooms numeric DEFAULT 0,
+ * ADD COLUMN IF NOT EXISTS square_feet integer DEFAULT 0,
+ * ADD COLUMN IF NOT EXISTS notes text,
+ * ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+ *
+ * ALTER TABLE public.users
+ * ADD COLUMN IF NOT EXISTS venmo_handle text,
+ * ADD COLUMN IF NOT EXISTS zelle_contact text,
+ * ADD COLUMN IF NOT EXISTS cashapp_tag text,
+ * ADD COLUMN IF NOT EXISTS paypal_handle text,
+ * ADD COLUMN IF NOT EXISTS preferred_payment_method text DEFAULT 'venmo';
+ *
+ * -- Enable RLS on all tables:
+ * ALTER TABLE public.units ENABLE ROW LEVEL SECURITY;
+ * ALTER TABLE public.leases ENABLE ROW LEVEL SECURITY;
+ * ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+ * ALTER TABLE public.maintenance_requests ENABLE ROW LEVEL SECURITY;
+ * ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
+ *
+ * -- Create RLS policies:
+ * CREATE POLICY IF NOT EXISTS "Users own their units"
+ * ON public.units FOR ALL USING (auth.uid() = user_id);
+ * CREATE POLICY IF NOT EXISTS "Users own their leases"
+ * ON public.leases FOR ALL USING (auth.uid() = user_id);
+ * CREATE POLICY IF NOT EXISTS "Users own their payments"
+ * ON public.payments FOR ALL USING (auth.uid() = user_id);
+ * CREATE POLICY IF NOT EXISTS "Users own their maintenance"
+ * ON public.maintenance_requests FOR ALL USING (auth.uid() = user_id);
+ * CREATE POLICY IF NOT EXISTS "Users own their leads"
+ * ON public.leads FOR ALL USING (auth.uid() = user_id);
+ */
+
 export interface Database {
   public: {
     Tables: {

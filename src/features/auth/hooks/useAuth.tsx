@@ -17,7 +17,6 @@ import {
 } from '@/utils/validation';
 import { identifyUser, resetUser } from '@/services/analytics';
 import { useMultiTabAuth } from '@/hooks/useMultiTabAuth';
-import { clearAllAutosaves } from '@/hooks/useAutosave';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -77,23 +76,6 @@ async function withRetry<T>(
   
   throw lastError;
 }
-
-// Deployment detection helper
-const detectNewDeployment = (): boolean => {
-  try {
-    const storedVersion = localStorage.getItem(SESSION_VERSION_KEY);
-    if (storedVersion !== CURRENT_SESSION_VERSION) {
-      localStorage.setItem(SESSION_VERSION_KEY, CURRENT_SESSION_VERSION);
-      if (storedVersion) {
-        console.log('[AuthContext] Deployment version changed:', storedVersion, '→', CURRENT_SESSION_VERSION);
-        return true;
-      }
-    }
-  } catch {
-    // Ignore localStorage errors
-  }
-  return false;
-};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   // ============================================================================
@@ -166,8 +148,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserData(null);
     saveUserDataToCache(null);
     updateAuthState('unauthenticated', null, null);
-    // Clear any form drafts on logout
-    clearAllAutosaves();
   }, [saveUserDataToCache, updateAuthState]);
 
   // Fetch user data with retry logic - creates record if it doesn't exist (for OAuth users)
@@ -201,8 +181,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Track user in analytics
         identifyUser(userDataResult.id, {
           email: userDataResult.email,
-          firstName: userDataResult.first_name,
-          lastName: userDataResult.last_name,
+          firstName: userDataResult.first_name || undefined,
+          lastName: userDataResult.last_name || undefined,
           subscriptionTier: userDataResult.subscription_tier,
           createdAt: userDataResult.created_at,
         });
@@ -263,8 +243,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Track new user in analytics
           identifyUser((createdUser as UserData).id, {
             email: (createdUser as UserData).email,
-            firstName: (createdUser as UserData).first_name,
-            lastName: (createdUser as UserData).last_name,
+            firstName: (createdUser as UserData).first_name || undefined,
+            lastName: (createdUser as UserData).last_name || undefined,
             subscriptionTier: (createdUser as UserData).subscription_tier,
             createdAt: (createdUser as UserData).created_at,
           });
@@ -352,12 +332,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           updateAuthState('unauthenticated', null, null);
           completeInitialization();
           return;
-        }
-
-        // Track deployment changes for debugging
-        const isNewDeployment = detectNewDeployment();
-        if (isNewDeployment) {
-          console.log('[AuthContext] New deployment detected');
         }
 
         // Check URL for auth tokens (OAuth callback handling)
@@ -455,11 +429,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 await fetchUserData(newSession.user.id);
               }
               break;
-            case 'TOKEN_REFRESHED_FAILURE':
-            case 'SESSION_EXPIRED':
-              // Show session expired modal instead of immediate redirect
-              console.log('[AuthContext] Session expired, showing modal');
-              setShowSessionExpiredModal(true);
+            default:
+              // Handle TOKEN_REFRESHED_FAILURE, SESSION_EXPIRED and any other events
+              if ((event as any) === 'TOKEN_REFRESHED_FAILURE' || (event as any) === 'SESSION_EXPIRED') {
+                console.log('[AuthContext] Session expired, showing modal');
+                setShowSessionExpiredModal(true);
+              }
               break;
             case 'INITIAL_SESSION':
               // Initial session from OAuth callback

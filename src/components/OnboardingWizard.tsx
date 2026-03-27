@@ -152,7 +152,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
       case 1: // Property
         return propertyAddress.length > 5 && unitCount > 0;
       case 2: // Phone
-        return botPhone.length >= 10 && ownerPhone.length >= 10 && selectedPhoneId !== '';
+        return botPhone.length >= 10 && ownerPhone.length >= 10;
       case 3: // Compliance
         return complianceItems.every(item => item.checked);
       case 4: // Units

@@ -84,7 +84,7 @@ export async function getUserSubscriptionTier(userId: string): AsyncResult<Subsc
       return Result.err(createError('TIER_FETCH_FAILED', 'Failed to fetch subscription tier', { originalError: error.message }));
     }
     
-    const tier = (data?.subscription_tier as SubscriptionTier) || 'free';
+    const tier = ((data as any)?.subscription_tier as SubscriptionTier) || 'free';
     return Result.ok(tier);
   } catch (error) {
     console.error('Error in getUserSubscriptionTier:', error);
