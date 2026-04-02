@@ -282,16 +282,3 @@ self.addEventListener('message', (event) => {
 });
 
 console.log('[SW v8] Service Worker registered');
-/ /   C a c h e   b u s t   
- 
- + 
- 
- 
- 
- F r i d a y ,   M a r c h   2 7 ,   2 0 2 6   3 : 4 5 : 2 2   P M 
- 
- 
- 
- 
- 
- 
