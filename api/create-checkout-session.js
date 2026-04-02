@@ -3,6 +3,11 @@
 
 import Stripe from 'stripe';
 
+// Fail-fast validation at startup
+if (!process.env.STRIPE_SECRET_KEY || !process.env.APP_URL) {
+  throw new Error('[create-checkout-session] Missing STRIPE_SECRET_KEY or APP_URL');
+}
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export default async function handler(req, res) {
@@ -26,8 +31,8 @@ export default async function handler(req, res) {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.VITE_APP_URL}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.VITE_APP_URL}/billing?canceled=true`,
+      success_url: `${process.env.APP_URL}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.APP_URL}/billing?canceled=true`,
       metadata: {
         user_id: userId,
         price_id: priceId,

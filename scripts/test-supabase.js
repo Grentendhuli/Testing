@@ -1,8 +1,15 @@
 // Test Supabase connection
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://qmnngzevquidtvcopjcu.supabase.co';
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtbm5nemV2cXVpZHR2Y29wamN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwNjY0MDgsImV4cCI6MjA4NzY0MjQwOH0.tVOtTl1C-FxddhspvFUQqO9_lDLCUuv6zs-1VwapoX0';
+// Use correct server-side env var names (no VITE_ prefix)
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Set SUPABASE_URL and SUPABASE_ANON_KEY before running');
+  console.error('Example: SUPABASE_URL=https://... SUPABASE_ANON_KEY=... node scripts/test-supabase.js');
+  process.exit(1);
+}
 
 async function testConnection() {
   console.log('Testing Supabase connection...');

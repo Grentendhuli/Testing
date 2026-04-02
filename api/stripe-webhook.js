@@ -4,12 +4,17 @@
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
+// Fail-fast validation at startup
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('[stripe-webhook] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+}
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 // Initialize Supabase admin client
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
