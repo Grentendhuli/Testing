@@ -1,5 +1,5 @@
 import { Result, AsyncResult, AppError, createError } from '../types/result';
-import { sanitizeAIInput, detectPromptInjection, sanitizeText } from '@/lib/sanitize';
+import { sanitizeAIInput, detectPromptInjection, sanitizeText, validateAIPrompt, validateAIHistory } from '@/lib/sanitize';
 import { 
   checkAIQuota, 
   incrementAIUsage, 
@@ -72,6 +72,15 @@ export async function askLandlordAssistant(
 ): AsyncResult<AIResponse<string>, AppError> {
   // Sanitize and validate input
   const sanitizedQuestion = sanitizeAIInput(question);
+  
+  // Validate prompt length (DoS prevention)
+  const lengthValidation = validateAIPrompt(sanitizedQuestion);
+  if (!lengthValidation.valid) {
+    return Result.ok({
+      success: false,
+      error: lengthValidation.error || 'Prompt exceeds maximum length.'
+    });
+  }
   
   if (detectPromptInjection(sanitizedQuestion)) {
     return Result.ok({
@@ -163,6 +172,22 @@ export async function triageMaintenanceRequest(
 ): AsyncResult<AIResponse<MaintenanceTriage>, AppError> {
   // Sanitize and validate input
   const sanitizedDescription = sanitizeAIInput(description);
+  
+  // Validate prompt length (DoS prevention)
+  const lengthValidation = validateAIPrompt(sanitizedDescription);
+  if (!lengthValidation.valid) {
+    return Result.ok({
+      success: false,
+      error: lengthValidation.error || 'Description exceeds maximum length.',
+      data: {
+        priority: 'Standard',
+        trade: 'General',
+        estimatedCostRange: '$100 - $500',
+        hpdRisk: false,
+        tenantMessage: 'Thank you for reporting this issue. We will address it promptly.',
+      }
+    });
+  }
   
   if (detectPromptInjection(sanitizedDescription)) {
     return Result.ok({
@@ -308,6 +333,16 @@ export async function draftLandlordLetter(
   const sanitizedUnitNumber = sanitizeText(unitNumber);
   const sanitizedDetails = sanitizeAIInput(details);
   
+  // Validate combined prompt length (DoS prevention)
+  const combinedPrompt = `${sanitizedPurpose} ${sanitizedTenantName} ${sanitizedUnitNumber} ${sanitizedDetails}`;
+  const lengthValidation = validateAIPrompt(combinedPrompt);
+  if (!lengthValidation.valid) {
+    return Result.ok({
+      success: false,
+      error: lengthValidation.error || 'Input exceeds maximum length.'
+    });
+  }
+  
   // Check for prompt injection
   if (detectPromptInjection(sanitizedPurpose) || detectPromptInjection(sanitizedDetails)) {
     return Result.ok({
@@ -417,6 +452,15 @@ export async function generateText(
 ): AsyncResult<AIResponse<string>, AppError> {
   // Sanitize input
   const sanitizedPrompt = sanitizeAIInput(prompt);
+  
+  // Validate prompt length (DoS prevention)
+  const lengthValidation = validateAIPrompt(sanitizedPrompt);
+  if (!lengthValidation.valid) {
+    return Result.ok({
+      success: false,
+      error: lengthValidation.error || 'Prompt exceeds maximum length.'
+    });
+  }
   
   // Check for prompt injection
   if (detectPromptInjection(sanitizedPrompt)) {

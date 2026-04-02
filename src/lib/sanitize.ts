@@ -98,6 +98,58 @@ export function detectPromptInjection(input: string): boolean {
 }
 
 /**
+ * AI Input Limits
+ * Prevents DoS via oversized prompts
+ */
+export const AI_LIMITS = {
+  MAX_PROMPT_LENGTH: 10000,      // 10KB max prompt
+  MAX_CONTEXT_LENGTH: 50000,     // 50KB max context
+  MAX_HISTORY_MESSAGES: 50,      // Max conversation history
+  MAX_MESSAGE_LENGTH: 2000,      // Max single message length
+} as const;
+
+/**
+ * Validates AI prompt length and returns error if exceeded
+ */
+export function validateAIPrompt(input: string): { valid: boolean; error?: string; truncated?: string } {
+  if (!input) {
+    return { valid: false, error: 'Prompt cannot be empty' };
+  }
+  
+  if (input.length > AI_LIMITS.MAX_PROMPT_LENGTH) {
+    return { 
+      valid: false, 
+      error: `Prompt exceeds maximum length of ${AI_LIMITS.MAX_PROMPT_LENGTH} characters (${input.length} provided)`,
+      truncated: input.slice(0, AI_LIMITS.MAX_PROMPT_LENGTH)
+    };
+  }
+  
+  return { valid: true };
+}
+
+/**
+ * Validates conversation history length
+ */
+export function validateAIHistory(history: { role: string; content: string }[]): { valid: boolean; error?: string } {
+  if (history.length > AI_LIMITS.MAX_HISTORY_MESSAGES) {
+    return { 
+      valid: false, 
+      error: `Conversation history exceeds maximum of ${AI_LIMITS.MAX_HISTORY_MESSAGES} messages` 
+    };
+  }
+  
+  const totalLength = history.reduce((sum, msg) => sum + (msg.content?.length || 0), 0);
+  if (totalLength > AI_LIMITS.MAX_CONTEXT_LENGTH) {
+    return { 
+      valid: false, 
+      error: `Total context length exceeds maximum of ${AI_LIMITS.MAX_CONTEXT_LENGTH} characters` 
+    };
+  }
+  
+  return { valid: true };
+}
+
+/**
  * Sanitizes AI prompt input - removes injection attempts
  */
 export function sanitizeAIInput(input: string | null | undefined): string {
