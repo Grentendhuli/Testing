@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { analytics } from '@/utils/analytics';
+import { useAuth } from '../hooks/useAuth';
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 
 // Auth callback states
@@ -9,9 +10,11 @@ type CallbackState = 'processing' | 'success' | 'error' | 'redirecting';
 
 export function AuthCallback() {
   const navigate = useNavigate();
+  const { isAuthenticated, isInitialized } = useAuth();
   const [callbackState, setCallbackState] = useState<CallbackState>('processing');
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const [oauthComplete, setOauthComplete] = useState(false);
   
   // Use refs to prevent duplicate processing and store mutable values
   const processedRef = useRef(false);
@@ -33,6 +36,14 @@ export function AuthCallback() {
       }
     };
   }, []);
+
+  // Watch for auth state change - navigate ONLY when AuthContext confirms authenticated
+  useEffect(() => {
+    if (oauthComplete && isAuthenticated && isInitialized) {
+      console.log('[AuthCallback] AuthContext confirmed authenticated, navigating to dashboard');
+      navigate('/dashboard', { replace: true });
+    }
+  }, [oauthComplete, isAuthenticated, isInitialized, navigate]);
 
   // Main auth processing effect - runs once on mount
   useEffect(() => {
@@ -61,7 +72,7 @@ export function AuthCallback() {
 
     // Helper: handle success
     const handleSuccess = async (user: any, source: string) => {
-      console.log(`[AuthCallback] Success from ${source}:`, user?.email);
+      console.log(`[AuthCallback] OAuth success from ${source}:`, user?.email);
       
       // Clear all polling and timeouts immediately
       if (pollIntervalRef.current) {
@@ -89,13 +100,8 @@ export function AuthCallback() {
         signup_method: signupMethod,
       });
       
-      // Wait for auth state to propagate before navigating
-      // This ensures useAuth has updated its state
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Trigger navigation
-      setCallbackState('redirecting');
-      navigate('/dashboard', { replace: true });
+      // Mark OAuth as complete - the useEffect above will watch for isAuthenticated
+      setOauthComplete(true);
     };
 
     // Helper: create user record
