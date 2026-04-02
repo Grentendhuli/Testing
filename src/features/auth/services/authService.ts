@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { sendWelcomeEmail } from '@/services/sendgrid';
+import { sanitizeEmail } from '@/lib/sanitize';
 import type { UserData } from '../types/auth.types';
 
 export const AUTH_STORAGE_KEY = 'landlordbot_auth';
@@ -7,8 +8,13 @@ export const AUTH_TIMESTAMP_KEY = 'landlordbot_auth_timestamp';
 
 export async function loginWithPassword(email: string, password: string) {
   try {
+    const sanitizedEmail = sanitizeEmail(email);
+    if (!sanitizedEmail) {
+      return { error: new Error('Invalid email address') };
+    }
+    
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: sanitizedEmail,
       password,
     });
     return { error };
@@ -24,8 +30,13 @@ export async function signupWithPassword(
   userData: Partial<UserData>
 ) {
   try {
+    const sanitizedEmail = sanitizeEmail(email);
+    if (!sanitizedEmail) {
+      return { data: null, error: new Error('Invalid email address') };
+    }
+    
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: sanitizedEmail,
       password,
       options: {
         data: {
@@ -149,8 +160,13 @@ export async function getCurrentSession() {
 
 export async function sendMagicLink(email: string) {
   try {
+    const sanitizedEmail = sanitizeEmail(email);
+    if (!sanitizedEmail) {
+      return { error: new Error('Invalid email address') };
+    }
+    
     const { error } = await supabase.auth.signInWithOtp({
-      email,
+      email: sanitizedEmail,
       options: {
         emailRedirectTo: window.location.origin + '/auth/callback',
       },

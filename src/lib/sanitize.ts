@@ -35,12 +35,39 @@ export function sanitizeRichText(input: string | null | undefined): string {
 
 /**
  * Validates and sanitizes email addresses
+ * Prevents: header injection, XSS, malformed addresses
  */
 export function sanitizeEmail(email: string | null | undefined): string {
   if (!email) return '';
   
   // Remove any HTML/script tags first
-  const clean = sanitizeInput(email);
+  let clean = sanitizeInput(email);
+  
+  // Prevent header injection - reject if contains newlines or carriage returns
+  if (/[\r\n]/.test(clean)) {
+    console.warn('[sanitizeEmail] Rejected email with CRLF injection attempt');
+    return '';
+  }
+  
+  // Trim whitespace
+  clean = clean.trim();
+  
+  // Check length (RFC 5321: max 254 chars, local part max 64)
+  if (clean.length > 254) {
+    console.warn('[sanitizeEmail] Rejected email exceeding max length');
+    return '';
+  }
+  
+  // Reject multiple @ symbols (common injection technique)
+  const atCount = (clean.match(/@/g) || []).length;
+  if (atCount !== 1) {
+    return '';
+  }
+  
+  // Reject suspicious characters that shouldn't be in emails
+  if (/[\s<>()[\]\\,;:]/g.test(clean)) {
+    return '';
+  }
   
   // Basic email validation regex
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -49,7 +76,13 @@ export function sanitizeEmail(email: string | null | undefined): string {
     return '';
   }
   
-  return clean.toLowerCase().trim();
+  // Additional check: domain must have at least one dot and valid chars
+  const [, domain] = clean.split('@');
+  if (!domain || domain.length > 253 || !/^[a-zA-Z0-9.-]+$/.test(domain)) {
+    return '';
+  }
+  
+  return clean.toLowerCase();
 }
 
 /**
