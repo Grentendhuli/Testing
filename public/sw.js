@@ -1,10 +1,10 @@
 /**
- * LandlordBot Service Worker v6.0
+ * LandlordBot Service Worker v8.0
  * Production-grade caching with offline support
  * Following Workbox strategy patterns
  */
 
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v8';
 const CACHE_NAMES = {
   static: `${CACHE_VERSION}-static`,      // Critical assets - 24h TTL
   assets: `${CACHE_VERSION}-assets`,     // JS/CSS bundles - 7 days TTL
@@ -41,27 +41,27 @@ const PRECACHE_URLS = [
 
 // Install event - precache critical assets
 self.addEventListener('install', (event) => {
-  console.log('[SW v6] Installing...');
+  console.log('[SW v8] Installing...');
   
   event.waitUntil(
     caches.open(CACHE_NAMES.static)
       .then((cache) => {
-        console.log('[SW v6] Precaching critical assets');
+        console.log('[SW v8] Precaching critical assets');
         return cache.addAll(PRECACHE_URLS);
       })
       .then(() => {
-        console.log('[SW v6] Precache complete');
+        console.log('[SW v8] Precache complete');
         return self.skipWaiting();
       })
       .catch((err) => {
-        console.error('[SW v6] Precache failed:', err);
+        console.error('[SW v8] Precache failed:', err);
       })
   );
 });
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('[SW v6] Activating...');
+  console.log('[SW v8] Activating...');
   
   event.waitUntil(
     caches.keys()
@@ -69,14 +69,14 @@ self.addEventListener('activate', (event) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
             if (!Object.values(CACHE_NAMES).includes(cacheName)) {
-              console.log('[SW v6] Deleting old cache:', cacheName);
+              console.log('[SW v8] Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('[SW v6] Activation complete');
+        console.log('[SW v8] Activation complete');
         return self.clients.claim();
       })
   );
@@ -86,6 +86,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
+  
+  // CRITICAL: Skip auth URLs immediately - OAuth flow should not be intercepted
+  if (url.pathname.startsWith('/auth/')) {
+    console.log('[SW v8] Bypassing auth URL:', url.pathname);
+    return;
+  }
   
   // Skip non-GET requests for caching (but allow through)
   if (request.method !== 'GET') {
@@ -145,7 +151,7 @@ async function networkFirstStrategy(request, cacheName) {
     const cachedResponse = await caches.match(request);
     
     if (cachedResponse) {
-      console.log('[SW v6] Serving from cache:', request.url);
+      console.log('[SW v8] Serving from cache:', request.url);
       return cachedResponse;
     }
     
@@ -177,7 +183,7 @@ async function cacheFirstStrategy(request, cacheName) {
     
     return networkResponse;
   } catch (error) {
-    console.error('[SW v6] Cache first failed:', error);
+    console.error('[SW v8] Cache first failed:', error);
     throw error;
   }
 }
@@ -196,7 +202,7 @@ async function staleWhileRevalidateStrategy(event, request, cacheName) {
       return networkResponse;
     })
     .catch((error) => {
-      console.log('[SW v6] Background fetch failed:', error);
+      console.log('[SW v8] Background fetch failed:', error);
       throw error;
     });
   
@@ -220,7 +226,7 @@ async function enforceCacheLimit(cacheName) {
   if (requests.length > limit) {
     const toDelete = requests.slice(0, requests.length - limit);
     await Promise.all(toDelete.map((request) => cache.delete(request)));
-    console.log('[SW v6] Evicted', toDelete.length, 'entries from', cacheName);
+    console.log('[SW v8] Evicted', toDelete.length, 'entries from', cacheName);
   }
 }
 
@@ -247,7 +253,7 @@ function isImageRequest(url) {
 // Background Sync for offline mutations
 self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-mutations') {
-    console.log('[SW v6] Background sync triggered');
+    console.log('[SW v8] Background sync triggered');
     event.waitUntil(syncOfflineMutations());
   }
 });
@@ -275,11 +281,17 @@ self.addEventListener('message', (event) => {
   }
 });
 
-console.log('[SW v6] Service Worker registered');
-/ /   C a c h e   b u s t    
- +  
-  
- F r i d a y ,   M a r c h   2 7 ,   2 0 2 6   3 : 4 5 : 2 2   P M  
-  
-  
+console.log('[SW v8] Service Worker registered');
+/ /   C a c h e   b u s t   
+ 
+ + 
+ 
+ 
+ 
+ F r i d a y ,   M a r c h   2 7 ,   2 0 2 6   3 : 4 5 : 2 2   P M 
+ 
+ 
+ 
+ 
+ 
  
