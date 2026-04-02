@@ -10,23 +10,17 @@
     <link rel="apple-touch-icon" sizes="167x167" href="/icons/apple-touch-icon-167x167.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://*.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.vapi.ai https://api.sendgrid.com https://api.twilio.com https://*.workers.dev https://data.cityofnewyork.us https://fonts.googleapis.com https://api.stripe.com; img-src 'self' data: https: blob:; frame-src 'self' https://js.stripe.com https://*.stripe.com; base-uri 'self'; form-action 'self';" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com https://*.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.vapi.ai https://api.sendgrid.com https://api.twilio.com https://*.workers.dev https://data.cityofnewyork.us https://fonts.googleapis.com https://api.stripe.com; img-src 'self' data: https: blob:; frame-src 'self' https://js.stripe.com https://*.stripe.com; base-uri 'self'; form-action 'self';" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="-1" />
     <title>LandlordBot AI — NYC Property Management</title>
     
-    <!-- Runtime Config: Allows env vars to be injected without rebuild -->
-    <script>
-      // Check for runtime-injected config from Vercel or server
-      (function() {
-        const runtimeConfig = window.__RUNTIME_CONFIG__;
-        if (runtimeConfig && runtimeConfig.VITE_CLOUDFLARE_WORKER_URL) {
-          window.__CLOUDFLARE_WORKER_URL__ = runtimeConfig.VITE_CLOUDFLARE_WORKER_URL;
-        }
-      })();
-    </script>
-    <!-- BUILD: 2026-03-12-0655-CACHE-BUST-v2 -->
+    <!-- Critical scripts moved to external file for CSP compliance -->
+    <script src="/critical-scripts.js"></script>
+    
+    <!-- Load React App -->
+    <script type="module" src="/src/main.tsx"></script>
     <!-- PWA Meta Tags -->
     <meta name="description" content="Free NYC property management software for NYC landlords. Automate rent collection, tenant screening, HPD compliance tracking, and Good Cause Eviction requirements. Save 10+ hours weekly." />
     <meta name="theme-color" content="#f59e0b" />
@@ -173,61 +167,6 @@
       <style>.safari-fallback { display: block !important; }</style>
     </noscript>
     
-    <script>
-      // Detect Safari and log to console
-      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-      if (isSafari) {
-        console.log('[Safari Detection] Safari browser detected');
-        window.safariDetected = true;
-      }
-      
-      // CRITICAL: Global error handler to show errors before React loads
-      window.__CRASH_ERRORS__ = [];
-      window.addEventListener('error', function(e) {
-        // Ignore CORS script errors (can't get details anyway)
-        if (e.message === 'Script error.' || e.filename === '') {
-          console.warn('[Global Error] CORS/script error from external source (ignored)');
-          return;
-        }
-        
-        console.error('[Global Error]', e.message, 'at', e.filename, ':', e.lineno);
-        window.__CRASH_ERRORS__.push({
-          message: e.message,
-          filename: e.filename,
-          lineno: e.lineno,
-          colno: e.colno,
-          error: e.error?.toString?.() || 'N/A'
-        });
-        
-        // Don't show generic script errors on screen
-        if (e.message !== 'Script error.') {
-          const errorDiv = document.getElementById('global-error-display');
-          if (errorDiv) {
-            errorDiv.style.display = 'block';
-            errorDiv.innerHTML += '<p style="margin:5px 0;font-size:12px;word-break:break-word;"><strong>Error:</strong> ' + 
-              e.message + ' (at ' + (e.filename || 'unknown') + ':' + e.lineno + ')</p>';
-          }
-        }
-      });
-      
-      // Also catch unhandled promise rejections
-      window.addEventListener('unhandledrejection', function(e) {
-        console.error('[Unhandled Rejection]', e.reason);
-        window.__CRASH_ERRORS__.push({
-          message: 'Unhandled Promise: ' + (e.reason?.message || e.reason),
-          filename: 'promise',
-          lineno: 0,
-          type: 'rejection'
-        });
-        
-        const errorDiv = document.getElementById('global-error-display');
-        if (errorDiv) {
-          errorDiv.style.display = 'block';
-          errorDiv.innerHTML += '<p style="margin:5px 0;font-size:12px;word-break:break-word;color:#991b1b;"><strong>Promise Error:</strong> ' + 
-            (e.reason?.message || e.reason) + '</p>';
-        }
-      });
-    </script>
   </head>
   <body class="font-sans antialiased">
     <!-- Global error display for mobile debugging -->
@@ -254,26 +193,9 @@
       </p>
     </div>
     
-    <!-- Service Worker Registration -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(reg => {
-              console.log('[SW] Service Worker registered:', reg.scope);
-            })
-            .catch(err => {
-              console.warn('[SW] Service Worker registration failed:', err);
-            });
-        });
-      }
-    </script>
+    <!-- Critical scripts moved to external file for CSP compliance -->
+    <script src="/critical-scripts.js"></script>
     
-    <!-- Mark JS as loaded -->
-    <script>
-      document.documentElement.classList.add('js-loaded');
-    </script>
-
     <!-- Load React App -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
