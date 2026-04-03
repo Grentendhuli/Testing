@@ -208,18 +208,38 @@ export function AuthCallback() {
         // If we have a code in URL but no session, manually exchange it
         if (code) {
           console.log('[AuthCallback] Code detected but no session, exchanging...');
-          const { data: { session: exchangedSession }, error: exchangeError } = 
-            await supabase.auth.exchangeCodeForSession(code);
+          console.log('[AuthCallback] Code value:', code.substring(0, 10) + '...');
           
-          if (exchangeError) {
-            handleError(`Code exchange failed: ${exchangeError.message}`, exchangeError);
+          // Check if method exists
+          if (typeof supabase.auth.exchangeCodeForSession !== 'function') {
+            console.error('[AuthCallback] exchangeCodeForSession method not available');
+            handleError('Auth method not available. Please refresh and try again.');
             return;
           }
           
-          if (exchangedSession?.user) {
-            console.log('[AuthCallback] Session exchanged successfully:', exchangedSession.user.email);
-            await createUserIfNeeded(exchangedSession.user);
-            handleSuccess(exchangedSession.user, 'code_exchange');
+          try {
+            const { data: { session: exchangedSession }, error: exchangeError } = 
+              await supabase.auth.exchangeCodeForSession(code);
+            
+            if (exchangeError) {
+              console.error('[AuthCallback] Exchange error:', exchangeError);
+              handleError(`Code exchange failed: ${exchangeError.message}`, exchangeError);
+              return;
+            }
+            
+            if (exchangedSession?.user) {
+              console.log('[AuthCallback] Session exchanged successfully:', exchangedSession.user.email);
+              await createUserIfNeeded(exchangedSession.user);
+              handleSuccess(exchangedSession.user, 'code_exchange');
+              return;
+            } else {
+              console.error('[AuthCallback] Exchange succeeded but no session returned');
+              handleError('Authentication completed but session not created. Please try again.');
+              return;
+            }
+          } catch (exchangeErr: any) {
+            console.error('[AuthCallback] Exchange exception:', exchangeErr);
+            handleError(`Exchange error: ${exchangeErr.message || 'Unknown error'}`, exchangeErr);
             return;
           }
         }
