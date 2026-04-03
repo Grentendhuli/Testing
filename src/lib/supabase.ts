@@ -10,7 +10,7 @@ export type TableUpdate<T extends keyof Tables> = Tables[T]['Update'];
 const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
 const supabaseKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY;
 
-if (import.meta.env.DEV) {
+if ((import.meta as any).env?.DEV) {
   console.log('[Supabase Debug] URL exists:', !!supabaseUrl);
   console.log('[Supabase Debug] Key exists:', !!supabaseKey);
 }
@@ -97,7 +97,7 @@ if (!isValidUrl || !isValidKey) {
         localStorage.setItem(key, value);
         
         // Debug logging for PKCE verifier
-        if (key.includes('code-verifier') && import.meta.env.DEV) {
+        if (key.includes('code-verifier') && (import.meta as any).env?.DEV) {
           console.log('[Supabase] Code verifier stored:', key);
         }
       } catch (e) {

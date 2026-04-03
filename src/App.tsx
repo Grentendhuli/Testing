@@ -108,10 +108,14 @@ function AuthLoadingSpinner() {
 
 // Protected Layout wrapper with session management
 function Layout({ children }: { children: React.ReactNode }) {
-  const { showWarning, timeRemaining, dismissWarning } = useSessionManager();
+  const sessionManager = useSessionManager();
+  const showWarning = sessionManager?.showWarning ?? false;
+  const timeRemaining = sessionManager?.timeRemaining ?? 0;
+  const dismissWarning = sessionManager?.dismissWarning ?? (() => {});
   
   return (
     <div className="flex min-h-screen bg-slate-50 transition-colors duration-200">
+      {/* Session Warning Modal - shown 5 min before idle logout */}
       {showWarning && (
         <SessionWarningModal 
           timeRemaining={timeRemaining} 

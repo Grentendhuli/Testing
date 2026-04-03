@@ -86,7 +86,7 @@ export async function signInWithGoogle() {
     sessionStorage.setItem('oauth_start_time', Date.now().toString());
     
     // Log current storage state before OAuth
-    if (import.meta.env.DEV) {
+    if ((import.meta as any).env?.DEV) {
       const supabaseKeys = Object.keys(localStorage).filter(k => 
         k.includes('sb-') || k.includes('code-verifier')
       );
