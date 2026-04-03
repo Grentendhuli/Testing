@@ -355,7 +355,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // Normal initialization (not OAuth callback)
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+        // CRITICAL: Wrap getSession in timeout to prevent hanging
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('getSession timeout')), 5000)
+        );
+        const { data: { session: currentSession }, error: sessionError } = await Promise.race([sessionPromise, timeoutPromise]).catch(err => {
+          console.warn('[AuthContext] getSession timed out or failed:', err);
+          return { data: { session: null }, error: err };
+        }) as { data: { session: Session | null }; error: Error | null };
         
         if (sessionError) {
           console.error('[AuthContext] getSession error:', sessionError);
