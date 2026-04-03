@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/features/auth';
 import { AppProvider } from './context/AppContext';
