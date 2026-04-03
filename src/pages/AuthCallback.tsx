@@ -205,6 +205,25 @@ export function AuthCallback() {
           return;
         }
 
+        // If we have a code in URL but no session, manually exchange it
+        if (code) {
+          console.log('[AuthCallback] Code detected but no session, exchanging...');
+          const { data: { session: exchangedSession }, error: exchangeError } = 
+            await supabase.auth.exchangeCodeForSession(code);
+          
+          if (exchangeError) {
+            handleError(`Code exchange failed: ${exchangeError.message}`, exchangeError);
+            return;
+          }
+          
+          if (exchangedSession?.user) {
+            console.log('[AuthCallback] Session exchanged successfully:', exchangedSession.user.email);
+            await createUserIfNeeded(exchangedSession.user);
+            handleSuccess(exchangedSession.user, 'code_exchange');
+            return;
+          }
+        }
+
         // If no session yet, wait for auth state change
         console.log('[AuthCallback] No session yet, waiting for auth state change...');
         
