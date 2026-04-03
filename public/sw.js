@@ -184,7 +184,12 @@ async function cacheFirstStrategy(request, cacheName) {
   }
   
   try {
-    const networkResponse = await fetch(request);
+    // Use CORS mode for external font requests to avoid CSP issues
+    const isExternalFont = request.url.includes('fonts.gstatic.com') || 
+                           request.url.includes('fonts.googleapis.com');
+    const fetchOptions = isExternalFont ? { mode: 'cors', credentials: 'omit' } : {};
+    
+    const networkResponse = await fetch(request, fetchOptions);
     
     if (networkResponse.ok) {
       const cache = await caches.open(cacheName);
@@ -250,6 +255,7 @@ function isAPIRequest(url) {
 
 function isFontRequest(url) {
   return url.hostname === 'fonts.gstatic.com' ||
+         url.hostname === 'fonts.googleapis.com' ||
          url.pathname.match(/\.(woff2?|ttf|otf|eot)$/);
 }
 
