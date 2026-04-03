@@ -199,6 +199,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     
     // Persist auth state
+  const updateAuthState = useCallback((
+    newState: AuthState, 
+    newUser: User | null, 
+    newSession: Session | null,
+    newUserData?: UserData | null
+  ) => {
+    setAuthState(newState);
+    setUser(newUser);
+    setSession(newSession);
+    if (newUserData !== undefined) {
+      setUserData(newUserData);
+    }
+    
+    // Persist auth state
     if (newState === 'authenticated' && newUser) {
       safeStorage.set(AUTH_STATE_KEY, JSON.stringify({
         user: { id: newUser.id, email: newUser.email },
@@ -212,164 +226,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Initialize auth
+  // Sequential Initialization Pattern:
+  // 1. Set up listener FIRST
+  // 2. Call getSession() AFTER listener is ready
+  // 3. Listener handles ALL auth state updates
   useEffect(() => {
-    // Skip if already initialized
-    if (isInitialized) {
-      console.log('[AuthContext] initAuth skipped - already initialized');
-      return;
-    }
-    
-    // Skip if init already in progress (prevents duplicate runs)
-    if (initRef.current) {
-      console.log('[AuthContext] initAuth skipped - already in progress');
-      return;
-    }
-    
-    // Skip if auth already resolved via onAuthStateChange
-    if (authState === 'authenticated' || authState === 'unauthenticated') {
-      console.log('[AuthContext] initAuth skipped - auth already resolved:', authState);
-      setIsInitialized(true);
-      return;
-    }
-    
+    // Guard: Only run once
+    if (initRef.current) return;
     initRef.current = true;
-    console.log('[AuthContext] initAuth starting...');
+    
+    console.log('[AuthContext] Setting up auth...');
 
-    const initAuth = async () => {
-      if (!supabase?.auth?.getSession) {
-        updateAuthState('unauthenticated', null, null);
-        setIsInitialized(true);
-        return;
-      }
-
-      try {
-        // Load from cache first for immediate UI
-        const cachedUserData = loadUserDataFromCache();
-        
-        // Get current session with 5s timeout (prevents infinite hang)
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise<{data: {session: null}, error: Error}>((_, reject) => 
-          setTimeout(() => reject(new Error('Session check timeout')), 5000)
-        );
-        const { data: { session: currentSession }, error: sessionError } = 
-          await Promise.race([sessionPromise, timeoutPromise]).catch(() => ({ 
-            data: { session: null }, 
-            error: new Error('Session check timeout') 
-          }));
-        
-        if (sessionError) {
-          console.error('[AuthContext] getSession error:', sessionError);
-          // Try to recover from cache
-          if (cachedUserData) {
-            setUserData(cachedUserData);
+    // Step 1: Define the handler - this is the SINGLE SOURCE OF TRUTH for auth state
+    const handleAuthStateChange = async (event: string, newSession: Session | null) => {
+      console.log('[AuthContext] onAuthStateChange:', event, newSession?.user?.email);
+      
+      switch (event) {
+        case 'SIGNED_IN':
+          if (newSession?.user) {
+            await fetchUserData(newSession.user.id);
+            updateAuthState('authenticated', newSession.user, newSession);
           }
+          setIsInitialized(true);
+          break;
+        case 'SIGNED_OUT':
+          setUserData(null);
+          saveUserDataToCache(null);
           updateAuthState('unauthenticated', null, null);
           setIsInitialized(true);
-          return;
-        }
-
-        if (currentSession?.user) {
-          // Show cached data immediately while fetching fresh
-          if (cachedUserData && cachedUserData.id === currentSession.user.id) {
-            setUserData(cachedUserData);
+          break;
+        case 'TOKEN_REFRESHED':
+          if (newSession) {
+            setSession(newSession);
           }
-          
-          // Fetch fresh data
-          await fetchUserData(currentSession.user.id);
-          updateAuthState('authenticated', currentSession.user, currentSession);
-        } else {
-          // Check for expired session in cache
-          const authed = safeStorage.get(AUTH_STATE_KEY);
-          if (authed) {
-            const parsed = JSON.parse(authed);
-            const age = Date.now() - parsed.timestamp;
-            // If less than 7 days, try to refresh
-            if (age < CACHE_TTL_MS) {
-              await refreshSession();
-            } else {
-              updateAuthState('unauthenticated', null, null);
-            }
+          break;
+        case 'USER_UPDATED':
+          if (newSession?.user) {
+            setUser(newSession.user);
+            await fetchUserData(newSession.user.id);
+          }
+          break;
+        case 'INITIAL_SESSION':
+          // This is the core initialization event
+          if (newSession?.user) {
+            await fetchUserData(newSession.user.id);
+            updateAuthState('authenticated', newSession.user, newSession);
           } else {
             updateAuthState('unauthenticated', null, null);
           }
-        }
-      } catch (error) {
-        console.error('[AuthContext] initAuth error:', error);
-        // Try cache as last resort
-        const cached = loadUserDataFromCache();
-        if (cached) {
-          setUserData(cached);
-        }
-        updateAuthState('unauthenticated', null, null);
-      } finally {
-        console.log('[AuthContext] initAuth complete, setting isInitialized=true');
-        setIsInitialized(true);
+          setIsInitialized(true);
+          break;
       }
     };
 
-    initAuth();
-  }, [fetchUserData, loadUserDataFromCache, updateAuthState]);
+    // Step 2: Set up listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
-  // Auth state change listener
-  useEffect(() => {
-    if (!supabase?.auth?.onAuthStateChange) return;
-    
-    console.log('[AuthContext] Setting up onAuthStateChange listener');
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        // Guard: Skip events during initial auth setup to prevent race conditions
-        if (!initRef.current) {
-          console.log('[AuthContext] onAuthStateChange event skipped - init in progress:', event);
-          return;
-        }
-        
-        if (authChangeRef.current) return;
-        authChangeRef.current = true;
-        
-        setTimeout(() => { authChangeRef.current = false; }, 100);
-
-        switch (event) {
-          case 'SIGNED_IN':
-            if (newSession?.user) {
-              await fetchUserData(newSession.user.id);
-              updateAuthState('authenticated', newSession.user, newSession);
-              // Ensure initialization is marked complete
-              setIsInitialized(true);
-            }
-            break;
-          case 'SIGNED_OUT':
-            setUserData(null);
-            saveUserDataToCache(null);
-            updateAuthState('unauthenticated', null, null);
-            setIsInitialized(true);
-            break;
-          case 'TOKEN_REFRESHED':
-            if (newSession) {
-              setSession(newSession);
-            }
-            break;
-          case 'USER_UPDATED':
-            if (newSession?.user) {
-              setUser(newSession.user);
-              // Re-fetch userData after update
-              await fetchUserData(newSession.user.id);
-            }
-            break;
-          case 'INITIAL_SESSION':
-            // Handle initial session
-            if (newSession?.user) {
-              await fetchUserData(newSession.user.id);
-              updateAuthState('authenticated', newSession.user, newSession);
-            } else {
-              updateAuthState('unauthenticated', null, null);
-            }
-            setIsInitialized(true);
-            break;
-        }
-      }
-    );
+    // Step 3: Trigger session check AFTER listener is ready
+    // Result is ignored - listener handles the update via INITIAL_SESSION event
+    supabase.auth.getSession().catch(console.error);
 
     return () => subscription.unsubscribe();
   }, [fetchUserData, updateAuthState, saveUserDataToCache]);
