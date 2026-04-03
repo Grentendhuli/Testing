@@ -335,12 +335,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }, 10000);
 
       try {
+        console.log('[AuthContext] Starting initAuth...');
         if (!supabase || typeof supabase.auth?.getSession !== 'function') {
           console.warn('[AuthContext] Supabase not initialized');
           updateAuthState('unauthenticated', null, null);
           completeInitialization();
           return;
         }
+        console.log('[AuthContext] Supabase OK, checking callback...');
 
         // CRITICAL FIX: Check if we're on OAuth callback page
         isCallbackPageRef.current = checkIsCallbackPage();
@@ -394,6 +396,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('[AuthContext] initAuth error:', error);
         updateAuthState('unauthenticated', null, null);
       } finally {
+        console.log('[AuthContext] initAuth finally block reached, completed:', completed);
         clearTimeout(safetyTimeout);
         completeInitialization();
       }
