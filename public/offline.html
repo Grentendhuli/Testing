@@ -100,9 +100,23 @@
       <button class="btn-primary" onclick="window.location.reload()">Try Again</button>
       <button class="btn-secondary" onclick="window.location.href='/'">Go Home</button>
     </div>
+    
+    <p style="margin-top: 24px; font-size: 12px; color: #94a3b8;">
+      If this error persists, <a href="#" onclick="clearCacheAndReload();return false;" style="color: #64748b;">clear cache and reload</a>
+    </p>
   </div>
   
   <script>
+    // Clear service worker cache and reload
+    async function clearCacheAndReload() {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map(r => r.unregister()));
+        console.log('[SW] Unregistered all service workers');
+      }
+      window.location.reload();
+    }
+    
     // Check for queued items in localStorage
     const queue = JSON.parse(localStorage.getItem('offline-mutation-queue') || '[]');
     if (queue.length > 0) {

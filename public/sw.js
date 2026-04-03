@@ -139,6 +139,12 @@ async function networkFirstStrategy(request, cacheName) {
   try {
     const networkResponse = await fetch(request);
     
+    // Check for 404 - don't cache or serve offline page for missing routes
+    if (networkResponse.status === 404) {
+      console.log('[SW v8] Route 404, not caching:', request.url);
+      return networkResponse; // Return actual 404
+    }
+    
     if (networkResponse.ok) {
       const cache = await caches.open(cacheName);
       await cache.put(request, networkResponse.clone());
@@ -146,8 +152,12 @@ async function networkFirstStrategy(request, cacheName) {
       return networkResponse;
     }
     
-    throw new Error('Network response not ok');
+    // For other error statuses (500, etc), still try cache
+    throw new Error('Network response not ok: ' + networkResponse.status);
   } catch (error) {
+    // Only show offline page for actual network errors, not HTTP errors
+    const isNetworkError = !error.status || error.status === 0 || error.message?.includes('fetch');
+    
     const cachedResponse = await caches.match(request);
     
     if (cachedResponse) {
@@ -155,8 +165,9 @@ async function networkFirstStrategy(request, cacheName) {
       return cachedResponse;
     }
     
-    // If offline and it's a navigation request, show offline page
-    if (request.mode === 'navigate') {
+    // Only show offline.html for actual network failures
+    if (isNetworkError && request.mode === 'navigate') {
+      console.log('[SW v8] Network error, showing offline page');
       return caches.match('/offline.html');
     }
     

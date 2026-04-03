@@ -11,11 +11,13 @@
   }
 })();
 
-// Detect Safari
-const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-if (isSafari) {
-  console.log('[Safari Detection] Safari browser detected');
-  window.safariDetected = true;
+// Detect Safari (guard against duplicate declaration)
+if (typeof window.isSafari === 'undefined') {
+  window.isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  if (window.isSafari) {
+    console.log('[Safari Detection] Safari browser detected');
+    document.documentElement.classList.add('safari');
+  }
 }
 
 // Mark JS as loaded
