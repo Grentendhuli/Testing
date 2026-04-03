@@ -123,10 +123,10 @@ function Layout({ children }: { children: React.ReactNode }) {
 
 // Public routes don't require auth
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isInitialized, isLoading } = useAuth();
+  const { isAuthenticated, isInitialized } = useAuth();
   
   // Wait for auth initialization before making any decisions
-  if (!isInitialized || isLoading) {
+  if (!isInitialized) {
     return <AuthLoadingSpinner />;
   }
   
@@ -140,12 +140,12 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 // Protected routes require auth
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isInitialized, isLoading, showSessionExpiredModal, setShowSessionExpiredModal } = useAuth();
+  const { isAuthenticated, isInitialized, showSessionExpiredModal, setShowSessionExpiredModal } = useAuth();
   const location = useLocation();
   
   // CRITICAL: Wait for auth initialization before making ANY decisions
   // This prevents the redirect loop caused by race conditions
-  if (!isInitialized || isLoading) {
+  if (!isInitialized) {
     return <AuthLoadingSpinner />;
   }
   
