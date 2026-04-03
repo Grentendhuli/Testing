@@ -4,18 +4,10 @@ import { LogoMark } from './LogoMark';
 
 interface AuthLoadingScreenProps {
   message?: string;
-  showDebug?: boolean;
-  isInitialized?: boolean;
-  isLoading?: boolean;
-  authState?: string;
 }
 
 export function AuthLoadingScreen({
   message = 'Loading...',
-  showDebug = false,
-  isInitialized,
-  isLoading,
-  authState,
 }: AuthLoadingScreenProps) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
@@ -64,22 +56,6 @@ export function AuthLoadingScreen({
             }}
           />
         </motion.div>
-
-        {/* Debug info */}
-        {showDebug && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="mt-6 p-4 bg-slate-100 dark:bg-slate-900 rounded-lg text-left text-xs text-slate-500 font-mono max-w-xs mx-auto"
-          >
-            <p className="font-semibold mb-2">Debug Info:</p>
-            <p>isInitialized: {isInitialized !== undefined ? (isInitialized ? 'true' : 'false') : 'undefined'}</p>
-            <p>isLoading: {isLoading !== undefined ? (isLoading ? 'true' : 'false') : 'undefined'}</p>
-            <p>authState: {authState || 'undefined'}</p>
-            <p className="mt-2 text-amber-600">If stuck here &gt;8s, check console (F12)</p>
-          </motion.div>
-        )}
       </motion.div>
     </div>
   );

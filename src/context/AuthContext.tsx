@@ -214,8 +214,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Initialize auth
   useEffect(() => {
-    if (initRef.current) return;
+    if (initRef.current) {
+      console.log('[AuthContext] initAuth skipped - already initialized');
+      return;
+    }
     initRef.current = true;
+    
+    console.log('[AuthContext] initAuth starting...');
 
     const initAuth = async () => {
       if (!supabase?.auth?.getSession) {
@@ -284,6 +289,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         updateAuthState('unauthenticated', null, null);
       } finally {
+        console.log('[AuthContext] initAuth complete, setting isInitialized=true');
         setIsInitialized(true);
       }
     };
@@ -294,9 +300,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Auth state change listener
   useEffect(() => {
     if (!supabase?.auth?.onAuthStateChange) return;
+    
+    console.log('[AuthContext] Setting up onAuthStateChange listener');
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
+        // Guard: Skip events during initial auth setup to prevent race conditions
+        if (!initRef.current) {
+          console.log('[AuthContext] onAuthStateChange event skipped - init in progress:', event);
+          return;
+        }
+        
         if (authChangeRef.current) return;
         authChangeRef.current = true;
         

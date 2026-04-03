@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/features/auth';
 import { AppProvider } from './context/AppContext';
@@ -101,23 +101,7 @@ function NavigationTracker() {
 
 // Loading spinner component - uses AuthLoadingScreen
 function AuthLoadingSpinner() {
-  const { isInitialized, isLoading, authState } = useAuth();
-  const [showDebug, setShowDebug] = useState(false);
-  
-  useEffect(() => {
-    const timer = setTimeout(() => setShowDebug(true), 3000);
-    return () => clearTimeout(timer);
-  }, []);
-  
-  return (
-    <AuthLoadingScreen
-      message="Loading..."
-      showDebug={showDebug}
-      isInitialized={isInitialized}
-      isLoading={isLoading}
-      authState={authState}
-    />
-  );
+  return <AuthLoadingScreen message="Loading..." />;
 }
 
 // Protected Layout wrapper
