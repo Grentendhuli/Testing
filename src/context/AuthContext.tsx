@@ -214,12 +214,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Initialize auth
   useEffect(() => {
+    // Guard against duplicate initialization OR if already authenticated
     if (initRef.current) {
       console.log('[AuthContext] initAuth skipped - already initialized');
       return;
     }
-    initRef.current = true;
     
+    if (authState === 'authenticated' || authState === 'unauthenticated') {
+      console.log('[AuthContext] initAuth skipped - auth already resolved:', authState);
+      return;
+    }
+    
+    initRef.current = true;
     console.log('[AuthContext] initAuth starting...');
 
     const initAuth = async () => {
@@ -295,7 +301,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     initAuth();
-  }, [fetchUserData, loadUserDataFromCache, updateAuthState]);
+  }, [fetchUserData, loadUserDataFromCache, updateAuthState, authState]);
 
   // Auth state change listener
   useEffect(() => {
