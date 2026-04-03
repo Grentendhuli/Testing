@@ -362,7 +362,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (newSession?.user) {
               await fetchUserData(newSession.user.id);
               updateAuthState('authenticated', newSession.user, newSession);
+            } else {
+              updateAuthState('unauthenticated', null, null);
             }
+            setIsInitialized(true);
             break;
         }
       }
