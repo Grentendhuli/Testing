@@ -63,9 +63,17 @@ window.addEventListener('error', function(e) {
 });
 
 window.addEventListener('unhandledrejection', function(e) {
+  const message = e.reason?.message || e.reason;
+  
+  // Ignore Supabase lock contention errors (handled internally by GoTrue)
+  if (typeof message === 'string' && message.includes('Lock broken by another request')) {
+    console.warn('[Supabase Lock] Ignoring non-critical lock contention:', message);
+    return;
+  }
+  
   console.error('[Unhandled Rejection]', e.reason);
   window.__CRASH_ERRORS__.push({
-    message: 'Unhandled Promise: ' + (e.reason?.message || e.reason),
+    message: 'Unhandled Promise: ' + message,
     filename: 'promise',
     lineno: 0,
     type: 'rejection'
@@ -75,6 +83,6 @@ window.addEventListener('unhandledrejection', function(e) {
   if (errorDiv) {
     errorDiv.style.display = 'block';
     errorDiv.innerHTML += '<p style="margin:5px 0;font-size:12px;word-break:break-word;color:#991b1b;"><strong>Promise Error:</strong> ' + 
-      (e.reason?.message || e.reason) + '</p>';
+      message + '</p>';
   }
 });
