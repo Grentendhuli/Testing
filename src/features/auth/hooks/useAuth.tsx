@@ -334,17 +334,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Check URL for auth tokens (OAuth callback handling)
+        // Check URL for OAuth callback (code in query or tokens in hash)
+        const query = window.location.search;
         const hash = window.location.hash;
+        const hasCode = query.includes('code=');
         const hasAuthTokens = hash.includes('access_token=') || hash.includes('refresh_token=');
+        const isAuthCallback = window.location.pathname.includes('/auth/callback');
         
-        if (hasAuthTokens) {
-          console.log('[AuthContext] Auth tokens detected in URL, waiting for callback processing...');
-          // Don't complete initialization yet - let AuthCallback handle it
-          // We'll complete when auth state changes
+        if (hasCode || hasAuthTokens || isAuthCallback) {
+          console.log('[AuthContext] OAuth callback detected, waiting for code exchange...');
+          
+          // Wait a bit for Supabase to auto-detect and exchange the code
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Check if session was established
+          const { data: { session: newSession } } = await supabase.auth.getSession();
+          
+          if (newSession?.user) {
+            console.log('[AuthContext] Session established after callback:', newSession.user.email);
+            await fetchUserData(newSession.user.id, newSession.user);
+            updateAuthState('authenticated', newSession.user, newSession);
+          } else {
+            console.log('[AuthContext] No session after callback wait');
+            updateAuthState('unauthenticated', null, null);
+          }
+          
+          completeInitialization();
+          clearTimeout(safetyTimeout);
+          return;
         }
 
-        // Get existing session
+        // Get existing session (non-OAuth flow)
         const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
@@ -642,6 +662,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ============================================================================
   // SECTION 7: RENDER - Context Provider
   // ============================================================================
+
+  // Debug - expose to window for debugging
+  useEffect(() => {
+    (window as any).__AUTH_CONTEXT = {
+      isInitialized,
+      isLoading,
+      authState,
+      isAuthenticated,
+      user: user?.email,
+      session: session?.user?.email,
+      refreshSession,
+    };
+  }, [isInitialized, isLoading, authState, isAuthenticated, user, session, refreshSession]);
 
   return (
     <AuthContext.Provider
