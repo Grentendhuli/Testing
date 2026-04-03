@@ -178,6 +178,11 @@ export function AuthCallback() {
     debug += `- error_description: ${errorDesc || 'NO'}\n`;
     debug += `- code: ${code ? 'YES' : 'NO'}\n`;
 
+    // PKCE debug info
+    const codeVerifier = localStorage.getItem('sb-qmnngzevquidtvcopjcu-auth-code-verifier');
+    debug += `- code_verifier: ${codeVerifier ? 'YES (in localStorage)' : 'NO (missing!'}\n`;
+    debug += `- storage key: lb-auth-token exists: ${!!localStorage.getItem('lb-auth-token')}\n`;
+
     setDebugInfo(debug);
 
     // Handle URL errors first
@@ -343,6 +348,27 @@ export function AuthCallback() {
         <p className="mt-1 text-xs text-slate-400">
           This may take a few seconds
         </p>
+        
+        {/* Manual retry button - appears after delay */}
+        <div className="mt-6">
+          <button
+            onClick={() => {
+              // Clear processed flag and retry
+              processedRef.current = false;
+              window.location.reload();
+            }}
+            className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors text-sm"
+          >
+            Retry Authentication
+          </button>
+          <button
+            onClick={() => navigate('/login')}
+            className="ml-2 px-4 py-2 text-slate-500 hover:text-slate-700 text-sm"
+          >
+            Back to Login
+          </button>
+        </div>
+        
         {debugInfo && (
           <div className="mt-6 p-4 bg-slate-100 rounded-lg text-left max-w-md mx-auto">
             <p className="text-xs font-mono text-slate-600 whitespace-pre-wrap break-all">
