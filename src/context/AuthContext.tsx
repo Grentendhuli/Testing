@@ -198,20 +198,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     
     // Persist auth state
-  const updateAuthState = useCallback((
-    newState: AuthState, 
-    newUser: User | null, 
-    newSession: Session | null,
-    newUserData?: UserData | null
-  ) => {
-    setAuthState(newState);
-    setUser(newUser);
-    setSession(newSession);
-    if (newUserData !== undefined) {
-      setUserData(newUserData);
-    }
-    
-    // Persist auth state
     if (newState === 'authenticated' && newUser) {
       safeStorage.set(AUTH_STATE_KEY, JSON.stringify({
         user: { id: newUser.id, email: newUser.email },
