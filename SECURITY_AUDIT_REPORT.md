@@ -1,336 +1,321 @@
-# LandlordBot LIVE Security Audit Report
+# LandlordBot Security Audit Report
 
-**Date:** Thursday, March 19th, 2026 — 4:30 AM (America/New_York)  
-**Auditor:** Claude (OpenClaw Security Audit Task)  
-**Scope:** Full application security review including prompt injection, input validation, authentication, API security, dependencies, and deployment headers
+**Audit Date:** 2026-04-02  
+**Auditor:** Security Audit Bot  
+**Location:** C:\Users\grent\.openclaw\workspace\landlord-bot-testing
 
 ---
 
 ## Executive Summary
 
-**Overall Security Posture: GOOD** ✅
-
-The LandlordBot LIVE deployment demonstrates **strong security practices** with proper input sanitization, prompt injection defenses, secure authentication via Supabase, and comprehensive security headers. No critical or high-severity vulnerabilities were identified.
-
-**Key Strengths:**
-- Multi-layered prompt injection protection (client + server-side)
-- DOMPurify-based XSS prevention
-- Secure CSP and security headers
-- No vulnerable npm dependencies
-- Proper environment variable handling (no secrets exposed)
-- Rate limiting and quota management for AI features
-
-**Minor Findings:** 2 Low-severity items identified
+This security audit examined the LandlordBot codebase across 7 key areas. **4 High/Critical issues** and **7 Medium/Low issues** were identified. The most critical issues involve dependency vulnerabilities, missing middleware enforcement for AI limits, and potential bot token exposure in RLS policies.
 
 ---
 
-## Detailed Findings
+## Critical Issues (Immediate Action Required)
 
-### 1. PROMPT INJECTION DETECTION ✅ SECURE
+### 1. 🔴 CRITICAL: Bot Token Stored in Plain Text in Database
+**Severity:** Critical  
+**Location:** `supabase/migrations/20260324000000_missing_rls_policies.sql`
 
-**Status:** Well protected with defense-in-depth
-
-**Client-Side Protection:**
-- File: `src/lib/sanitize.ts` (lines 68-95)
-- Function: `detectPromptInjection()` and `sanitizeAIInput()`
-- Patterns detected: `ignore previous instructions`, `system prompt`, `you are now`, `disregard`, `forget everything`, `new instructions`, `override`, `bypass`, `hack`, `exploit`, `<script`, `javascript:`, `on\w+=`
-- Malicious patterns are replaced with `[REMOVED]`
-
-**Server-Side Protection (Cloudflare Worker):**
-- File: `cloudflare-worker/landlordbot-ai.js` (lines 115-140)
-- Additional server-side validation before AI processing
-- Returns 400 error if injection detected
-- Input length limited to 4000 characters
-
-**AI Service Functions Protected:**
-- `askLandlordAssistant()` - gemini.ts:25-30
-- `triageMaintenanceRequest()` - gemini.ts:96-101
-- `draftLandlordLetter()` - gemini.ts:194-199
-- `generateText()` - gemini.ts:295-300
-
-**Recommendation:** ✅ No action required. Current implementation follows defense-in-depth principles.
-
----
-
-### 2. INPUT VALIDATION & XSS PREVENTION ✅ SECURE
-
-**Status:** Comprehensive sanitization in place
-
-**XSS Protection:**
-- File: `src/lib/sanitize.ts`
-- Uses DOMPurify library (v3.2.5 - latest secure version)
-- `sanitizeInput()`: Strips all HTML tags (lines 8-18)
-- `sanitizeRichText()`: Allows only safe tags (b, i, em, strong, p, br, ul, ol, li) (lines 24-34)
-- No `dangerouslySetInnerHTML` usage found in codebase
-
-**Email Validation:**
-- File: `src/lib/sanitize.ts` (lines 40-52)
-- Regex pattern: `/^[^\s@]+@[^\s@]+\.[^\s@]+$/`
-- Returns empty string for invalid emails
-
-**Phone Validation:**
-- File: `src/lib/sanitize.ts` (lines 58-68)
-- Strips non-numeric characters except `+`, `-`, `(`, `)`, spaces
-
-**Form Validation:**
-- SignupForm.tsx: Multi-step validation with specific error messages
-- UnitForm.tsx: Number validation with NaN checks
-- All user inputs sanitized before storage
-
-**Email Template Sanitization:**
-- File: `src/services/sendgrid.ts`
-- All user-controlled inputs sanitized with `sanitizeText()` before inclusion in email templates
-- Lines: 47 (welcome email), 124 (rent receipt), 220 (maintenance update), 320 (late payment)
-
-**Recommendation:** ✅ No action required. Proper sanitization throughout.
-
----
-
-### 3. AUTHENTICATION SECURITY ✅ SECURE
-
-**Status:** Industry-standard implementation
-
-**Authentication Method:**
-- Supabase Auth with multiple providers (Email/Password, Google, Apple, Microsoft)
-- Magic link authentication supported
-- OAuth 2.0 with PKCE flow
-
-**Session Management:**
-- File: `src/context/AuthContext.tsx`
-- Automatic token refresh enabled
-- Session persistence with secure storage
-- Cross-tab synchronization via storage events
-- Grace period for auth state propagation (500ms)
-
-**Security Features:**
-- `autoRefreshToken: true` - supabase.ts:46
-- `persistSession: true` - supabase.ts:47
-- `detectSessionInUrl: true` - supabase.ts:48
-- Protected routes with grace period for auth state
-- Auth state machine prevents race conditions
-
-**Password Security:**
-- Minimum 8 character requirement (SignupForm.tsx:validateStep2)
-- Password confirmation matching
-- Password visibility toggle (eye icon)
-
-**Recommendation:** ✅ No action required. Follows OAuth 2.0 best practices.
-
----
-
-### 4. API SECURITY ✅ SECURE
-
-**Status:** Properly configured with RLS
-
-**Supabase Configuration:**
-- File: `src/lib/supabase.ts`
-- Uses anon key (not service role key) - correct for client-side
-- Service role key properly noted as server-side only in .env.example
-- Dummy client fallback prevents crashes on misconfiguration
-
-**API Endpoint Security:**
-- Cloudflare Worker CORS restricted to allowed origins:
-  - `https://landlord-bot-live.vercel.app`
-  - `https://landlord-bot.vercel.app`
-  - `http://localhost:5173` (dev only)
-- Pre-flight OPTIONS handling
-- Method restrictions (POST only for AI)
-
-**Rate Limiting:**
-- AI usage tracking with 24-hour rolling window
-- File: `src/services/aiUsage.ts`
-- Unlimited free tier but usage is tracked
-- Cleanup of old records (30 days)
-
-**Input Length Validation:**
-- Cloudflare Worker: 4000 character limit on messages
-- Prevents DoS via oversized inputs
-
-**Recommendation:** ✅ No action required. Proper API security implementation.
-
----
-
-### 5. DEPENDENCY AUDIT ✅ SECURE
-
-**Status:** 0 vulnerabilities found
-
-**Audit Results:**
-```json
-{
-  "vulnerabilities": {},
-  "metadata": {
-    "vulnerabilities": {
-      "info": 0,
-      "low": 0,
-      "moderate": 0,
-      "high": 0,
-      "critical": 0,
-      "total": 0
-    }
-  }
-}
+**Issue:** The `bot_settings` table stores `bot_token` as plain text without encryption:
+```sql
+bot_token text,  -- Plain text token storage
 ```
 
-**Key Dependencies Verified:**
-- `jspdf`: 4.2.1 (latest secure - XSS vulnerabilities fixed in previous audit)
-- `dompurify`: 3.2.5 (latest secure)
-- `@supabase/supabase-js`: 2.97.0 (current)
-- `react`: 18.3.1 (current)
-- `react-router-dom`: 7.0.2 (current)
+**Risk:** If database is compromised, attacker gains access to Telegram bot tokens which could be used to impersonate landlords or access tenant conversations.
 
-**Previously Fixed Vulnerabilities (per HEARTBEAT.md):**
-- jspdf 2.5.2 → 4.2.1 (Critical XSS/RCE - CVSS 9.6)
-- dompurify 3.2.4 → 3.2.5 (XSS vulnerability)
-
-**Recommendation:** ✅ No action required. All dependencies secure.
-
----
-
-### 6. ENVIRONMENT VARIABLES ✅ SECURE
-
-**Status:** No secrets exposed in client-side code
-
-**Environment Handling:**
-- All API keys use `import.meta.env.VITE_*` pattern
-- `.env.example` clearly documents all required variables
-- `.env.local` in .gitignore (not committed)
-
-**Server-Side Secrets:**
-- SendGrid API key: Stored in Cloudflare Worker only
-- Supabase service role key: Documented as server-side only
-- Vapi API key: Client-side but scoped to assistant
-
-**Security Note:**
-- VITE_VAPI_API_KEY is exposed to client (required for Vapi client-side SDK)
-- This is acceptable as Vapi uses assistant-scoped permissions
-
-**Recommendation:** ✅ No action required. Proper environment variable handling.
-
----
-
-### 7. CSP & SECURITY HEADERS ✅ SECURE
-
-**Status:** Comprehensive security headers configured
-
-**Vercel Configuration (vercel.json):**
-
-```json
-{
-  "Content-Security-Policy": "default-src 'self'; 
-    script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; 
-    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; 
-    font-src 'self' https://fonts.gstatic.com; 
-    connect-src 'self' https://*.supabase.co https://api.vapi.ai https://api.sendgrid.com https://api.twilio.com https://landlordbot-ai.*.workers.dev https://data.cityofnewyork.us; 
-    img-src 'self' data: https: blob:; 
-    frame-ancestors 'none'; 
-    base-uri 'self'; 
-    form-action 'self';",
-  "X-Frame-Options": "DENY",
-  "X-Content-Type-Options": "nosniff",
-  "Referrer-Policy": "strict-origin-when-cross-origin",
-  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()",
-  "X-DNS-Prefetch-Control": "on",
-  "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload"
-}
+**Fix:**
+```sql
+-- Add encryption for bot tokens
+ALTER TABLE bot_settings ALTER COLUMN bot_token TYPE bytea;
+-- Or use pgcrypto for encryption
+ALTER TABLE bot_settings ADD COLUMN bot_token_encrypted text;
 ```
 
-**Header Analysis:**
-- ✅ CSP restricts scripts to self + GTM
-- ✅ Frame options prevent clickjacking
-- ✅ MIME type sniffing disabled
-- ✅ Strict referrer policy
-- ✅ Permissions policy restricts sensitive APIs
-- ✅ HSTS with 2-year max-age and preload
-
-**Recommendation:** ✅ No action required. Excellent security header configuration.
+**Recommendation:** Store tokens encrypted at rest; decrypt only when needed in edge functions.
 
 ---
 
-## Minor Findings (Low Severity)
+### 2. 🟠 HIGH: Missing Server-Side AI Rate Limit Enforcement
+**Severity:** High  
+**Location:** `src/services/aiUsage.ts` lines 65-128
 
-### LOW-1: localStorage JSON Parsing Without Schema Validation
+**Issue:** AI quota checking is client-side only. Malicious users can bypass limits by:
+- Calling Supabase functions directly
+- Modifying client-side code
+- Using custom scripts
 
-**Location:** 
-- `src/components/FeedbackWidget.tsx` (lines 67-75)
-- `src/context/AuthContext.tsx` (lines 47-52, 56-61, 65-70)
-
-**Issue:** JSON.parse from localStorage is wrapped in try-catch but doesn't validate schema
-
-**Current Code:**
 ```typescript
-try {
-  const parsed = JSON.parse(saved);
-  if (Array.isArray(parsed)) {
-    existingFeedback = parsed;
-  }
-} catch (e) {
-  existingFeedback = [];
+// Client-side only enforcement - vulnerable
+export async function checkAIQuota(userId: string): AsyncResult<AIQuotaStatus, AppError> {
+  // Can be bypassed by calling Supabase directly
 }
 ```
 
-**Risk:** Low - localStorage is same-origin only, but corrupted data could cause unexpected behavior
+**Risk:** Users can exceed AI limits, causing cost overruns and potential service abuse.
 
-**Recommendation:** Add schema validation using Zod or similar library for critical localStorage data
-
-**Priority:** Low
-
----
-
-### LOW-2: Vapi API Key Exposed to Client
-
-**Location:**
-- `src/services/vapi.ts` (line 24)
-- `.env.example` (lines 73-75)
-
-**Issue:** VITE_VAPI_API_KEY is exposed to client-side code
-
-**Current Code:**
-```typescript
-this.apiKey = config?.apiKey || import.meta.env.VITE_VAPI_API_KEY || '';
+**Fix:** Implement Supabase Edge Function or RPC for server-side enforcement:
+```sql
+-- Create RPC function that enforces limits
+CREATE OR REPLACE FUNCTION increment_ai_usage_secure(p_user_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_quota RECORD;
+BEGIN
+    SELECT * INTO v_quota FROM check_ai_quota_available(p_user_id);
+    IF NOT v_quota.can_proceed THEN
+        RETURN FALSE;
+    END IF;
+    -- Increment usage
+    INSERT INTO ai_usage (...) VALUES (...) 
+    ON CONFLICT (...) DO UPDATE SET requests_used = ai_usage.requests_used + 1;
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
-**Risk:** Low - This is required for Vapi's client-side SDK. The API key is scoped to specific assistants and doesn't allow arbitrary API calls.
+---
 
-**Mitigation:** Vapi uses assistant-scoped permissions, limiting what can be done with a leaked key
+## High Severity Issues
 
-**Recommendation:** Consider implementing a proxy server for Vapi calls to hide the API key (trade-off: adds latency)
+### 3. 🟠 HIGH: Dependency Vulnerabilities
+**Severity:** High  
+**Location:** `package.json`
 
-**Priority:** Low (acceptable risk given Vapi's permission model)
+**Vulnerabilities Found:**
+- **picomatch**: High severity vulnerability (already noted by maintainer)
+- **brace-expansion**: Zero-step sequence causes process hang (moderate severity)
+- **nodemailer**: SMTP command injection (< 8.0.4)
+
+**Risk:** DoS attacks, potential code execution, SMTP injection attacks.
+
+**Fix:**
+```bash
+npm audit fix
+npm update picomatch brace-expansion nodemailer
+```
+
+**Monitor with:**
+```bash
+npm audit --audit-level=moderate
+```
 
 ---
 
-## Security Checklist Summary
+### 4. 🟠 HIGH: CSP Allows 'unsafe-inline' Scripts
+**Severity:** High  
+**Location:** `index.html` line 7
 
-| Category | Status | Notes |
-|----------|--------|-------|
-| Prompt Injection | ✅ PASS | Multi-layered protection |
-| XSS Prevention | ✅ PASS | DOMPurify + no dangerous HTML |
-| Input Validation | ✅ PASS | Comprehensive sanitization |
-| Authentication | ✅ PASS | OAuth 2.0 + session management |
-| API Security | ✅ PASS | CORS + rate limiting |
-| Dependencies | ✅ PASS | 0 vulnerabilities |
-| Environment Variables | ✅ PASS | No secrets exposed |
-| CSP Headers | ✅ PASS | Comprehensive policy |
-| Security Headers | ✅ PASS | All best practices |
+**Issue:** Current CSP allows inline scripts which defeats XSS protection:
+```html
+<meta http-equiv="Content-Security-Policy" content="... script-src 'self' 'unsafe-inline' ...">
+```
+
+**Risk:** XSS attacks can execute via injected inline scripts.
+
+**Fix:** Generate nonces for inline scripts:
+```html
+<!-- Add nonce generation at build time -->
+<meta http-equiv="Content-Security-Policy" content="... script-src 'self' 'nonce-${NONCE}' ...">
+<script nonce="${NONCE}">/* runtime config */</script>
+```
+
+---
+
+## Medium Severity Issues
+
+### 5. 🟡 MEDIUM: Rate Limit Store is In-Memory Only
+**Severity:** Medium  
+**Location:** `src/utils/validation.ts` lines 126-138
+
+**Issue:** Rate limiting uses in-memory JavaScript object that resets on server restart:
+```typescript
+const rateLimitStore: RateLimitStore = {};
+```
+
+**Risk:** Rate limits can be bypassed by:
+- Distributing attacks across multiple server instances
+- Waiting for server restart
+
+**Fix:** Use Redis or database-backed rate limiting for production.
+
+---
+
+### 6. 🟡 MEDIUM: No Input Length Validation on AI Prompts
+**Severity:** Medium  
+**Location:** `src/services/aiGuardrails.ts`
+
+**Issue:** No maximum length check on user questions before processing:
+```typescript
+export function isLegalQuestion(question: string): boolean {
+  // No length validation
+  const normalizedQuestion = question.toLowerCase();
+  // ...
+}
+```
+
+**Risk:** Potential DoS via extremely large prompts; increased API costs.
+
+**Fix:** Add length limits:
+```typescript
+const MAX_PROMPT_LENGTH = 4000;
+export function isLegalQuestion(question: string): boolean | { error: string } {
+  if (question.length > MAX_PROMPT_LENGTH) {
+    return { error: 'Question too long. Please limit to 4000 characters.' };
+  }
+  // ...
+}
+```
+
+---
+
+### 7. 🟡 MEDIUM: Subscription Tier Enum Mismatch
+**Severity:** Medium  
+**Location:** `src/services/aiUsage.ts` vs `supabase/migrations/20250314000000_subscription_schema.sql`
+
+**Issue:** JavaScript uses tier names `free/pro/concierge` but database uses `free/starter/pro/enterprise`:
+```typescript
+// TypeScript
+export const TIER_AI_LIMITS = {
+  free: 50,
+  pro: 500,
+  concierge: Infinity
+};
+
+-- SQL
+CHECK (tier IN ('free', 'starter', 'pro', 'enterprise'))
+```
+
+**Risk:** Data integrity issues; limits may not be applied correctly.
+
+**Fix:** Align tier names across frontend and database.
+
+---
+
+### 8. 🟡 MEDIUM: Email Content Allows Limited HTML Injection
+**Severity:** Medium  
+**Location:** `src/services/sendgrid.ts`
+
+**Issue:** Email templates accept user input but only sanitize via `sanitizeText()`:
+```typescript
+const sanitizedTenantName = sanitizeText(tenantName);
+```
+
+**Risk:** While DOMPurify is used, email HTML context has different risks than browser DOM.
+
+**Fix:** Use email-specific sanitization library like `sanitize-html` with email-safe config.
+
+---
+
+## Low Severity Issues
+
+### 9. 🟢 LOW: Missing Rate Limit on Magic Link Resend
+**Severity:** Low  
+**Location:** `src/features/auth/components/LoginForm.tsx`
+
+**Issue:** No explicit rate limiting on magic link resends beyond the auth rate limiter check.
+
+**Fix:** Add specific magic link rate limiting in the rate limiter.
+
+---
+
+### 10. 🟢 LOW: build.sourcemap Set to false Without Sentry Config
+**Severity:** Low  
+**Location:** `vite.config.ts` line 38
+
+**Issue:** Source maps disabled but Sentry integration in place - will make debugging harder.
+
+**Fix:** Either enable sourcemaps or ensure Sentry release artifacts are uploaded with sourcemaps.
+
+---
+
+### 11. 🟢 LOW: Auth LocalStorage Keys Still Referenced
+**Severity:** Low  
+**Location:** `src/features/auth/services/authService.ts` lines 14-15
+
+**Issue:** Constants defined but not actually used (good), but should be removed entirely:
+```typescript
+export const AUTH_STORAGE_KEY = 'landlordbot_auth';  // Unused
+export const AUTH_TIMESTAMP_KEY = 'landlordbot_auth_timestamp';  // Unused
+```
+
+---
+
+## Postive Security Findings ✅
+
+### 1. Strong Auth Token Security
+**Location:** `src/lib/supabase.ts`
+
+**Good:** Tokens stored memory-only with `persistSession: false` - excellent XSS protection:
+```typescript
+auth: {
+  autoRefreshToken: true,
+  persistSession: false,       // SECURITY: Don't store tokens in localStorage
+  detectSessionInUrl: true,
+}
+```
+
+### 2. Comprehensive RLS Policies
+**Good:** All tables have appropriate RLS policies enforcing user data isolation.
+
+### 3. XSS Prevention via DOMPurify
+**Good:** Multiple layers of XSS protection:
+- `sanitizeInput()` removes all HTML tags
+- `sanitizeRichText()` allows only safe formatting tags
+- No attributes allowed to prevent event handlers
+
+### 4. Legal Guardrails Implemented
+**Good:** Comprehensive legal keyword detection and safe response templates protect against providing unauthorized legal advice.
+
+### 5. No Hardcoded Secrets Found
+**Good:** No API keys, passwords, or credentials found in source code - all use environment variables.
+
+---
+
+## Recommendations Summary
+
+| Priority | Issue | Effort | Impact |
+|----------|-------|--------|--------|
+| P0 | Encrypt bot tokens | Medium | Critical |
+| P0 | Server-side AI rate limiting | Medium | High |
+| P1 | Fix dependency vulnerabilities | Low | High |
+| P1 | CSP unsafe-inline fix | High | High |
+| P2 | Distributed rate limiting | Medium | Medium |
+| P2 | Input length validation | Low | Medium |
+| P3 | Email sanitization | Low | Low |
+| P3 | Sourcemap configuration | Low | Low |
+
+---
+
+## Files Reviewed
+
+- ✅ `src/services/aiGuardrails.ts` - Legal keyword blocklist, safe templates
+- ✅ `src/services/aiUsage.ts` - Tier-based limits
+- ✅ `src/services/sendgrid.ts` - Email service
+- ✅ `src/features/auth/services/authService.ts` - Auth token handling
+- ✅ `src/features/auth/hooks/useAuth.tsx` - Auth state management
+- ✅ `src/lib/supabase.ts` - Supabase client configuration
+- ✅ `src/lib/sanitize.ts` - Input sanitization
+- ✅ `src/utils/validation.ts` - Rate limiting
+- ✅ `index.html` - CSP headers
+- ✅ `vite.config.ts` - Build configuration
+- ✅ `supabase/migrations/*.sql` - RLS policies (9 migrations reviewed)
+- ✅ `.env.example` - Environment template
+- ✅ `package.json` - Dependencies
 
 ---
 
 ## Conclusion
 
-The LandlordBot LIVE deployment demonstrates **strong security practices** with no critical or high-severity findings. The application properly implements:
+The LandlordBot codebase shows **strong security foundations** with proper XSS prevention, memory-only token storage, and comprehensive RLS policies. However, **Critical and High severity issues require immediate attention**, particularly:
 
-1. Defense-in-depth for AI prompt injection
-2. Comprehensive XSS prevention
-3. Industry-standard authentication
-4. Secure API configuration
-5. Up-to-date dependencies
-6. Robust security headers
+1. **Bot token encryption** (Critical)
+2. **Server-side rate limit enforcement** (High)
+3. **Dependency updates** (High)
 
-The two low-severity findings (localStorage validation and Vapi key exposure) represent acceptable risks given the application's architecture and the nature of the third-party services used.
-
-**Overall Rating: SECURE** ✅
+With these fixes implemented, the application will have enterprise-grade security appropriate for handling sensitive landlord-tenant data.
 
 ---
 
-*Report generated by OpenClaw Security Audit Task*
-*Task ID: 8c05e10c-177d-42f1-8b82-0b2539c8ec5d*
+*Report generated by OpenClaw Security Audit Bot*

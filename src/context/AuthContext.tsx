@@ -228,9 +228,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Load from cache first for immediate UI
         const cachedUserData = loadUserDataFromCache();
         
-        // Get current session
+        // Get current session with 5s timeout (prevents infinite hang)
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise<{data: {session: null}, error: Error}>((_, reject) => 
+          setTimeout(() => reject(new Error('Session check timeout')), 5000)
+        );
         const { data: { session: currentSession }, error: sessionError } = 
-          await supabase.auth.getSession();
+          await Promise.race([sessionPromise, timeoutPromise]).catch(() => ({ 
+            data: { session: null }, 
+            error: new Error('Session check timeout') 
+          }));
         
         if (sessionError) {
           console.error('[AuthContext] getSession error:', sessionError);
