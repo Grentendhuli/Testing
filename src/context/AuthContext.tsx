@@ -214,14 +214,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Initialize auth
   useEffect(() => {
-    // Guard against duplicate initialization OR if already authenticated
-    if (initRef.current) {
+    // Skip if already initialized
+    if (isInitialized) {
       console.log('[AuthContext] initAuth skipped - already initialized');
       return;
     }
     
+    // Skip if init already in progress (prevents duplicate runs)
+    if (initRef.current) {
+      console.log('[AuthContext] initAuth skipped - already in progress');
+      return;
+    }
+    
+    // Skip if auth already resolved via onAuthStateChange
     if (authState === 'authenticated' || authState === 'unauthenticated') {
       console.log('[AuthContext] initAuth skipped - auth already resolved:', authState);
+      setIsInitialized(true);
       return;
     }
     
@@ -301,7 +309,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     initAuth();
-  }, [fetchUserData, loadUserDataFromCache, updateAuthState, authState]);
+  }, [fetchUserData, loadUserDataFromCache, updateAuthState]);
 
   // Auth state change listener
   useEffect(() => {
@@ -327,12 +335,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (newSession?.user) {
               await fetchUserData(newSession.user.id);
               updateAuthState('authenticated', newSession.user, newSession);
+              // Ensure initialization is marked complete
+              setIsInitialized(true);
             }
             break;
           case 'SIGNED_OUT':
             setUserData(null);
             saveUserDataToCache(null);
             updateAuthState('unauthenticated', null, null);
+            setIsInitialized(true);
             break;
           case 'TOKEN_REFRESHED':
             if (newSession) {
