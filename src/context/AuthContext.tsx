@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 import { sendWelcomeEmail } from '../services/sendgrid';
 
-// Auth state machine types - force rebuild
+// Auth state machine types - fix lock contention v2
 type AuthState = 'initializing' | 'authenticated' | 'unauthenticated';
 
 interface AuthContextType {

@@ -84,11 +84,9 @@ try {
   }
 
   root.render(
-    <StrictMode>
-      <ErrorBoundary>
-        <App />
-      </ErrorBoundary>
-    </StrictMode>,
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>,
   );
 
   setTimeout(clearRenderTimeout, 100);
