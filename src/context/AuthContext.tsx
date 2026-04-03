@@ -113,7 +113,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
   
   const initRef = useRef(false);
-  const authChangeRef = useRef(false);
   const visibilityRefreshRef = useRef(false);
 
   const isLoading = authState === 'initializing';
