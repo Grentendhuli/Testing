@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { 
   MapPin, Bed, Bath, Maximize, DollarSign, 
   Filter, ExternalLink, Clock, Building2,

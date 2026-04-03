@@ -1,5 +1,6 @@
 import { MessageSquare, X, Send, Bug, Lightbulb, MessageCircle, Check } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 
 type FeedbackType = 'bug' | 'feature' | 'general';
 

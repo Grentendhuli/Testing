@@ -32,7 +32,7 @@ export function useAutosave<T extends Record<string, unknown>>({
   debounceMs?: number;
 }) {
   const { showInfo, showSuccess } = useToast();
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasRestoredRef = useRef(false);
   const storageKey = `${AUTOSAVE_KEY_PREFIX}${key}`;
 

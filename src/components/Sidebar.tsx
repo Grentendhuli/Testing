@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import React from 'react';
 import { 
   Building2, Phone, Settings, CreditCard, Home, DollarSign, FileText, Users, 
   BarChart3, Wrench, LineChart, TrendingUp, Lightbulb, Scale,

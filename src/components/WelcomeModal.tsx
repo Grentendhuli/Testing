@@ -1,3 +1,4 @@
+import React from 'react';
 import React, { useState, useEffect } from 'react';
 import { X, Home, Users, Sparkles, ChevronRight, CheckCircle } from 'lucide-react';
 import { Button } from './Button';

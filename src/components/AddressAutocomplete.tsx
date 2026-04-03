@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import React from 'react';
 import { MapPin, Loader2, X } from 'lucide-react';
 
 interface AddressSuggestion {

@@ -1,3 +1,4 @@
+import React from 'react';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Command, Search, Sparkles, Clock, ArrowRight, X, 

@@ -13,6 +13,8 @@ import { PageLoadingScreen } from './components/PageLoadingScreen';
 import { setUserContext, trackNavigation, addBreadcrumb } from './lib/errorReporting';
 import { LoginForm, SignupForm, AuthCallback } from '@/features/auth';
 import { AuthLoadingScreen } from './components/AuthLoadingScreen';
+import { useSessionManager } from './hooks/useSessionManager';
+import { SessionWarningModal } from './components/SessionWarningModal';
 
 // Lazy-loaded pages
 import {
@@ -104,10 +106,18 @@ function AuthLoadingSpinner() {
   return <AuthLoadingScreen message="Loading..." />;
 }
 
-// Protected Layout wrapper
+// Protected Layout wrapper with session management
 function Layout({ children }: { children: React.ReactNode }) {
+  const { showWarning, timeRemaining, dismissWarning } = useSessionManager();
+  
   return (
     <div className="flex min-h-screen bg-slate-50 transition-colors duration-200">
+      {showWarning && (
+        <SessionWarningModal 
+          timeRemaining={timeRemaining} 
+          onDismiss={dismissWarning} 
+        />
+      )}
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <main className="flex-1 overflow-auto p-4 lg:p-6">

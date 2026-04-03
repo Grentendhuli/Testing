@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, DollarSign, Wrench, MessageSquare, Home, X } from 'lucide-react';
 import { useNavigate, type NavigateFunction } from 'react-router-dom';

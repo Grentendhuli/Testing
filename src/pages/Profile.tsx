@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import React from 'react';
 import { 
   User, Building2, Phone, Mail, MapPin, Bot, Edit2, Save, X, Lock, 
   Bell, Trash2, AlertTriangle, CheckCircle, Shield, Copy, Check, 

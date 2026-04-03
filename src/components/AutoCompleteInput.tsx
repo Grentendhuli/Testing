@@ -1,3 +1,4 @@
+import React from 'react';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Check, X, Sparkles, UserCircle } from 'lucide-react';
 

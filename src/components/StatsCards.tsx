@@ -1,3 +1,4 @@
+import React from 'react';
 import { TrendingUp, Users, Wrench, Clock, MessageSquare } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
