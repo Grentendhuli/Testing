@@ -44,8 +44,8 @@ export interface AuthContextType {
   signup: (email: string, password: string, userData: Partial<UserData>) => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
   updateUserData: (data: Partial<UserData>) => Promise<{ error: Error | null }>;
-  signInWithGoogle: () => Promise<void>;
-  signInWithApple: () => Promise<void>;
+  signInWithGoogle: () => Promise<{ data: { provider: string; url: string; } | null; error: Error | null }>;
+  signInWithApple: () => Promise<{ data: { provider: string; url: string; } | null; error: Error | null }>;
   refreshSession: () => Promise<void>;
 }
 

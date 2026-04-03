@@ -23,8 +23,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Session persistence configuration
 const USER_DATA_CACHE_KEY = 'lb_user_data_cache_v3';
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-const SESSION_VERSION_KEY = 'lb_session_version';
-const CURRENT_SESSION_VERSION = '2'; // Bumped for auth flow fix
 
 // Retry config
 const MAX_RETRIES = 3;
@@ -96,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const previousUserDataRef = useRef<UserData | null>(null);
   const visibilityRefreshRef = useRef(false);
   const isRefreshingRef = useRef(false);
+  const isCallbackPageRef = useRef(false);
 
   // ============================================================================
   // SECTION 3: DERIVED STATE (computed values, not hooks)
@@ -107,6 +106,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // SECTION 4: ALL HELPER CALLBACKS (useCallback - defined BEFORE effects that use them)
   // ============================================================================
   
+  // Check if we're on the OAuth callback page
+  const checkIsCallbackPage = useCallback(() => {
+    const pathname = window.location.pathname;
+    const hasCode = window.location.search.includes('code=');
+    const hasAuthTokens = window.location.hash.includes('access_token=');
+    
+    const isCallback = pathname.includes('/auth/callback') || hasCode || hasAuthTokens;
+    return isCallback;
+  }, []);
+
   // Update auth state - stable callback
   const updateAuthState = useCallback((newState: AuthState, newUser: User | null, newSession: Session | null) => {
     setAuthState(newState);
@@ -150,7 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateAuthState('unauthenticated', null, null);
   }, [saveUserDataToCache, updateAuthState]);
 
-  // Fetch user data with retry logic - creates record if it doesn't exist (for OAuth users)
+  // Fetch user data with retry logic
   const fetchUserData = useCallback(async (userId: string, userObj?: User | null) => {
     // Show cached data immediately if available
     const cached = loadUserDataFromCache();
@@ -262,7 +271,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null;
   }, [loadUserDataFromCache, saveUserDataToCache]);
 
-  // Refresh session - defined BEFORE cross-tab sync that uses it
+  // Refresh session
   const refreshSession = useCallback(async () => {
     try {
       const { data: { session: currentSession }, error } = await supabase.auth.getSession();
@@ -281,13 +290,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchUserData, updateAuthState]);
 
   // ============================================================================
-  // SECTION 5: ALL USEEFFECT HOOKS (defined AFTER all callbacks they reference)
+  // SECTION 5: ALL USEEFFECT HOOKS
   // ============================================================================
 
   // Multi-tab auth synchronization
   const { broadcastLogout } = useMultiTabAuth({
     onLogout: () => {
-      // Other tab logged out - clear auth state without broadcasting (to avoid infinite loop)
+      // Other tab logged out - clear auth state without broadcasting
       clearAuthState();
     },
     onSessionExpired: () => {
@@ -309,14 +318,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializationRef.current = true;
 
     const initAuth = async () => {
-      // ALWAYS ensure we set isInitialized, even if something fails
       let completed = false;
       
       const completeInitialization = () => {
         if (!completed) {
           completed = true;
           setIsInitialized(true);
-          console.log('[AuthContext] Initialization complete, isInitialized set to true');
+          console.log('[AuthContext] Initialization complete');
         }
       };
 
@@ -324,7 +332,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const safetyTimeout = setTimeout(() => {
         console.warn('[AuthContext] Initialization safety timeout triggered');
         completeInitialization();
-      }, 10000); // 10 second hard limit
+      }, 10000);
 
       try {
         if (!supabase || typeof supabase.auth?.getSession !== 'function') {
@@ -334,37 +342,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Check URL for OAuth callback (code in query or tokens in hash)
-        const query = window.location.search;
-        const hash = window.location.hash;
-        const hasCode = query.includes('code=');
-        const hasAuthTokens = hash.includes('access_token=') || hash.includes('refresh_token=');
-        const isAuthCallback = window.location.pathname.includes('/auth/callback');
+        // CRITICAL FIX: Check if we're on OAuth callback page
+        isCallbackPageRef.current = checkIsCallbackPage();
         
-        if (hasCode || hasAuthTokens || isAuthCallback) {
-          console.log('[AuthContext] OAuth callback detected, waiting for code exchange...');
-          
-          // Wait a bit for Supabase to auto-detect and exchange the code
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          // Check if session was established
-          const { data: { session: newSession } } = await supabase.auth.getSession();
-          
-          if (newSession?.user) {
-            console.log('[AuthContext] Session established after callback:', newSession.user.email);
-            await fetchUserData(newSession.user.id, newSession.user);
-            updateAuthState('authenticated', newSession.user, newSession);
-          } else {
-            console.log('[AuthContext] No session after callback wait');
-            updateAuthState('unauthenticated', null, null);
-          }
-          
+        if (isCallbackPageRef.current) {
+          console.log('[AuthContext] OAuth callback detected - deferring to AuthCallback page');
+          // Defer to AuthCallback component to handle the flow
+          // Just complete initialization without interfering
           completeInitialization();
           clearTimeout(safetyTimeout);
           return;
         }
 
-        // Get existing session (non-OAuth flow)
+        // Normal initialization (not OAuth callback)
         const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
@@ -377,7 +367,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (currentSession?.user) {
           console.log('[AuthContext] Session recovered for:', currentSession.user.email);
           
-          // Verify session is still valid by attempting refresh
+          // Verify session is still valid
           const { error: refreshError } = await supabase.auth.refreshSession();
           
           if (refreshError) {
@@ -402,7 +392,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     initAuth();
-  }, [fetchUserData, updateAuthState]);
+  }, [checkIsCallbackPage, fetchUserData, updateAuthState]);
 
   // Auth state change listener
   useEffect(() => {
@@ -426,6 +416,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           switch (event) {
             case 'SIGNED_IN':
+            case 'INITIAL_SESSION':
               if (newSession?.user) {
                 console.log('[AuthContext] User signed in, fetching data...');
                 await fetchUserData(newSession.user.id, newSession.user);
@@ -450,23 +441,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
               break;
             default:
-              // Handle TOKEN_REFRESHED_FAILURE, SESSION_EXPIRED and any other events
+              // Handle TOKEN_REFRESHED_FAILURE, SESSION_EXPIRED
               if ((event as any) === 'TOKEN_REFRESHED_FAILURE' || (event as any) === 'SESSION_EXPIRED') {
                 console.log('[AuthContext] Session expired, showing modal');
                 setShowSessionExpiredModal(true);
               }
               break;
-            case 'INITIAL_SESSION':
-              // Initial session from OAuth callback
-              if (newSession?.user) {
-                console.log('[AuthContext] Initial session detected');
-                await fetchUserData(newSession.user.id, newSession.user);
-                updateAuthState('authenticated', newSession.user, newSession);
-              }
-              break;
           }
           
-          // Ensure initialization is complete after handling state change
+          // Ensure initialization is complete
           if (!isInitialized) {
             setIsInitialized(true);
           }
@@ -503,40 +486,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [authState, user?.id, fetchUserData, clearAuthState]);
 
-  // Cross-tab synchronization for auth state - using supabase's actual key
-  useEffect(() => {
-    const handleStorageChange = async (event: StorageEvent) => {
-      // Supabase uses 'sb-<project-ref>-auth-token' pattern - check for supabase auth token
-      if (event.key?.includes('auth-token') || event.key?.includes('supabase.auth.token')) {
-        // Prevent race conditions - ignore if already refreshing
-        if (isRefreshingRef.current) return;
-        
-        isRefreshingRef.current = true;
-        
-        try {
-          if (event.newValue === null) {
-            // User logged out in another tab
-            console.log('[AuthContext] Logout detected in another tab');
-            setUserData(null);
-            saveUserDataToCache(null);
-            updateAuthState('unauthenticated', null, null);
-          } else {
-            // User logged in in another tab - refresh session
-            console.log('[AuthContext] Login detected in another tab');
-            await refreshSession();
-          }
-        } finally {
-          // Release lock after a short delay to prevent immediate re-trigger
-          setTimeout(() => { isRefreshingRef.current = false; }, 100);
-        }
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [refreshSession, saveUserDataToCache, updateAuthState]);
-
-  // Session health monitoring - recovers from edge cases
+  // Session health monitoring
   useEffect(() => {
     if (authState !== 'authenticated') return;
 
@@ -561,11 +511,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [authState, clearAuthState]);
 
   // ============================================================================
-  // SECTION 6: PUBLIC API FUNCTIONS (returned in context, not hooks)
+  // SECTION 6: PUBLIC API FUNCTIONS
   // ============================================================================
 
   const login = async (email: string, password: string): Promise<{ error: Error | null; remainingAttempts?: number; isLocked?: boolean }> => {
-    // Check rate limit before attempting login
     const rateLimit = checkRateLimit(email);
     
     if (!rateLimit.allowed) {
@@ -577,7 +526,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
     }
 
-    // Add exponential backoff delay based on remaining attempts
+    // Add exponential backoff delay
     const remainingAttempts = getRemainingAttempts(email);
     if (remainingAttempts < 5) {
       const delay = Math.min(1000 * Math.pow(2, 5 - remainingAttempts), 5000);
@@ -587,7 +536,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const result = await loginWithPassword(email, password);
 
     if (result.error) {
-      // Record failed attempt
       recordFailedAttempt(email);
       const remaining = getRemainingAttempts(email);
       
@@ -598,7 +546,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
     }
 
-    // Clear failed attempts on successful login
     clearFailedAttempts(email);
     return { error: null, remainingAttempts: 5 };
   };
@@ -609,7 +556,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    // Broadcast logout to other tabs BEFORE clearing local state
     broadcastLogout();
     await clearAuthState();
   };

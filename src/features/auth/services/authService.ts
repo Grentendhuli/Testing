@@ -80,71 +80,125 @@ export async function signupWithPassword(
 
 export async function signInWithGoogle() {
   try {
-    const { error } = await supabase.auth.signInWithOAuth({
+    // CRITICAL FIX: Store a flag to indicate OAuth is in progress
+    // This helps detect if the code verifier might have been lost
+    sessionStorage.setItem('oauth_in_progress', 'true');
+    sessionStorage.setItem('oauth_start_time', Date.now().toString());
+    
+    // Log current storage state before OAuth
+    if (import.meta.env.DEV) {
+      const supabaseKeys = Object.keys(localStorage).filter(k => 
+        k.includes('sb-') || k.includes('code-verifier')
+      );
+      console.log('[AuthService] Pre-OAuth storage keys:', supabaseKeys);
+    }
+    
+    const redirectTo = `${window.location.origin}/auth/callback`;
+    console.log('[AuthService] Starting Google OAuth, redirect to:', redirectTo);
+    
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
         },
+        // CRITICAL FIX: Ensure PKCE is used
+        // Supabase handles this automatically with flowType: 'pkce' in client config
       },
     });
 
     if (error) {
-      console.error('Google sign-in error:', error);
+      console.error('[AuthService] Google sign-in error:', error);
+      sessionStorage.removeItem('oauth_in_progress');
       throw error;
     }
+    
+    // The browser will redirect to Google now
+    // On return, the AuthCallback component will handle the response
+    console.log('[AuthService] OAuth initiated, browser redirecting...');
+    
+    return { data, error: null };
   } catch (error) {
     console.error('[signInWithGoogle] Error:', error);
+    sessionStorage.removeItem('oauth_in_progress');
     throw error;
   }
 }
 
 export async function signInWithApple() {
   try {
-    const { error } = await supabase.auth.signInWithOAuth({
+    sessionStorage.setItem('oauth_in_progress', 'true');
+    
+    const redirectTo = `${window.location.origin}/auth/callback`;
+    console.log('[AuthService] Starting Apple OAuth, redirect to:', redirectTo);
+    
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo,
       },
     });
 
     if (error) {
-      console.error('Apple sign-in error:', error);
+      console.error('[AuthService] Apple sign-in error:', error);
+      sessionStorage.removeItem('oauth_in_progress');
       throw error;
     }
+    
+    return { data, error: null };
   } catch (error) {
     console.error('[signInWithApple] Error:', error);
+    sessionStorage.removeItem('oauth_in_progress');
     throw error;
   }
 }
 
 export async function signInWithMicrosoft() {
   try {
-    const { error } = await supabase.auth.signInWithOAuth({
+    sessionStorage.setItem('oauth_in_progress', 'true');
+    
+    const redirectTo = `${window.location.origin}/auth/callback`;
+    console.log('[AuthService] Starting Microsoft OAuth, redirect to:', redirectTo);
+    
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'azure',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo,
         scopes: 'email profile openid',
       },
     });
 
     if (error) {
-      console.error('Microsoft sign-in error:', error);
+      console.error('[AuthService] Microsoft sign-in error:', error);
+      sessionStorage.removeItem('oauth_in_progress');
       throw error;
     }
+    
+    return { data, error: null };
   } catch (error) {
     console.error('[signInWithMicrosoft] Error:', error);
+    sessionStorage.removeItem('oauth_in_progress');
     throw error;
   }
 }
 
 export async function signOut() {
   try {
+    // Clear OAuth in progress flag
+    sessionStorage.removeItem('oauth_in_progress');
+    sessionStorage.removeItem('oauth_start_time');
+    
+    // Clear any auth processing flags from sessionStorage
+    sessionStorage.removeItem('auth_processed');
+    
     await supabase.auth.signOut();
+    console.log('[AuthService] Sign out successful');
   } catch (error) {
     console.error('[signOut] Error:', error);
+    // Even if Supabase signOut fails, we should still clear local state
+    // The clearAuthState function in useAuth will handle this
   }
 }
 
@@ -199,6 +253,24 @@ export const removeStorageItem = (key: string): void => {
   try {
     localStorage.removeItem(key);
   } catch {
-    // Ignore storage errors
+    // Ignore
   }
+};
+
+// Helper to get OAuth state for debugging
+export const getOAuthState = () => {
+  return {
+    inProgress: sessionStorage.getItem('oauth_in_progress'),
+    startTime: sessionStorage.getItem('oauth_start_time'),
+    elapsed: sessionStorage.getItem('oauth_start_time') 
+      ? Date.now() - parseInt(sessionStorage.getItem('oauth_start_time')!, 10)
+      : null,
+  };
+};
+
+// Helper to clear OAuth state
+export const clearOAuthState = () => {
+  sessionStorage.removeItem('oauth_in_progress');
+  sessionStorage.removeItem('oauth_start_time');
+  sessionStorage.removeItem('auth_processed');
 };

@@ -18,6 +18,19 @@ if (import.meta.env.DEV) {
 const isValidUrl = typeof supabaseUrl === 'string' && supabaseUrl.startsWith('https://');
 const isValidKey = typeof supabaseKey === 'string' && supabaseKey.length > 0;
 
+// Project reference for storage key
+const projectRef = isValidUrl 
+  ? supabaseUrl.match(/([a-z0-9]{20,})\.supabase\.co/)?.[1] 
+  : null;
+
+export const STORAGE_KEY = projectRef 
+  ? `sb-${projectRef}-auth-token` 
+  : 'lb-auth-token';
+
+export const CODE_VERIFIER_KEY = projectRef 
+  ? `sb-${projectRef}-auth-token-code-verifier` 
+  : 'lb-auth-code-verifier';
+
 let supabase: SupabaseClient<Database>;
 
 if (!isValidUrl || !isValidKey) {
@@ -69,21 +82,70 @@ if (!isValidUrl || !isValidKey) {
   // 2. Short token lifetime (1 hour) with automatic refresh
   // 3. RLS policies prevent unauthorized data access
   // 4. XSS protection via CSP headers + input sanitization
+  
+  // CRITICAL FIX: Custom storage implementation to preserve PKCE code verifier
+  const customStorage = {
+    getItem: (key: string): string | null => {
+      try {
+        return localStorage.getItem(key);
+      } catch {
+        return null;
+      }
+    },
+    setItem: (key: string, value: string): void => {
+      try {
+        localStorage.setItem(key, value);
+        
+        // Debug logging for PKCE verifier
+        if (key.includes('code-verifier') && import.meta.env.DEV) {
+          console.log('[Supabase] Code verifier stored:', key);
+        }
+      } catch (e) {
+        console.warn('[Supabase] Failed to set item:', key, e);
+      }
+    },
+    removeItem: (key: string): void => {
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        // Ignore
+      }
+    },
+  };
+  
   supabase = createClient<Database>(supabaseUrl, supabaseKey, {
     auth: {
       autoRefreshToken: true,
-      persistSession: true,              // FIXED: Enable session persistence
-      detectSessionInUrl: true,
-      storageKey: 'lb-auth-token',        // Custom storage key
-      flowType: 'pkce',                   // Enhanced OAuth security
+      persistSession: true,
+      detectSessionInUrl: true,      // Auto-detect OAuth callback
+      storage: customStorage,         // Custom storage with error handling
+      storageKey: STORAGE_KEY,        // Consistent storage key
+      flowType: 'pkce',               // PKCE flow for OAuth
+      // CRITICAL FIX: Ensure cookies are used properly for cross-origin
+      // Note: This is the default behavior, but being explicit
     },
     db: { schema: 'public' },
     global: {
       headers: { 'X-Client-Info': 'landlordbot-web' },
     },
   });
-  console.log('[Supabase] Client initialized with secure session persistence');
+  
+  console.log('[Supabase] Client initialized with PKCE OAuth support');
+  console.log('[Supabase] Storage key:', STORAGE_KEY);
 }
 
 export { supabase };
 export default supabase;
+
+// Helper: Get code verifier for debugging
+export const getPKCEVerifier = (): string | null => {
+  return localStorage.getItem(CODE_VERIFIER_KEY);
+};
+
+// Helper: Clear all Supabase auth data (for logout/errors)
+export const clearSupabaseAuth = (): void => {
+  const keysToRemove = Object.keys(localStorage).filter(k => 
+    k.includes('sb-') || k.includes('supabase') || k.includes(STORAGE_KEY)
+  );
+  keysToRemove.forEach(key => localStorage.removeItem(key));
+};
