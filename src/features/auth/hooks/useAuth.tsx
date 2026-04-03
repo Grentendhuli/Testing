@@ -417,19 +417,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         async (event, newSession) => {
           console.log('[AuthContext] Auth state change:', event, newSession?.user?.email);
           
-          // Debounce rapid state changes
-          if (authStateChangeRef.current) return;
-          authStateChangeRef.current = true;
-          
-          setTimeout(() => {
-            authStateChangeRef.current = false;
-          }, 100);
+          // NOTE: Removed debounce - it was blocking SIGNED_IN after INITIAL_SESSION
+          // The auth state changes are already serialized by Supabase
 
           switch (event) {
             case 'SIGNED_IN':
-            case 'INITIAL_SESSION':
+              // Always handle SIGNED_IN - OAuth flow depends on this
               if (newSession?.user) {
                 console.log('[AuthContext] User signed in, fetching data...');
+                await fetchUserData(newSession.user.id, newSession.user);
+                updateAuthState('authenticated', newSession.user, newSession);
+              }
+              break;
+            case 'INITIAL_SESSION':
+              // Only update if user exists and we're not already authenticated
+              // This prevents overwriting an active session during init
+              if (newSession?.user && authState !== 'authenticated') {
+                console.log('[AuthContext] Initial session found, fetching data...');
                 await fetchUserData(newSession.user.id, newSession.user);
                 updateAuthState('authenticated', newSession.user, newSession);
               }
